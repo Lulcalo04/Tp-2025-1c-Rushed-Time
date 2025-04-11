@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"utils/client/globals"
 )
 
 type Mensaje struct {
@@ -21,8 +20,9 @@ type Paquete struct {
 	Valores []string `json:"valores"`
 }
 
-func IniciarConfiguracion(filePath string) *globals.Config {
-	var config *globals.Config
+func IniciarConfiguracion(filePath string, config interface{}) {
+	//var config *globals.Config
+
 	configFile, err := os.Open(filePath)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -30,13 +30,14 @@ func IniciarConfiguracion(filePath string) *globals.Config {
 	defer configFile.Close()
 
 	jsonParser := json.NewDecoder(configFile)
-	jsonParser.Decode(&config)
-
+	err = jsonParser.Decode(config) // Se pasa el puntero directamente
+	if err != nil {
+		log.Fatalf("Error al decodificar la configuración: %s", err.Error())
+	}
 	if config == nil {
 		log.Fatalf("No se pudo cargar la configuración")
 	}
 
-	return config
 }
 
 func LeerConsola() []string {

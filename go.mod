@@ -1,3 +1,3 @@
-module github.com/sisoputnfrba/tp-golang
+module tp
 
 go 1.24

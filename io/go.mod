@@ -1,3 +1,3 @@
-module github.com/sisoputnfrba/tp-golang/io
+module inputoutput
 
 go 1.24
