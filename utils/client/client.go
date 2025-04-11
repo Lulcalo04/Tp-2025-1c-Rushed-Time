@@ -72,7 +72,7 @@ func GenerarYEnviarPaquete(ip string, puerto int) {
 	}
 
 	paquete := Paquete{Valores: valores}
-	log.Printf("paqute a enviar: %+v", paquete)
+	log.Printf("Paquete a enviar: %+v", paquete)
 
 	EnviarPaquete(ip, puerto, paquete)
 }
@@ -81,31 +81,31 @@ func EnviarMensaje(ip string, puerto int, mensajeTxt string) {
 	mensaje := Mensaje{Mensaje: mensajeTxt}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
+		log.Printf("Error codificando mensaje: %s", err.Error())
 	}
 
 	url := fmt.Sprintf("http://%s:%d/mensaje", ip, puerto)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+		log.Printf("Error enviando mensaje a ip:%s puerto:%d", ip, puerto)
 	}
 
-	log.Printf("respuesta del servidor: %s", resp.Status)
+	log.Printf("Respuesta del servidor: %s", resp.Status)
 }
 
 func EnviarPaquete(ip string, puerto int, paquete Paquete) {
 	body, err := json.Marshal(paquete)
 	if err != nil {
-		log.Printf("error codificando mensajes: %s", err.Error())
+		log.Printf("Error codificando mensajes: %s", err.Error())
 	}
 
 	url := fmt.Sprintf("http://%s:%d/paquetes", ip, puerto)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("error enviando mensajes a ip:%s puerto:%d", ip, puerto)
+		log.Printf("Error enviando mensajes a ip:%s puerto:%d", ip, puerto)
 	}
 
-	log.Printf("respuesta del servidor: %s", resp.Status)
+	log.Printf("Respuesta del servidor: %s", resp.Status)
 }
 
 func ConfigurarLogger(nombreDelModulo string) {

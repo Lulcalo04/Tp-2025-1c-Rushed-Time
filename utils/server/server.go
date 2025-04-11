@@ -19,13 +19,13 @@ func RecibirPaquetes(w http.ResponseWriter, r *http.Request) {
 	var paquete Paquete
 	err := decoder.Decode(&paquete)
 	if err != nil {
-		log.Printf("error al decodificar mensaje: %s\n", err.Error())
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("error al decodificar mensaje"))
+		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
 
-	log.Println("me llego un paquete de un cliente")
+	log.Println("Me llego un paquete de un cliente")
 	log.Printf("%+v\n", paquete)
 
 	w.WriteHeader(http.StatusOK)

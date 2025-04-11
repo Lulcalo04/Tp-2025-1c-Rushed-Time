@@ -11,10 +11,9 @@ func main() {
 	//Crea el archivo donde se logea memoria
 	client.ConfigurarLogger("memoria")
 
-	var Config_Memoria *globals.ConfigMemoria
-	client.IniciarConfiguracion("memoria/config.json", &Config_Memoria)
+	client.IniciarConfiguracion("memoria/config.json", &globals.Config_Memoria)
 
-	fmt.Println("Configuracion de memoria: ", Config_Memoria)
+	fmt.Println("Configuracion de memoria: ", globals.Config_Memoria)
 
 	//Enviamos el paquete
 
