@@ -2,22 +2,19 @@ package main
 
 import (
 	"utils/client"
-	/* "utils/client/globals" */
-	"net/http"
-	"utils/server"
+	"utils/globals"
 )
 
 func main() {
-	client.ConfigurarLogger("cpu")
 
-	//FUNCIONES DE SERVER
-	mux := http.NewServeMux()
+	//Crea el archivo donde se logea cpu
+	globals.ConfigurarLogger("cpu")
+	globals.IniciarConfiguracion("cpu/config.json", &cpu.Config_CPU)
 
-	mux.HandleFunc("/paquetes", server.RecibirPaquetes)
-	mux.HandleFunc("/mensaje", server.RecibirMensaje)
+	//Mandar paquete a Memoria
+	client.GenerarYEnviarPaquete(cpu.Config_CPU.IPMemory, cpu.Config_CPU.PortMemory)
 
-	err := http.ListenAndServe(":8004", mux)
-	if err != nil {
-		panic(err)
-	}
+	//Mandar paquete a Kernel
+	client.GenerarYEnviarPaquete(cpu.Config_CPU.IPKernel, cpu.Config_CPU.PortKernel)
+
 }

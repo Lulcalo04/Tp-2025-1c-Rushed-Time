@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -18,26 +17,6 @@ type Mensaje struct {
 
 type Paquete struct {
 	Valores []string `json:"valores"`
-}
-
-func IniciarConfiguracion(filePath string, config interface{}) {
-	//var config *globals.Config
-
-	configFile, err := os.Open(filePath)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	defer configFile.Close()
-
-	jsonParser := json.NewDecoder(configFile)
-	err = jsonParser.Decode(config) // Se pasa el puntero directamente
-	if err != nil {
-		log.Fatalf("Error al decodificar la configuración: %s", err.Error())
-	}
-	if config == nil {
-		log.Fatalf("No se pudo cargar la configuración")
-	}
-
 }
 
 func LeerConsola() []string {
@@ -77,7 +56,7 @@ func GenerarYEnviarPaquete(ip string, puerto string) {
 	EnviarPaquete(ip, puerto, paquete)
 }
 
-func EnviarMensaje(ip string, puerto int, mensajeTxt string) {
+func EnviarMensaje(ip string, puerto string, mensajeTxt string) {
 	mensaje := Mensaje{Mensaje: mensajeTxt}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
@@ -106,16 +85,4 @@ func EnviarPaquete(ip string, puerto string, paquete Paquete) {
 	}
 
 	log.Printf("Respuesta del servidor: %s", resp.Status)
-}
-
-func ConfigurarLogger(nombreDelModulo string) {
-
-	rutaDelLog := nombreDelModulo + "/" + nombreDelModulo + ".log"
-
-	logFile, err := os.OpenFile(rutaDelLog, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
-	if err != nil {
-		panic(err)
-	}
-	mw := io.MultiWriter(os.Stdout, logFile)
-	log.SetOutput(mw)
 }

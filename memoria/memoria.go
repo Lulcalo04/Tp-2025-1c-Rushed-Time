@@ -1,22 +1,19 @@
 package main
 
 import (
-	"fmt"
-	"utils/client"
-	"utils/client/globals"
+	"memoria_utils"
+	"utils/globals"
+	"utils/server"
 )
+
+// "fmt"
+// fmt.Println("Configuracion de memoria: ", globals.Config_Memoria)
 
 func main() {
 
-	//Crea el archivo donde se logea memoria
-	client.ConfigurarLogger("memoria")
+	//Crea el archivo donde se logea cpu
+	globals.ConfigurarLogger("memoria")
+	globals.IniciarConfiguracion("memoria/config.json", &memoria_utils.Config_Memoria)
 
-	client.IniciarConfiguracion("memoria/config.json", &globals.Config_Memoria)
-
-	fmt.Println("Configuracion de memoria: ", globals.Config_Memoria)
-
-	//Enviamos el paquete
-
-	client.GenerarYEnviarPaquete("127.0.0.1", 8004)
-
+	server.IniciarServer(memoria_utils.Config_Memoria.PortMemory)
 }
