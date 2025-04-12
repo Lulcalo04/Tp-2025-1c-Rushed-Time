@@ -1,11 +1,12 @@
 package main
 
 import (
-	"utils/client"
+	"utils/globals"
+	// io_utils "io/iternal" //!ESTO SIRVE PARA CUANDO QUERAMOS USAR LA CONFIG DEL IO NO BORRAR
 )
 
 func main() {
 
-	client.ConfigurarLogger("io")
+	globals.ConfigurarLogger("io")
 
 }

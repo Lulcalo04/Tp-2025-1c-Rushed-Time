@@ -1,9 +1,10 @@
 package main
 
 import (
-	"utils/client"
+	//kernel_utils "kernel/internal" //!ESTO SIRVE PARA CUANDO QUERAMOS USAR LA CONFIG DEL KERNEL NO BORRAR
+	"utils/globals"
 )
 
 func main() {
-	client.ConfigurarLogger("kernel")
+	globals.ConfigurarLogger("kernel")
 }

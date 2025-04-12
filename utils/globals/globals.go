@@ -8,7 +8,6 @@ import (
 )
 
 func IniciarConfiguracion(filePath string, config interface{}) {
-	//var config *globals.Config
 
 	configFile, err := os.Open(filePath)
 	if err != nil {

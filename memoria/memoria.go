@@ -1,7 +1,7 @@
 package main
 
 import (
-	"memoria_utils"
+	memoria_utils "memoria/internal"
 	"utils/globals"
 	"utils/server"
 )
