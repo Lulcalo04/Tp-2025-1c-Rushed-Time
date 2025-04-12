@@ -63,7 +63,7 @@ func LeerConsola() []string {
 	return valores
 }
 
-func GenerarYEnviarPaquete(ip string, puerto int) {
+func GenerarYEnviarPaquete(ip string, puerto string) {
 	valores := LeerConsola()
 
 	if len(valores) == 0 {
@@ -84,25 +84,25 @@ func EnviarMensaje(ip string, puerto int, mensajeTxt string) {
 		log.Printf("Error codificando mensaje: %s", err.Error())
 	}
 
-	url := fmt.Sprintf("http://%s:%d/mensaje", ip, puerto)
+	url := fmt.Sprintf("http://%s:%s/mensaje", ip, puerto)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("Error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+		log.Printf("Error enviando mensaje a ip:%s puerto:%s", ip, puerto)
 	}
 
 	log.Printf("Respuesta del servidor: %s", resp.Status)
 }
 
-func EnviarPaquete(ip string, puerto int, paquete Paquete) {
+func EnviarPaquete(ip string, puerto string, paquete Paquete) {
 	body, err := json.Marshal(paquete)
 	if err != nil {
 		log.Printf("Error codificando mensajes: %s", err.Error())
 	}
 
-	url := fmt.Sprintf("http://%s:%d/paquetes", ip, puerto)
+	url := fmt.Sprintf("http://%s:%s/paquetes", ip, puerto)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("Error enviando mensajes a ip:%s puerto:%d", ip, puerto)
+		log.Printf("Error enviando mensajes a ip:%s puerto:%s", ip, puerto)
 	}
 
 	log.Printf("Respuesta del servidor: %s", resp.Status)

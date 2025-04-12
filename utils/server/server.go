@@ -49,3 +49,18 @@ func RecibirMensaje(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
+
+func IniciarServer(puerto string) {
+	// Server
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /paquetes", RecibirPaquetes)
+	mux.HandleFunc("POST /mensajes", RecibirMensaje)
+
+	//mux.HandleFunc("GET /paquetes", X)
+
+	err := http.ListenAndServe(":"+puerto, mux)
+	if err != nil {
+		panic(err)
+	}
+
+}
