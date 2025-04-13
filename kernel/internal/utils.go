@@ -1,4 +1,4 @@
-package kernel_utils
+package kernel_internal
 
 type ConfigKernel struct {
 	IPMemory           string `json:"ip_memory"`

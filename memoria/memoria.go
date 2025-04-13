@@ -16,4 +16,5 @@ func main() {
 	globals.IniciarConfiguracion("memoria/config.json", &memoria_utils.Config_Memoria)
 
 	server.IniciarServer(memoria_utils.Config_Memoria.PortMemory)
+
 }

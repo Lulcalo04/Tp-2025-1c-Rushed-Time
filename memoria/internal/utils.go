@@ -1,4 +1,4 @@
-package memoria_utils
+package memoria_internal
 
 type ConfigMemoria struct {
 	PortMemory     string `json:"port_memory"`

@@ -1,4 +1,4 @@
-package io_utils
+package io_internal
 
 type ConfigIO struct {
 	IPKernel   string `json:"ip_kernel"`

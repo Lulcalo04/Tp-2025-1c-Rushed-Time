@@ -1,4 +1,4 @@
-package cpu_utils
+package cpu_internal
 
 type ConfigCPU struct {
 	PortCPU          int    `json:"port_cpu"`
@@ -15,3 +15,5 @@ type ConfigCPU struct {
 }
 
 var Config_CPU *ConfigCPU
+
+//
