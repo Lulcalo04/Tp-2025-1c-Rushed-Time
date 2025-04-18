@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -50,15 +51,16 @@ func RecibirMensaje(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-func IniciarServer(puerto string) {
+func IniciarServer(puerto int) {
+	stringPuerto := fmt.Sprintf("%d", puerto)
+
 	// Server
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /paquetes", RecibirPaquetes)
 	mux.HandleFunc("POST /mensajes", RecibirMensaje)
-
 	//mux.HandleFunc("GET /paquetes", X)
 
-	err := http.ListenAndServe(":"+puerto, mux)
+	err := http.ListenAndServe(stringPuerto, mux)
 	if err != nil {
 		panic(err)
 	}

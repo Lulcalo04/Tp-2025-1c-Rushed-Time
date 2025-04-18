@@ -1,20 +1,18 @@
 package main
 
 import (
-	memoria_utils "memoria/internal"
+	memoria_internal "memoria/internal"
 	"utils/globals"
 	"utils/server"
 )
 
-// "fmt"
-// fmt.Println("Configuracion de memoria: ", globals.Config_Memoria)
-
 func main() {
 
-	//Crea el archivo donde se logea cpu
+	//Crea el archivo donde se logea memoria
 	globals.ConfigurarLogger("memoria")
-	globals.IniciarConfiguracion("memoria/config.json", &memoria_utils.Config_Memoria)
+	//Inicializa la config de memoria
+	globals.IniciarConfiguracion("memoria/config.json", &memoria_internal.Config_Memoria)
 
-	server.IniciarServer(memoria_utils.Config_Memoria.PortMemory)
-
+	//Prende el server de memoria
+	server.IniciarServer(memoria_internal.Config_Memoria.PortMemory)
 }

@@ -1,7 +1,7 @@
 package memoria_internal
 
 type ConfigMemoria struct {
-	PortMemory     string `json:"port_memory"`
+	PortMemory     int    `json:"port_memory"`
 	MemorySize     int    `json:"memory_size"`
 	PageSize       int    `json:"page_size"`
 	EntriesPerPage int    `json:"entries_per_page"`

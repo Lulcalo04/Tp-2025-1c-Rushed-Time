@@ -2,8 +2,8 @@ package io_internal
 
 type ConfigIO struct {
 	IPKernel   string `json:"ip_kernel"`
-	PortKernel string `json:"port_kernel"`
-	PortIO     string `json:"port_io"`
+	PortKernel int    `json:"port_kernel"`
+	PortIO     int    `json:"port_io"`
 	LogLevel   string `json:"log_level"`
 }
 
