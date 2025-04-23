@@ -58,11 +58,10 @@ func IniciarServer(puerto int) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /paquetes", RecibirPaquetes)
 	mux.HandleFunc("POST /mensajes", RecibirMensaje)
-	//mux.HandleFunc("GET /paquetes", X)
+    mux.HandleFunc("GET /PaqueteDelKernel", RecibirPaquetes)
 
 	err := http.ListenAndServe(stringPuerto, mux)
 	if err != nil {
 		panic(err)
 	}
-
 }
