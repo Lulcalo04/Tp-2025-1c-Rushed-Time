@@ -23,19 +23,24 @@ func LogCreacionDeProceso(pid int) {
 	log.Printf("## (%d) Se crea el proceso - Estado: NEW\n", pid)
 }
 
+// LogCambioDeEstado logs de cambio de estado
+func LogCambioDeEstado(pid int, estadoAnterior, estadoActual string) {
+	log.Printf("## (%d) Pasa del estado %s al estado %s\n", pid, estadoAnterior, estadoActual)
+}
+
 // LogIOBlock logs de motivo de bloqueo
-func LogBloqueoPorIO(pid int, ioDevice string) {
+func LogMotivoDeBloqueo(pid int, ioDevice string) {
 	log.Printf("## (%d) - Bloqueado por IO: %s\n", pid, ioDevice)
 }
 
 // LogIOCompletion logs de fin de I/O
-func LogFinDeeIO(pid int) {
+func LogFinDeIO(pid int) {
 	log.Printf("## (%d) finalizó IO y pasa a READY\n", pid)
 }
 
 // LogSJFPreemption logs de desalojo de SJF
 func LogDesalojoPorSJF(pid int) {
-	log.Printf("## (%d) - Desalojado por fin de SJF\n", pid)
+	log.Printf("## (%d) - Desalojado por fin de SJF/SRT\n", pid)
 }
 
 // LogProcessTermination logs de terminar un proceso

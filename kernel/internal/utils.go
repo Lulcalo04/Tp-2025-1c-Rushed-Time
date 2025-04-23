@@ -12,3 +12,10 @@ type ConfigKernel struct {
 }
 
 var Config_Kernel *ConfigKernel
+
+var IsKernelRunning bool = false
+
+func IniciarKernel() {
+	IsKernelRunning = true
+	IniciarPlanificador()
+}

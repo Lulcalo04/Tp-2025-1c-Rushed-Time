@@ -7,6 +7,27 @@ import (
 	"os"
 )
 
+type Estado string
+
+const (
+	New         Estado = "NEW"
+	Ready       Estado = "READY"
+	Exec        Estado = "EXEC"
+	Blocked     Estado = "BLOCKED"
+	SuspReady   Estado = "SUSP_READY"
+	SuspBlocked Estado = "SUSP_BLOCKED"
+	Exit        Estado = "EXIT"
+)
+
+type PCB struct {
+	PID               int            `json:"pid"`
+	PC                int            `json:"pc"`
+	Estado            Estado         `json:"estado"`
+	MetricasDeEstados map[Estado]int `json:"metricas_de_estados"`
+	MetricasDeTiempos map[Estado]int `json:"metricas_de_tiempos"` //en milisegundos, con una libreria especifica
+	TamanioEnMemoria  int            `json:"tamanio_en_memoria"`  //Por ahora lo tomamos como entero, pero puede variar
+}
+
 func IniciarConfiguracion(filePath string, config interface{}) {
 
 	configFile, err := os.Open(filePath)
