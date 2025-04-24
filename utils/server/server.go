@@ -52,17 +52,17 @@ func RecibirMensaje(w http.ResponseWriter, r *http.Request) {
 }
 
 func IniciarServer(puerto int) {
-	stringPuerto := fmt.Sprintf("%d", puerto)
+	// Se pasa el puerto de tipo int a string
+	stringPuerto := fmt.Sprintf(":%d", puerto)
 
-	// Server
+	// Se declara el server y sus respectivos endpoints
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /paquetes", RecibirPaquetes)
-	mux.HandleFunc("POST /mensajes", RecibirMensaje)
-	//mux.HandleFunc("GET /paquetes", X)
+	mux.HandleFunc("/paquetes", RecibirPaquetes)
+	mux.HandleFunc("/mensajes", RecibirMensaje)
 
+	// Se inicia el server en el puerto indicado ("escucha" el puerto declarado)
 	err := http.ListenAndServe(stringPuerto, mux)
 	if err != nil {
 		panic(err)
 	}
-
 }

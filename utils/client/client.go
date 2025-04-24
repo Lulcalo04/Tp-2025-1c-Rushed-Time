@@ -19,6 +19,34 @@ type Paquete struct {
 	Valores []string `json:"valores"`
 }
 
+// &------------------------------------------------------------------------------------------------------------------------
+type HandshakeResponse struct {
+	Modulo  string `json:"modulo"`
+	Mensaje string `json:"mensaje"`
+}
+
+func HandshakeCon(nombre string, ip string, puerto int) {
+	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/handshake", ip, puerto)
+
+	// Hacemos la petición GET al server
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Fatalf("Error conectando con %s: %v", nombre, err)
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	// Decodifico la respuesta JSON del server
+	var respuesta HandshakeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuesta); err != nil {
+		log.Fatalf("Error decodificando respuesta JSON: %v", err)
+	}
+
+	log.Printf("Handshake con %s exitoso: módulo = %s, mensaje = %s", nombre, respuesta.Modulo, respuesta.Mensaje)
+}
+
+// &------------------------------------------------------------------------------------------------------------------------
+
 func LeerConsola() []string {
 	// Leer de la consola hasta que se ingrese una linea vacia
 	reader := bufio.NewReader(os.Stdin)

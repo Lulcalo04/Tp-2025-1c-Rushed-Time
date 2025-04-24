@@ -15,5 +15,3 @@ type ConfigCPU struct {
 }
 
 var Config_CPU *ConfigCPU
-
-//
