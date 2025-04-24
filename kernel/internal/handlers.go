@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"utils/client"
 )
+
+// &-------------------------------------------Funcion para iniciar Server de Kernel-------------------------------------------------------------
 
 func IniciarServerKernel(puerto int) {
 	//Transformo el puerto a string
@@ -23,7 +26,9 @@ func IniciarServerKernel(puerto int) {
 	}
 }
 
-// Endpoint de handshake = /handshake
+// &-------------------------------------------Endpoints de Kernel-------------------------------------------------------------
+
+// * Endpoint de handshake = /handshake
 func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
 	//!Falta validar en el cliente si la es un JSON o no
@@ -35,4 +40,19 @@ func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 			"modulo":  "Kernel",
 			"mensaje": "Conexión aceptada desde " + r.RemoteAddr,
 		})
+}
+
+// * Endpoint de ping = /ping
+func PingHandler(w http.ResponseWriter, r *http.Request) {
+	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
+	//!Falta validar en el cliente si la es un JSON o no
+	w.Header().Set("Content-Type", "application/json")
+
+	//Se utiliza el encoder para enviar la respuesta en formato JSON
+	var respuestaPing = client.PingResponse{
+		Modulo:  "Kernel",
+		Mensaje: "Pong",
+	}
+
+	json.NewEncoder(w).Encode(respuestaPing)
 }

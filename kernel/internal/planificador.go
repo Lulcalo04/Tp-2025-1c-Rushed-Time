@@ -2,6 +2,8 @@ package kernel_internal
 
 import (
 	"fmt"
+	"log"
+	"utils/client"
 	"utils/globals"
 )
 
@@ -37,17 +39,16 @@ func PlanificadorLargoPlazo(algoritmo string) {
 
 	if algoritmo == "FIFO" {
 
-		//! PEDIR ESPACIO EN MEMORIA
+		if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
+			log.Println("No se puede conectar con memoria (Ping no devuelto)")
+			return
+		}
 
-		respuestaMemoria := true
+		respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
 
 		if respuestaMemoria {
-
 			MoverProcesoACola(ColaNew[0], &ColaReady)
 		}
-		/* else {
-			//Dejar Esperando al proceso
-		} */
 
 	}
 
@@ -100,24 +101,14 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 
 func Prueba() {
 
-	// Crear 3 PCBs de ejemplo
 	InicializarPCB(1, 1024)
-	InicializarPCB(2, 2048)
-	InicializarPCB(3, 4096)
 
-	// Imprimir las colas para verificar
-	fmt.Println("Cola New:", ColaNew)
-	fmt.Println("Cola Ready:", ColaReady)
+	fmt.Println("Cola New antes:", ColaNew)
+	fmt.Println("Cola Ready antes:", ColaReady)
 
-	MoverProcesoACola(ColaNew[0], &ColaReady)
+	PlanificadorLargoPlazo("FIFO")
 
-	// Imprimir las colas después de agregar un proceso a la cola
-	fmt.Println("Cola New después de agregar a Ready:", ColaNew)
-	fmt.Println("Cola Ready después de agregar:", ColaReady)
-
-	MoverProcesoACola(ColaNew[0], &ColaReady)
-
-	fmt.Println("Cola New después de agregar a Ready:", ColaNew)
-	fmt.Println("Cola Ready después de agregar:", ColaReady)
+	fmt.Println("Cola New despues:", ColaNew)
+	fmt.Println("Cola Ready despues:", ColaReady)
 
 }

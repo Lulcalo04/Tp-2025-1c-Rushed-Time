@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+// &-------------------------------------------Tipos de datos para el manejo de los estados de los procesos-------------------------------------------
+
 type Estado string
 
 const (
@@ -19,6 +21,7 @@ const (
 	Exit        Estado = "EXIT"
 )
 
+// &-------------------------------------------Structs de PCB para los procesos-------------------------------------------
 type PCB struct {
 	PID               int            `json:"pid"`
 	PC                int            `json:"pc"`
@@ -27,6 +30,21 @@ type PCB struct {
 	MetricasDeTiempos map[Estado]int `json:"metricas_de_tiempos"` //en milisegundos, con una libreria especifica
 	TamanioEnMemoria  int            `json:"tamanio_en_memoria"`  //Por ahora lo tomamos como entero, pero puede variar
 }
+
+// &-------------------------------------------Structs de handlers (Request y Response)-------------------------------------------
+
+type PeticionMemoriaRequest struct {
+	Modulo     string `json:"modulo"`
+	ProcesoPCB PCB    `json:"proceso_pcb"`
+}
+
+type PeticionMemoriaResponse struct {
+	Modulo    string `json:"modulo"`
+	Respuesta bool   `json:"respuesta"`
+	Mensaje   string `json:"mensaje"`
+}
+
+// &-------------------------------------------Inicio de configuraciones-------------------------------------------
 
 func IniciarConfiguracion(filePath string, config interface{}) {
 
@@ -46,6 +64,8 @@ func IniciarConfiguracion(filePath string, config interface{}) {
 	}
 
 }
+
+// &-------------------------------------------Inicio de funciones de logger-------------------------------------------
 
 func ConfigurarLogger(nombreDelModulo string) {
 
