@@ -15,6 +15,8 @@ var ColaSuspReady []globals.PCB
 var ColaSuspBlocked []globals.PCB
 var ColaExit []globals.PCB
 
+var hayEspacioEnMemoria bool = true
+
 var ColaEstados = map[*[]globals.PCB]globals.Estado{
 	&ColaNew:         globals.Estado("NEW"),
 	&ColaReady:       globals.Estado("READY"),
@@ -27,29 +29,58 @@ var ColaEstados = map[*[]globals.PCB]globals.Estado{
 
 func IniciarPlanificador() {
 
-	/* switch(Config_Kernel.SchedulerAlgorithm){
+	//? 3. Cuando memo diga no, se termina el bucle hasta q se termine un proceso
+	//?    CUANDO PASEMOS ALGUN PROCESO A EXIT HACER MEMO = TRUE Y LLAMAR AL PLANIFICADOR
+	switch Config_Kernel.SchedulerAlgorithm {
 	case "FIFO":
-	{
-		//& Planificador largo Plazo
+		{
+			//& Planificador largo Plazo
+			PlanificadorLargoPlazo("FIFO")
+			break
+		}
+	default:
+		{
+		}
 
-	} */
+	}
 }
 
 func PlanificadorLargoPlazo(algoritmo string) {
 
-	if algoritmo == "FIFO" {
+	for hayEspacioEnMemoria {
+		if algoritmo == "FIFO" {
 
-		if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
-			log.Println("No se puede conectar con memoria (Ping no devuelto)")
-			return
+			if len(ColaNew) != 0 {
+				if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
+					log.Println("No se puede conectar con memoria (Ping no devuelto)")
+					return
+				}
+
+				respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
+
+				if respuestaMemoria {
+					MoverProcesoACola(ColaNew[0], &ColaReady)
+				} else {
+					hayEspacioEnMemoria = false
+				}
+			}
 		}
 
-		respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
+	}
+}
 
-		if respuestaMemoria {
-			MoverProcesoACola(ColaNew[0], &ColaReady)
-		}
+func TerminarProceso(proceso globals.PCB) {
 
+	if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
+		log.Println("No se puede conectar con memoria (Ping no devuelto)")
+		return
+	}
+
+	respuestaMemoria := true //!COMUNICAR CON MEMORIA PARA AVISAR QUE SE TERMINA EL PROCESO (HACER FUNCION EN MEMORIA Y KERNEL QUE DEVUELVA TRUE O FALSE)
+	if respuestaMemoria {
+		MoverProcesoACola(proceso, &ColaExit)
+		hayEspacioEnMemoria = true
+		PlanificadorLargoPlazo(Config_Kernel.SchedulerAlgorithm)
 	}
 
 }
