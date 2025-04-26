@@ -42,16 +42,6 @@ func LeerConsola() []string {
 	return valores
 }
 
-func HandshakeIo_Kernel(ip_kernel string, puerto_kernel int, nombre string,ip_IO string,puertoIO int ){
-
-	paquete := Paquete{Valores: []string{nombre, ip_IO, puertoIO}}
-
-	log.Printf("Paquete a enviar: %+v", paquete)
-
-	EnviarPaqueteKernel(ip_kernel, puerto_kernel, paquete)
-
-}
-
 func GenerarYEnviarPaquete(ip string, puerto int) {
 	valores := LeerConsola()
 
@@ -63,7 +53,7 @@ func GenerarYEnviarPaquete(ip string, puerto int) {
 	paquete := Paquete{Valores: valores}
 	log.Printf("Paquete a enviar: %+v", paquete)
 
-	EnviarPaquete(ip, puerto, paquete)
+	//EnviarPaquete(ip, puerto, paquete)
 }
 
 func EnviarMensaje(ip string, puerto int, mensajeTxt string) {
@@ -77,23 +67,6 @@ func EnviarMensaje(ip string, puerto int, mensajeTxt string) {
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		log.Printf("Error enviando mensaje a ip:%s puerto:%d", ip, puerto)
-	}
-
-	log.Printf("Respuesta del servidor: %s", resp.Status)
-}
-
-func EnviarPaqueteKernel(ip string, puerto int, paquete Paquete) {
-	body, err := json.Marshal(paquete)
-	if err != nil {
-		log.Printf("Error codificando mensajes: %s", err.Error())
-	}
-
-	url := fmt.Sprintf("http://%s:%d/PaqueteDelKernel", ip, puerto)
-	//Modificamos la url para que sea /PaqueteDelKernel
-
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		log.Printf("Error enviando mensajes a ip:%s puerto:%d", ip, puerto)
 	}
 
 	log.Printf("Respuesta del servidor: %s", resp.Status)

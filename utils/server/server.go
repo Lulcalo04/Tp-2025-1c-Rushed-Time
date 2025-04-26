@@ -11,6 +11,7 @@ type Mensaje struct {
 	Mensaje string `json:"mensaje"`
 }
 
+
 type Paquete struct {
 	Valores []string `json:"valores"`
 }
@@ -51,17 +52,5 @@ func RecibirMensaje(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-func IniciarServer(puerto int) {
-	stringPuerto := fmt.Sprintf("%d", puerto)
 
-	// Server
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /paquetes", RecibirPaquetes)
-	mux.HandleFunc("POST /mensajes", RecibirMensaje)
-    mux.HandleFunc("GET /PaqueteDelKernel", RecibirPaquetes)
 
-	err := http.ListenAndServe(stringPuerto, mux)
-	if err != nil {
-		panic(err)
-	}
-}
