@@ -63,10 +63,13 @@ func PlanificadorLargoPlazo(algoritmo string) {
 				} else {
 					hayEspacioEnMemoria = false
 				}
+			} else {
+				hayEspacioEnMemoria = false
 			}
 		}
 
 	}
+
 }
 
 func TerminarProceso(proceso globals.PCB) {
@@ -76,7 +79,7 @@ func TerminarProceso(proceso globals.PCB) {
 		return
 	}
 
-	respuestaMemoria := true //!COMUNICAR CON MEMORIA PARA AVISAR QUE SE TERMINA EL PROCESO (HACER FUNCION EN MEMORIA Y KERNEL QUE DEVUELVA TRUE O FALSE)
+	respuestaMemoria := LiberarProcesoEnMemoria(proceso.PID)
 	if respuestaMemoria {
 		MoverProcesoACola(proceso, &ColaExit)
 		hayEspacioEnMemoria = true
@@ -98,6 +101,7 @@ func InicializarPCB(pid int, tamanioEnMemoria int) {
 
 	LogCreacionDeProceso(pid)
 	MoverProcesoACola(pcb, &ColaNew)
+
 }
 
 func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
@@ -121,12 +125,12 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 	// Agregar el proceso a la cola destino
 	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
 		proceso.Estado = estadoDestino
-
 	}
 
 	if proceso.Estado != procesoEstadoAnterior {
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
 	}
+
 	*colaDestino = append(*colaDestino, proceso)
 }
 
@@ -134,12 +138,16 @@ func Prueba() {
 
 	InicializarPCB(1, 1024)
 
+	fmt.Println("\n---------------------------------------")
 	fmt.Println("Cola New antes:", ColaNew)
 	fmt.Println("Cola Ready antes:", ColaReady)
+	fmt.Println("---------------------------------------\n ")
 
 	PlanificadorLargoPlazo("FIFO")
 
+	fmt.Println("\n---------------------------------------")
 	fmt.Println("Cola New despues:", ColaNew)
 	fmt.Println("Cola Ready despues:", ColaReady)
+	fmt.Println("---------------------------------------\n ")
 
 }

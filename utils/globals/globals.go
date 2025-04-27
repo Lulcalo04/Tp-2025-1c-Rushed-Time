@@ -44,6 +44,17 @@ type PeticionMemoriaResponse struct {
 	Mensaje   string `json:"mensaje"`
 }
 
+type LiberacionMemoriaRequest struct {
+	Modulo string `json:"modulo"`
+	PID    int    `json:"pid"`
+}
+
+type LiberacionMemoriaResponse struct {
+	Modulo    string `json:"modulo"`
+	Respuesta bool   `json:"respuesta"`
+	Mensaje   string `json:"mensaje"`
+}
+
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
 
 func IniciarConfiguracion(filePath string, config interface{}) {

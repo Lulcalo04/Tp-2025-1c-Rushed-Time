@@ -5,13 +5,15 @@ import (
 	"log"
 )
 
-/*Syscall recibida: “## (<PID>) - Solicitó syscall: <NOMBRE_SYSCALL>”
+/*
+Syscall recibida: “## (<PID>) - Solicitó syscall: <NOMBRE_SYSCALL>”
 Creación de Proceso: “## (<PID>) Se crea el proceso - Estado: NEW”
 Motivo de Bloqueo: “## (<PID>) - Bloqueado por IO: <DISPOSITIVO_IO>”
 Fin de IO: “## (<PID>) finalizó IO y pasa a READY”
 Desalojo de SJF: “## (<PID>) - Desalojado por fin de SJF”
 Fin de Proceso: “## (<PID>) - Finaliza el proceso”
-Métricas de Estado: “## (<PID>) - Métricas de estado: NEW (NEW_COUNT) (NEW_TIME), READY (READY_COUNT) (READY_TIME), …”*/
+Métricas de Estado: “## (<PID>) - Métricas de estado: NEW (NEW_COUNT) (NEW_TIME), READY (READY_COUNT) (READY_TIME), …”
+*/
 
 // LogSyscall logs de syscall recibida
 func LogSyscall(pid int, syscallName string) {
