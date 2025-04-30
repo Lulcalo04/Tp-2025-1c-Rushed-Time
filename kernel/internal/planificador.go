@@ -17,6 +17,9 @@ var ColaExit []globals.PCB
 
 var hayEspacioEnMemoria bool = true
 
+//var algoritmoCortoPlazo string
+//var algoritmoLargoPlazo string
+
 var ColaEstados = map[*[]globals.PCB]globals.Estado{
 	&ColaNew:         globals.Estado("NEW"),
 	&ColaReady:       globals.Estado("READY"),
@@ -27,49 +30,49 @@ var ColaEstados = map[*[]globals.PCB]globals.Estado{
 	&ColaExit:        globals.Estado("EXIT"),
 }
 
-func IniciarPlanificador() {
+func IniciarPlanificadores() {
 
-	//? 3. Cuando memo diga no, se termina el bucle hasta q se termine un proceso
-	//?    CUANDO PASEMOS ALGUN PROCESO A EXIT HACER MEMO = TRUE Y LLAMAR AL PLANIFICADOR
-	switch Config_Kernel.SchedulerAlgorithm {
-	case "FIFO":
-		{
-			//& Planificador largo Plazo
-			PlanificadorLargoPlazo("FIFO")
-			break
-		}
-	default:
-		{
-		}
+	PlanificadorLargoPlazo(Config_Kernel.SchedulerAlgorithm)
+	PlanificadorCortoPlazo(Config_Kernel.ReadyIngressAlgorithm)
 
-	}
 }
 
 func PlanificadorLargoPlazo(algoritmo string) {
-
-	for hayEspacioEnMemoria {
+	// Mientras hay
+	for hayEspacioEnMemoria && len(ColaNew) != 0 {
 		if algoritmo == "FIFO" {
-
-			if len(ColaNew) != 0 {
-				if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
-					log.Println("No se puede conectar con memoria (Ping no devuelto)")
-					return
-				}
-
-				respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
-
-				if respuestaMemoria {
-					MoverProcesoACola(ColaNew[0], &ColaReady)
-				} else {
-					hayEspacioEnMemoria = false
-				}
-			} else {
-				hayEspacioEnMemoria = false
+			// Si memoria responde...
+			if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
+				log.Println("No se puede conectar con memoria (Ping no devuelto)")
+				return
 			}
+			// Pido espacio en memoria para el primer proceso de la cola New
+			respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
+			// Si memoria responde que no hay espacio...
+			if !respuestaMemoria {
+				hayEspacioEnMemoria = false // Seteo la variable del for a false
+				return                      // Salgo del for
+			}
+			MoverProcesoACola(ColaNew[0], &ColaReady)
 		}
-
+		if algoritmo == "PMCP" {
+			//! Lógica para PMCP
+		}
 	}
+}
 
+func PlanificadorCortoPlazo(algoritmo string) {
+	for len(ColaReady) != 0 {
+		if algoritmo == "FIFO" {
+			MoverProcesoACola(ColaReady[0], &ColaExec)
+		}
+		if algoritmo == "SJF" {
+			//! Lógica para SJF sin desalojo
+		}
+		if algoritmo == "SRT" {
+			//! Lógica para SJF con desalojo /SRT
+		}
+	}
 }
 
 func TerminarProceso(proceso globals.PCB) {
@@ -138,16 +141,29 @@ func Prueba() {
 
 	InicializarPCB(1, 1024)
 
+	fmt.Println("Antes del plani de largo plazo...")
+
 	fmt.Println("\n---------------------------------------")
 	fmt.Println("Cola New antes:", ColaNew)
 	fmt.Println("Cola Ready antes:", ColaReady)
 	fmt.Println("---------------------------------------\n ")
+
+	fmt.Println("Despues del plani de largo plazo...")
 
 	PlanificadorLargoPlazo("FIFO")
 
 	fmt.Println("\n---------------------------------------")
 	fmt.Println("Cola New despues:", ColaNew)
 	fmt.Println("Cola Ready despues:", ColaReady)
+	fmt.Println("---------------------------------------\n ")
+
+	fmt.Println("Despues del plani de corto plazo...")
+
+	PlanificadorCortoPlazo("FIFO")
+
+	fmt.Println("\n---------------------------------------")
+	fmt.Println("Cola Ready:", ColaReady)
+	fmt.Println("Cola Exec:", ColaExec)
 	fmt.Println("---------------------------------------\n ")
 
 }

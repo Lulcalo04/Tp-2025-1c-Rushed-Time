@@ -6,30 +6,64 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
+	"utils/client"
 	"utils/globals"
 )
 
 // &-------------------------------------------Config de Kernel-------------------------------------------------------------
 type ConfigKernel struct {
-	IPMemory           string `json:"ip_memory"`
-	PortMemory         int    `json:"port_memory"`
-	PortKernel         int    `json:"port_kernel"`
-	SchedulerAlgorithm string `json:"scheduler_algorithm"`
-	NewAlgorithm       string `json:"new_algorithm"`
-	Alpha              string `json:"alpha"`
-	SuspensionTime     int    `json:"suspension_time"`
-	LogLevel           string `json:"log_level"`
+	IPMemory              string  `json:"ip_memory"`
+	PortMemory            int     `json:"port_memory"`
+	IPKernel              string  `json:"ip_kernel"`
+	PortKernel            int     `json:"port_kernel"`
+	SchedulerAlgorithm    string  `json:"scheduler_algorithm"`
+	ReadyIngressAlgorithm string  `json:"ready_ingress_algorithm"`
+	Alpha                 float64 `json:"alpha"`
+	SuspensionTime        int     `json:"suspension_time"`
+	LogLevel              string  `json:"log_level"`
 }
 
 var Config_Kernel *ConfigKernel
 
 // &-------------------------------------------Funciones de Kernel-------------------------------------------------------------
 
-var IsKernelRunning bool = false
-
 func IniciarKernel() {
-	IsKernelRunning = true
-	IniciarPlanificador()
+	//Crea el archivo donde se logea kernel
+	globals.ConfigurarLogger("kernel")
+
+	//Inicializa la config de kernel
+	globals.IniciarConfiguracion("kernel/config.json", &Config_Kernel)
+
+	//Prende el server de kernel en un hilo aparte
+	go IniciarServerKernel(Config_Kernel.PortKernel)
+
+	//Realiza el handshake con memoria
+	client.HandshakeCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
+
+	//Inicia los planificadores
+	IniciarPlanificadores()
+}
+
+func InicializarProcesoCero() (string, int) {
+	if len(os.Args) < 3 {
+		log.Println("Error, mal escrito usa: .kernel/kernel.go [archivo_pseudocodigo] [tamanio_proceso]")
+		os.Exit(1)
+	}
+
+	// Leer el nombre del archivo de pseudocódigo
+	nombreArchivoPseudocodigo := os.Args[1]
+
+	// Leer y convertir el tamaño del proceso a entero
+	tamanioProceso, err := strconv.Atoi(os.Args[2])
+	if err != nil {
+		log.Printf("Error: el tamaño del proceso debe ser un número entero. Valor recibido: %s", os.Args[2])
+		os.Exit(1)
+	}
+
+	// !VAMOS A TENER QUE METER EL PROCESO CERO EN LA COLA DE NEW
+	return nombreArchivoPseudocodigo, tamanioProceso
 }
 
 // &--------------------------------------------Funciones de Cliente-------------------------------------------------------------
