@@ -47,12 +47,17 @@ func VerificarNombreIO() string {
 //--------------------------------Server de conexion IO-Kernel-------------------------------------//
 
 func IniciarServerIO(puerto int) {
+
+	//Transformo el puerto a string
 	stringPuerto := fmt.Sprintf(":%d", puerto)
 
+	//Declaro el server
 	mux := http.NewServeMux()
 
+	//Declaro los handlers para el server
 	mux.HandleFunc("/io/request", RecibirIOpaquete)
 
+	//Escucha el puerto y espera conexiones
 	err := http.ListenAndServe(stringPuerto, mux)
 	if err != nil {
 		panic(err)
@@ -63,7 +68,7 @@ func IniciarServerIO(puerto int) {
 
 func RecibirIOpaquete(w http.ResponseWriter, r *http.Request) {
 
-	// Verificar que el mÃ©todo sea POST ya que es el unico valido que nos puede llegar
+	// Verificar que el metodo sea POST ya que es el unico valido que nos puede llegar
 	if r.Method != http.MethodPost {
 		http.Error(w, "Metodo no permitido", http.StatusMethodNotAllowed)
 		return

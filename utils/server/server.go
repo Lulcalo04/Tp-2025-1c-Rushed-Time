@@ -11,7 +11,6 @@ type Mensaje struct {
 	Mensaje string `json:"mensaje"`
 }
 
-
 type Paquete struct {
 	Valores []string `json:"valores"`
 }
@@ -52,5 +51,18 @@ func RecibirMensaje(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
+func IniciarServer(puerto int) {
+	// Se pasa el puerto de tipo int a string
+	stringPuerto := fmt.Sprintf(":%d", puerto)
 
+	// Se declara el server y sus respectivos endpoints
+	mux := http.NewServeMux()
+	mux.HandleFunc("/paquetes", RecibirPaquetes)
+	mux.HandleFunc("/mensajes", RecibirMensaje)
 
+	// Se inicia el server en el puerto indicado ("escucha" el puerto declarado)
+	err := http.ListenAndServe(stringPuerto, mux)
+	if err != nil {
+		panic(err)
+	}
+}
