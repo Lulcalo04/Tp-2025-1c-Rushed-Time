@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"utils/client"
 	"utils/globals"
-	"strings" 
-	"os"
 )
 
 // -------------------------------------------Funcion para iniciar Server de Memoria-------------------------------------------------------------
@@ -40,9 +40,6 @@ func IniciarServerMemoria(puerto int) {
 // * Endpoint de handshake = /handshake
 func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
-
-	//!Falta validar en el cliente si la es un JSON o no
-
 	w.Header().Set("Content-Type", "application/json")
 
 	//Se utiliza el encoder para enviar la respuesta en formato JSON
@@ -56,7 +53,6 @@ func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 // * Endpoint de ping = /ping
 func PingHandler(w http.ResponseWriter, r *http.Request) {
 	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
-	//!Falta validar en el cliente si la es un JSON o no
 	w.Header().Set("Content-Type", "application/json")
 
 	//Se utiliza el encoder para enviar la respuesta en formato JSON
@@ -123,13 +119,12 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
 		return
 	}
-	// Logica para liberar espacio en memoria 
+	// Logica para liberar espacio en memoria
 
 	liberacionDeMemoria := true // Simulacion
 
 	w.Header().Set("Content-Type", "application/json") // Setear Content-Type JSON (osea que la respuesta sera del tipo JSON)
 
-	
 	if liberacionDeMemoria {
 		log.Printf("Liberacion de espacio aceptada: PID=%d", pedidoRecibido.PID)
 
@@ -157,9 +152,8 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 //-----------------------------------------------Funcion para instrucciones ------------------------------------------------
 
-
 func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
-	
+
 	//verifica que el metodo sea POST ya que es el unico valido que nos puede llegar
 	if r.Method != http.MethodPost {
 		http.Error(w, "Metodo no permitido", http.StatusMethodNotAllowed)
@@ -184,9 +178,9 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No se encontro el archivo del proceso", http.StatusNotFound)
 		return
 	}
-	// string(content) convierte el proceso (que es un slice de bytes) a string 
-	// strings.TrimSpace elimina los espacios en blanco al principio y al final de la cadena para evitar saltos de linea 
-	// strings.Split divide la cadena en un slice de strings 
+	// string(content) convierte el proceso (que es un slice de bytes) a string
+	// strings.TrimSpace elimina los espacios en blanco al principio y al final de la cadena para evitar saltos de linea
+	// strings.Split divide la cadena en un slice de strings
 	//linea me devolvera, por ejemplo : []string{"Instruccion 1", "Instruccion 2", "Instruccion 3"}
 
 	lineas := strings.Split(strings.TrimSpace(string(content)), "\n")
