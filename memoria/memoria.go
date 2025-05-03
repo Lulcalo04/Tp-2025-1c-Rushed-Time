@@ -13,5 +13,5 @@ func main() {
 	globals.IniciarConfiguracion("memoria/config.json", &memoria_internal.Config_Memoria)
 
 	//Prende el server de memoria
-	//server.IniciarServer(memoria_internal.Config_Memoria.PortMemory)
+	memoria_internal.IniciarServerMemoria(memoria_internal.Config_Memoria.PortMemory)
 }
