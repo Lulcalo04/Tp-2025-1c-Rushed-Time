@@ -3,7 +3,6 @@ package memoria_internal
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"utils/client"
 	"utils/globals"
@@ -78,7 +77,9 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 	if pedidoEnMemoria {
 		// Si el pedido es válido, se hace la concesión de espacio
-		log.Printf("Solicitud a Memoria aceptada: PID=%d, Tamanio=%d", pedidoRecibido.ProcesoPCB.PID, pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
+		Logger.Debug("Solicitud a Memoria aceptada",
+			"PID", pedidoRecibido.ProcesoPCB.PID,
+			"Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 
 		// Preparar respuesta y codificarla como JSON (se envia automaticamente a través del encode)
 		resp := globals.PeticionMemoriaResponse{
@@ -89,7 +90,9 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(resp)
 	} else {
 		// Si el pedido no es válido, se envía un mensaje de error
-		log.Printf("Solicitud a Memoria rechazada: PID=%d, Tamanio=%d", pedidoRecibido.ProcesoPCB.PID, pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
+		Logger.Debug("Solicitud a Memoria rechazada",
+			"PID", pedidoRecibido.ProcesoPCB.PID,
+			"Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 
 		// Preparar respuesta y codificarla como JSON (se envia automaticamente a través del encode)
 		resp := globals.PeticionMemoriaResponse{
@@ -121,7 +124,7 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json") // Setear Content-Type JSON
 
 	if liberacionDeMemoria {
-		log.Printf("Liberación de espacio aceptada: PID=%d", pedidoRecibido.PID)
+		Logger.Debug("Liberación de espacio aceptada", "PID", pedidoRecibido.PID)
 
 		respuestaMemoria := globals.LiberacionMemoriaResponse{
 			Modulo:    "Memoria",
@@ -132,7 +135,7 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK) //Confirmar que la respuesta es 200 OK
 		json.NewEncoder(w).Encode(respuestaMemoria)
 	} else {
-		log.Printf("Liberación de espacio fallida: PID=%d", pedidoRecibido.PID)
+		Logger.Debug("Liberación de espacio fallida", "PID", pedidoRecibido.PID)
 
 		respuestaMemoria := globals.LiberacionMemoriaResponse{
 			Modulo:    "Memoria",

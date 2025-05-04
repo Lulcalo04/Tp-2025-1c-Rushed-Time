@@ -1,9 +1,6 @@
 package memoria_internal
 
-import (
-	"fmt"
-	"log"
-)
+import "fmt"
 
 /*
 Creación de Proceso: “## PID: <PID> - Proceso Creado - Tamaño: <TAMAÑO>”
@@ -13,28 +10,25 @@ Escritura / lectura en espacio de usuario: “## PID: <PID> - <Escritura/Lectura
 Memory Dump: “## PID: <PID> - Memory Dump solicitado”
 */
 
-// LogCreacionDeProceso logs de creación de un proceso con su tamaño
 func LogCreacionDeProceso(pid int, size int) {
-	log.Printf("## PID: %d - Proceso Creado - Tamaño: %d\n", pid, size)
+	Logger.Info(fmt.Sprintf("## PID: %d - Proceso Creado - Tamaño: %d", pid, size))
 }
 
-// LogDestruccionDeProceso logs de destrucción de un proceso con sus métricas
 func LogDestruccionDeProceso(pid int, atp int, instSol int, swap int, memPrin int, lecMem int, escMem int) {
-	log.Printf("## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d\n",
-		pid, atp, instSol, swap, memPrin, lecMem, escMem)
+	Logger.Info(fmt.Sprintf("## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d",
+		pid, atp, instSol, swap, memPrin, lecMem, escMem))
 }
 
-// LogObtenerInstruccion logs de obtener instrucción
 func LogObtenerInstruccion(pid int, pc int, instruccion string, args ...string) {
-	log.Printf("## PID: %d - Obtener instrucción: %d - Instrucción: %s %s\n", pid, pc, instruccion, fmt.Sprint(args))
+	Logger.Info(fmt.Sprintf("## PID: %d - Obtener instrucción: %d - Instrucción: %s %s",
+		pid, pc, instruccion, fmt.Sprint(args)))
 }
 
-// LogEspacioUsuario logs de escritura/lectura en espacio de usuario
 func LogOperacionEnEspacioUsuario(pid int, operacion string, direccionFisica int, size int) {
-	log.Printf("## PID: %d - %s - Dir. Física: %d - Tamaño: %d\n", pid, operacion, direccionFisica, size)
+	Logger.Info(fmt.Sprintf("## PID: %d - %s - Dir. Física: %d - Tamaño: %d",
+		pid, operacion, direccionFisica, size))
 }
 
-// LogMemoryDump logs de memory dump solicitado
 func LogMemoryDump(pid int) {
-	log.Printf("## PID: %d - Memory Dump solicitado\n", pid)
+	Logger.Info(fmt.Sprintf("## PID: %d - Memory Dump solicitado", pid))
 }

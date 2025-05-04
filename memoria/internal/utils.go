@@ -1,5 +1,7 @@
 package memoria_internal
 
+import "log/slog"
+
 type ConfigMemoria struct {
 	PortMemory     int    `json:"port_memory"`
 	MemorySize     int    `json:"memory_size"`
@@ -14,3 +16,5 @@ type ConfigMemoria struct {
 }
 
 var Config_Memoria *ConfigMemoria
+
+var Logger *slog.Logger

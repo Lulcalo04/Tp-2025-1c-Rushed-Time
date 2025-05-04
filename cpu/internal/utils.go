@@ -1,5 +1,7 @@
 package cpu_internal
 
+import "log/slog"
+
 type ConfigCPU struct {
 	PortCPU          int    `json:"port_cpu"`
 	IPMemory         string `json:"ip_memory"`
@@ -15,3 +17,5 @@ type ConfigCPU struct {
 }
 
 var Config_CPU *ConfigCPU
+
+var Logger *slog.Logger

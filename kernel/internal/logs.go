@@ -2,7 +2,6 @@ package kernel_internal
 
 import (
 	"fmt"
-	"log"
 )
 
 /*
@@ -17,46 +16,37 @@ Métricas de Estado: “## (<PID>) - Métricas de estado: NEW (NEW_COUNT) (NEW_T
 
 // LogSyscall logs de syscall recibida
 func LogSyscall(pid int, syscallName string) {
-	log.Printf("## (%d) - Solicitó syscall: %s\n", pid, syscallName)
+	Logger.Info(fmt.Sprintf("## (%d) - Solicitó syscall: %s", pid, syscallName))
 }
 
-// LogProcessCreation logs de creacion de un proceso
 func LogCreacionDeProceso(pid int) {
-	log.Printf("## (%d) Se crea el proceso - Estado: NEW\n", pid)
+	Logger.Info(fmt.Sprintf("## (%d) Se crea el proceso - Estado: NEW", pid))
 }
 
-// LogCambioDeEstado logs de cambio de estado
 func LogCambioDeEstado(pid int, estadoAnterior, estadoActual string) {
-	log.Printf("## (%d) Pasa del estado %s al estado %s\n", pid, estadoAnterior, estadoActual)
+	Logger.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado %s", pid, estadoAnterior, estadoActual))
 }
 
-// LogIOBlock logs de motivo de bloqueo
 func LogMotivoDeBloqueo(pid int, ioDevice string) {
-	log.Printf("## (%d) - Bloqueado por IO: %s\n", pid, ioDevice)
+	Logger.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", pid, ioDevice))
 }
 
-// LogIOCompletion logs de fin de I/O
 func LogFinDeIO(pid int) {
-	log.Printf("## (%d) finalizó IO y pasa a READY\n", pid)
+	Logger.Info(fmt.Sprintf("## (%d) finalizó IO y pasa a READY", pid))
 }
 
-// LogSJFPreemption logs de desalojo de SJF
-func LogDesalojoPorSJF(pid int) {
-	log.Printf("## (%d) - Desalojado por fin de SJF/SRT\n", pid)
+func LogDesalojoPorSJF_SRT(pid int) {
+	Logger.Info(fmt.Sprintf("## (%d) - Desalojado por fin de SJF/SRT", pid))
 }
 
-// LogProcessTermination logs de terminar un proceso
 func LogFinDeProceso(pid int) {
-	log.Printf("## (%d) - Finaliza el proceso\n", pid)
+	Logger.Info(fmt.Sprintf("## (%d) - Finaliza el proceso", pid))
 }
 
-// LogStateMetrics logs de metricas de un
 func LogMetricasDeEstado(pid int, metrics map[string][2]int) {
-	// Example: metrics["NEW"] = [NEW_COUNT, NEW_TIME]
 	logMessage := fmt.Sprintf("## (%d) - Métricas de estado:", pid)
 	for state, values := range metrics {
 		logMessage += fmt.Sprintf(" %s (%d) (%d),", state, values[0], values[1])
 	}
-	// Remove trailing comma and log the message
-	log.Println(logMessage[:len(logMessage)-1])
+	Logger.Info(logMessage[:len(logMessage)-1]) // Elimina la coma final
 }

@@ -1,18 +1,16 @@
 package io_internal
 
-/*Inicio de IO: “## PID: <PID> - Inicio de IO - Tiempo: <TIEMPO_IO>”.
-Finalización de IO: “## PID: <PID> - Fin de IO”.*/
+import "fmt"
 
-import (
-	"log"
-)
+/*
+Inicio de IO: “## PID: <PID> - Inicio de IO - Tiempo: <TIEMPO_IO>”.
+Finalización de IO: “## PID: <PID> - Fin de IO”.
+*/
 
-// LogIOStart logs the start of an IO operation
 func LogInicioIO(pid int, ioTime int) {
-	log.Printf("## PID: %d - Inicio de IO - Tiempo: %d\n", pid, ioTime)
+	Logger.Info(fmt.Sprintf("## PID: %d - Inicio de IO - Tiempo: %d", pid, ioTime))
 }
 
-// LogIOFinish logs the completion of an IO operation
 func LogFinalizacionIO(pid int) {
-	log.Printf("## PID: %d - Fin de IO\n", pid)
+	Logger.Info(fmt.Sprintf("## PID: %d - Fin de IO", pid))
 }

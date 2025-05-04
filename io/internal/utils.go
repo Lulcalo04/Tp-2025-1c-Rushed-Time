@@ -1,5 +1,7 @@
 package io_internal
 
+import "log/slog"
+
 type ConfigIO struct {
 	IPKernel   string `json:"ip_kernel"`
 	PortKernel int    `json:"port_kernel"`
@@ -8,3 +10,5 @@ type ConfigIO struct {
 }
 
 var Config_IO *ConfigIO
+
+var Logger *slog.Logger

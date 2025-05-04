@@ -2,8 +2,7 @@ package globals
 
 import (
 	"encoding/json"
-	"io"
-	"log"
+	"log/slog"
 	"os"
 )
 
@@ -58,34 +57,66 @@ type LiberacionMemoriaResponse struct {
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
 
 func IniciarConfiguracion(filePath string, config interface{}) {
+	//! NO PUDIMOS CONFIGURAR EL LOG, NO SE PUEDE HACER NADA
+	//! HASTA QUE NO SE CARGUE LA CONFIGURACION
 
 	configFile, err := os.Open(filePath)
 	if err != nil {
-		log.Fatal(err.Error())
+		slog.Debug(err.Error())
+		os.Exit(1)
 	}
 	defer configFile.Close()
 
 	jsonParser := json.NewDecoder(configFile)
-	err = jsonParser.Decode(config) // Se pasa el puntero directamente
+	err = jsonParser.Decode(config)
 	if err != nil {
-		log.Fatalf("Error al decodificar la configuración: %s", err.Error())
+		slog.Debug("Error al decodificar la configuración", "error", err.Error())
+		os.Exit(1)
 	}
 	if config == nil {
-		log.Fatalf("No se pudo cargar la configuración")
+		slog.Debug("No se pudo cargar la configuración")
+		os.Exit(1)
 	}
 
 }
 
 // &-------------------------------------------Inicio de funciones de logger-------------------------------------------
 
-func ConfigurarLogger(nombreDelModulo string) {
+func ConfigurarLogger(nombreDelModulo string, logLevelModulo string) *slog.Logger {
 
+	// Definimos la ruta del log
 	rutaDelLog := nombreDelModulo + "/" + nombreDelModulo + ".log"
+	// Definimos el nivel de log
+	nivel := PasarStringALogLevel(logLevelModulo)
 
 	logFile, err := os.OpenFile(rutaDelLog, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
 		panic(err)
 	}
-	mw := io.MultiWriter(os.Stdout, logFile)
-	log.SetOutput(mw)
+
+	handler := slog.NewTextHandler(logFile, &slog.HandlerOptions{Level: nivel})
+
+	// Guardamos la instancia del logger en una variable global o accesible por el módulo
+	Logger := slog.New(handler)
+
+	return Logger
+}
+
+func PasarStringALogLevel(nivel string) slog.Level {
+	var logLevel slog.Level
+
+	switch nivel {
+	case "DEBUG":
+		logLevel = slog.LevelDebug
+	case "INFO":
+		logLevel = slog.LevelInfo
+	case "WARN":
+		logLevel = slog.LevelWarn
+	case "ERROR":
+		logLevel = slog.LevelError
+	default:
+		logLevel = slog.LevelInfo
+	}
+
+	return logLevel
 }

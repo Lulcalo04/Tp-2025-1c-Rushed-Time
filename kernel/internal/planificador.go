@@ -2,7 +2,6 @@ package kernel_internal
 
 import (
 	"fmt"
-	"log"
 	"utils/client"
 	"utils/globals"
 )
@@ -42,8 +41,8 @@ func PlanificadorLargoPlazo(algoritmo string) {
 	for hayEspacioEnMemoria && len(ColaNew) != 0 {
 		if algoritmo == "FIFO" {
 			// Si memoria responde...
-			if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
-				log.Println("No se puede conectar con memoria (Ping no devuelto)")
+			if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
+				Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
 				return
 			}
 			// Pido espacio en memoria para el primer proceso de la cola New
@@ -77,8 +76,8 @@ func PlanificadorCortoPlazo(algoritmo string) {
 
 func TerminarProceso(proceso globals.PCB) {
 
-	if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
-		log.Println("No se puede conectar con memoria (Ping no devuelto)")
+	if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
+		Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
 		return
 	}
 
