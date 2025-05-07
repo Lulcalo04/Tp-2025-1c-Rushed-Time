@@ -29,6 +29,8 @@ var Config_Kernel *ConfigKernel
 
 var Logger *slog.Logger
 
+var ContadorPID int
+
 // &-------------------------------------------Funciones de Kernel-------------------------------------------------------------
 
 func IniciarKernel() {
@@ -66,6 +68,49 @@ func InicializarProcesoCero() (string, int) {
 
 	// !VAMOS A TENER QUE METER EL PROCESO CERO EN LA COLA DE NEW
 	return nombreArchivoPseudocodigo, tamanioProceso
+}
+
+func BuscarProcesoEnCola(pid int, cola *[]globals.PCB) *globals.PCB {
+	for i, proceso := range *cola {
+		if proceso.PID == pid {
+			return &(*cola)[i]
+		}
+	}
+	return nil
+}
+
+func InicializarPCB(tamanioEnMemoria int) {
+
+	ContadorPID++
+
+	pcb := globals.PCB{
+		PID:               ContadorPID,
+		PC:                0,
+		Estado:            globals.New,
+		MetricasDeEstados: make(map[globals.Estado]int),
+		MetricasDeTiempos: make(map[globals.Estado]int),
+		TamanioEnMemoria:  tamanioEnMemoria,
+	}
+
+	LogCreacionDeProceso(ContadorPID)
+	MoverProcesoACola(pcb, &ColaNew)
+
+}
+
+func TerminarProceso(proceso globals.PCB) {
+
+	if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
+		Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
+		return
+	}
+
+	respuestaMemoria := LiberarProcesoEnMemoria(proceso.PID)
+	if respuestaMemoria {
+		MoverProcesoACola(proceso, &ColaExit)
+		hayEspacioEnMemoria = true
+		PlanificadorLargoPlazo(Config_Kernel.SchedulerAlgorithm)
+	}
+
 }
 
 // &--------------------------------------------Funciones de Cliente-------------------------------------------------------------
@@ -159,4 +204,52 @@ func LiberarProcesoEnMemoria(pid int) bool {
 		Logger.Debug("No se pudo liberar el proceso en memoria", "PID", pid)
 		return false
 	}
+}
+
+func PedirDumpMemory(pid int) bool {
+	// Declaro la URL a la que me voy a conectar (handler de liberación de memoria con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/dump", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.DumpMemoryRequest{
+		Modulo: "Kernel",
+		PID:    pid,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return false
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		Logger.Debug("Error: StatusCode no es 200 OK", "status_code", resp.StatusCode)
+		return false
+	}
+
+	// Decodifico la respuesta JSON del server
+	var respuestaMemoria globals.DumpMemoryResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return false
+	}
+
+	// Verificar el campo Respuesta en la respuesta
+	if respuestaMemoria.Respuesta {
+		Logger.Debug("Dump Memory Exitoso", "PID", pid)
+		return true
+	} else {
+		Logger.Debug("No se pudo hacer el Dump Memory", "PID", pid)
+		return false
+	}
+
 }

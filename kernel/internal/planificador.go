@@ -2,6 +2,7 @@ package kernel_internal
 
 import (
 	"fmt"
+	"sync"
 	"utils/client"
 	"utils/globals"
 )
@@ -13,8 +14,6 @@ var ColaBlocked []globals.PCB
 var ColaSuspReady []globals.PCB
 var ColaSuspBlocked []globals.PCB
 var ColaExit []globals.PCB
-
-var hayEspacioEnMemoria bool = true
 
 //var algoritmoCortoPlazo string
 //var algoritmoLargoPlazo string
@@ -28,6 +27,26 @@ var ColaEstados = map[*[]globals.PCB]globals.Estado{
 	&ColaSuspBlocked: globals.Estado("SUSP_BLOCKED"),
 	&ColaExit:        globals.Estado("EXIT"),
 }
+
+var mutexNew sync.Mutex
+var mutexReady sync.Mutex
+var mutexExec sync.Mutex
+var mutexBlocked sync.Mutex
+var mutexSuspReady sync.Mutex
+var mutexSuspBlocked sync.Mutex
+var mutexExit sync.Mutex
+
+var ColaMutexes = map[*[]globals.PCB]*sync.Mutex{
+	&ColaNew:         &mutexNew,
+	&ColaReady:       &mutexReady,
+	&ColaExec:        &mutexExec,
+	&ColaBlocked:     &mutexBlocked,
+	&ColaSuspReady:   &mutexSuspReady,
+	&ColaSuspBlocked: &mutexSuspBlocked,
+	&ColaExit:        &mutexExit,
+}
+
+var hayEspacioEnMemoria bool = true
 
 func IniciarPlanificadores() {
 
@@ -74,41 +93,33 @@ func PlanificadorCortoPlazo(algoritmo string) {
 	}
 }
 
-func TerminarProceso(proceso globals.PCB) {
-
-	if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
-		Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
-		return
-	}
-
-	respuestaMemoria := LiberarProcesoEnMemoria(proceso.PID)
-	if respuestaMemoria {
-		MoverProcesoACola(proceso, &ColaExit)
-		hayEspacioEnMemoria = true
-		PlanificadorLargoPlazo(Config_Kernel.SchedulerAlgorithm)
-	}
-
-}
-
-func InicializarPCB(pid int, tamanioEnMemoria int) {
-
-	pcb := globals.PCB{
-		PID:               pid,
-		PC:                0,
-		Estado:            globals.New,
-		MetricasDeEstados: make(map[globals.Estado]int),
-		MetricasDeTiempos: make(map[globals.Estado]int),
-		TamanioEnMemoria:  tamanioEnMemoria,
-	}
-
-	LogCreacionDeProceso(pid)
-	MoverProcesoACola(pcb, &ColaNew)
-
-}
-
 func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
-
+	// ! El mutex actualmente lo estamos usando con todas las colas, pero seguramente estamos haciendo mucho overhead
+	// ! porque no todas las colas se usan al mismo tiempo. Hay que ver si podemos optimizar eso.
+	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
+
+	// Obtener el mutex de la cola de origen
+	var mutexOrigen *sync.Mutex
+	for cola, estado := range ColaEstados {
+		if proceso.Estado == estado {
+			mutexOrigen = ColaMutexes[cola]
+			break
+		}
+	}
+
+	// Obtener el mutex de la cola de destino
+	mutexDestino := ColaMutexes[colaDestino]
+
+	// Bloquear ambas colas (origen y destino)
+	if mutexOrigen != nil {
+		mutexOrigen.Lock()
+		defer mutexOrigen.Unlock()
+	}
+	if mutexDestino != nil {
+		mutexDestino.Lock()
+		defer mutexDestino.Unlock()
+	}
 
 	// Buscar y eliminar el proceso de su cola actual
 	for cola, estado := range ColaEstados {
@@ -138,7 +149,7 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 
 func Prueba() {
 
-	InicializarPCB(1, 1024)
+	InicializarPCB(1024)
 
 	fmt.Println("Antes del plani de largo plazo...")
 

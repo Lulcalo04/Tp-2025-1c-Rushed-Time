@@ -54,6 +54,17 @@ type LiberacionMemoriaResponse struct {
 	Mensaje   string `json:"mensaje"`
 }
 
+type DumpMemoryRequest struct {
+	Modulo string `json:"modulo"`
+	PID    int    `json:"pid"`
+}
+
+type DumpMemoryResponse struct {
+	Modulo    string `json:"modulo"`
+	Respuesta bool   `json:"respuesta"`
+	Mensaje   string `json:"mensaje"`
+}
+
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
 
 func IniciarConfiguracion(filePath string, config interface{}) {
