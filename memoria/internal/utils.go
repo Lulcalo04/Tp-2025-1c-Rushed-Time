@@ -18,3 +18,14 @@ type ConfigMemoria struct {
 var Config_Memoria *ConfigMemoria
 
 var Logger *slog.Logger
+
+type InstruccionesRequest struct {
+	PID int `json:"pid"`
+}
+
+type InstruccionesResponse struct {
+	PID           int      `json:"pid"`
+	Instrucciones []string `json:"instrucciones"`
+}
+
+//-------------------------------------------------------------------------

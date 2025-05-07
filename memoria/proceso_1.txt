@@ -1,0 +1,4 @@
+NO_OP 3
+IO 7
+EXIT
+
