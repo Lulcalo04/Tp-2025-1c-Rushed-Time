@@ -68,6 +68,15 @@ type DumpMemoryResponse struct {
 	Mensaje   string `json:"mensaje"`
 }
 
+type InstruccionesRequest struct {
+	PID int `json:"pid"`
+}
+
+type InstruccionesResponse struct {
+	PID           int      `json:"pid"`
+	Instrucciones []string `json:"instrucciones"`
+}
+
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
 
 func IniciarConfiguracion(filePath string, config interface{}) {

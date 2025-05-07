@@ -138,13 +138,13 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 	// Agregar el proceso a la cola destino
 	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
 		proceso.Estado = estadoDestino
+		*colaDestino = append(*colaDestino, proceso)
 	}
 
 	if proceso.Estado != procesoEstadoAnterior {
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
 	}
 
-	*colaDestino = append(*colaDestino, proceso)
 }
 
 func Prueba() {

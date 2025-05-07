@@ -161,7 +161,7 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Declaro la variable request de tipo InstruccionesRequest para almacenar los datos enviadoos
-	var req InstruccionesRequest
+	var req globals.InstruccionesRequest
 
 	//Verifica que le hallamos mandado un JSON valido y decodifica el contenido en la variable request, si no puedo decodificarlo, devuelvo un error
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -178,15 +178,18 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No se encontro el archivo del proceso", http.StatusNotFound)
 		return
 	}
+
+	// Suponemos que el proceso1.txt contiene las instrucciones una por linea
+
 	// string(content) convierte el proceso (que es un slice de bytes) a string
 	// strings.TrimSpace elimina los espacios en blanco al principio y al final de la cadena para evitar saltos de linea
 	// strings.Split divide la cadena en un slice de strings
-	//linea me devolvera, por ejemplo : []string{"Instruccion 1", "Instruccion 2", "Instruccion 3"}
+	// lineas me devolvera, por ejemplo : []string{"Instruccion 1", "Instruccion 2", "Instruccion 3"}
 
 	lineas := strings.Split(strings.TrimSpace(string(content)), "\n")
 
 	// Preparamos la respuesta
-	resp := InstruccionesResponse{
+	resp := globals.InstruccionesResponse{
 		PID:           req.PID,
 		Instrucciones: lineas,
 	}

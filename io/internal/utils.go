@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
-	"log/slog"
 )
 
 type ConfigIO struct {
@@ -106,8 +105,6 @@ func RecibirIOpaquete(w http.ResponseWriter, r *http.Request) {
 
 //------------------------------------------------------------------------------------------------------------------//
 
-//------------------------------------------------------------------------------------------------------------------//
-
 func Conexion_Kernel(ip_kernel string, puerto_kernel int, nombre string, ip_IO string, puertoIO int) {
 
 	paquete := Paquete{
@@ -117,7 +114,7 @@ func Conexion_Kernel(ip_kernel string, puerto_kernel int, nombre string, ip_IO s
 	}
 	//Aca estamos armando un paquete con el nombre del IO y la ip y puerto del IO
 
-	log.Printf("Paquete a enviar: %+v", paquete)
+	Logger.Debug("Paquete a enviar", "paquete", paquete)
 
 	EnviarPaqueteKernel(ip_kernel, puerto_kernel, paquete)
 
@@ -129,7 +126,7 @@ func EnviarPaqueteKernel(ip string, puerto int, paquete Paquete) {
 
 	body, err := json.Marshal(paquete)
 	if err != nil {
-		log.Printf("Error codificando mensajes: %s", err.Error())
+		Logger.Debug("Error codificando mensajes", "error", err.Error())
 	}
 
 	url := fmt.Sprintf("http://%s:%d/ConexionIOKernel", ip, puerto)
@@ -137,7 +134,7 @@ func EnviarPaqueteKernel(ip string, puerto int, paquete Paquete) {
 	//Modificamos la url para que sea /COnexionIOKernel
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("Error enviando mensajes a ip:%s puerto:%d", ip, puerto)
+		Logger.Debug("Error enviando mensajes", "ip", ip, "puerto", puerto)
 	}
-	log.Printf("Respuesta del servidor: %s", resp.Status)
+	Logger.Debug("Respuesta del servidor", "status", resp.Status)
 }
