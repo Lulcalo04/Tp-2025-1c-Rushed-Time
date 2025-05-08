@@ -8,8 +8,6 @@ import (
 
 // &-------------------------------------------Tipos de datos para el manejo de los estados de los procesos-------------------------------------------
 
-// &-------------------------------------------Tipos de datos para el manejo de los estados de los procesos-------------------------------------------
-
 type Estado string
 
 const (
@@ -22,7 +20,6 @@ const (
 	Exit        Estado = "EXIT"
 )
 
-// &-------------------------------------------Structs de PCB para los procesos-------------------------------------------
 // &-------------------------------------------Structs de PCB para los procesos-------------------------------------------
 type PCB struct {
 	PID               int            `json:"pid"`
@@ -75,6 +72,18 @@ type InstruccionesRequest struct {
 type InstruccionesResponse struct {
 	PID           int      `json:"pid"`
 	Instrucciones []string `json:"instrucciones"`
+}
+
+type DesalojoRequest struct { 
+	PID            int    `json:"pid"`
+	PC             int    `json:"pc"`
+	MotivoDesalojo string `json:"motivo_desalojo"`
+}
+
+type DesalojoResponse struct { 
+	PID            int    `json:"pid"`
+	PC             int    `json:"pc"`
+	MotivoDesalojo string `json:"motivo_desalojo"`
 }
 
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------

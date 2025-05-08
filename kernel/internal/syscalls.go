@@ -22,6 +22,7 @@ func SyscallExit(pid int) {
 
 	//Busco el PCB en la lista de Exit
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExit)
+	//! REALIZAR PEDIDO DE DESALOJO EN LA CPU
 	//Termino el proceso, avisandole memoria que libere el espacio y buscando
 	TerminarProceso(*pcbDelProceso)
 }
@@ -36,16 +37,46 @@ func SyscallDumpMemory(pid int) {
 	LogSyscall(pid, "DUMP_MEMORY")
 
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
+
+	//! FALTA BLOQUEAR LA EJECUCION DEL PROCESO EN CPU
 	MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
+
 	respuestaDelDump := PedirDumpMemory(pid)
+
 	if respuestaDelDump {
 		MoverProcesoACola(*pcbDelProceso, &ColaReady)
 	} else {
+		//! REALIZAR PEDIDO DE DESALOJO EN LA CPU
 		MoverProcesoACola(*pcbDelProceso, &ColaExit)
 	}
 }
 
-func SyscallEntradaSalida(pid int) {
+/* func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso float64) {
 	LogSyscall(pid, "IO")
 
-}
+	//! HAY QUE BUSCAR QUE EXISTA EL DISPOSITIVO DE IO EN KERNEL
+	existeDispositivo := VerificarNombreDispositivo(nombreDispositivo)
+
+	existeDispositivo = true // Simulamos que existe el dispositivo
+
+	// Busco el PCB en la lista de Exec
+	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
+
+	if existeDispositivo {
+		//! SI EL DISPOSITIVO EXISTE, PERO ESTA EN USO, BLOQUEAR EL PROCESO EN LA COLA DEL DISPOSITIVO
+		instanciaDeIO := VerificarInstanciaDeIO(nombreDispositivo) //* FUNCION A DESARROLLAR
+		MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
+		if instanciaDeIO {
+			//Si hay instancias de IO disponibles, se bloquea el proceso por estar usando la IO
+			UsarDispositivoDeIO(nombreDispositivo, pid, milisegundosDeUso) //* FUNCION A DESARROLLAR
+			MoverProcesoACola(*pcbDelProceso, &ColaReady)
+		} else {
+			//Si no hay instancias de IO disponibles, se bloquea el proceso en la cola del dispositivo
+			BloquearProcesoPorIO(nombreDispositivo, pid) //* FUNCION A DESARROLLAR
+		}
+	} else {
+		//! NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
+		//! REALIZAR PEDIDO DE DESALOJO EN LA CPU
+		MoverProcesoACola(*pcbDelProceso, &ColaExit)
+	}
+} */

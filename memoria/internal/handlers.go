@@ -3,7 +3,6 @@ package memoria_internal
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -26,9 +25,9 @@ func IniciarServerMemoria(puerto int) {
 	mux.HandleFunc("/ping", PingHandler)
 	mux.HandleFunc("/espacio/pedir", PidenEspacioHandler)
 	mux.HandleFunc("/espacio/liberar", LiberarEspacioHandler)
-	mux.HandleFunc("/instrucciones", InstruccionesHandler)
+	mux.HandleFunc("/instrucciones", InstruccionesHandler) //Escucha el puerto y espera conexiones
+	mux.HandleFunc("/dump", DumpMemoryHandler)
 
-	//Escucha el puerto y espera conexiones
 	err := http.ListenAndServe(stringPuerto, mux)
 	if err != nil {
 		panic(err)
@@ -76,13 +75,13 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Logica para verificar espacio y reservarlo
 
-	// HAY QUE DESARROLLAR LA LOGICA DE RESERVA DE ESPACIO EN MEMORIA MAS ADELANTE
+	//! HAY QUE DESARROLLAR LA LOGICA DE RESERVA DE ESPACIO EN MEMORIA MAS ADELANTE
 
-	pedidoEnMemoria := true // Simulamos que se concede el espacio (checkpoint 2)
+	pedidoEnMemoria := true //! Simulamos que se concede el espacio (checkpoint 2)
 
 	if pedidoEnMemoria {
 		// Si el pedido es valido, se hace la concesion de espacio
-		log.Printf("Solicitud a Memoria aceptada: PID=%d, Tamanio=%d", pedidoRecibido.ProcesoPCB.PID, pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
+		Logger.Debug("Solicitud a Memoria aceptada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 
 		// Preparar respuesta y codificarla como JSON (se envia automaticamente a traves del encode)
 		resp := globals.PeticionMemoriaResponse{
@@ -93,7 +92,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(resp)
 	} else {
 		// Si el pedido no es valido, se envia un mensaje de error
-		log.Printf("Solicitud a Memoria rechazada: PID=%d, Tamanio=%d", pedidoRecibido.ProcesoPCB.PID, pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
+		Logger.Debug("Solicitud a Memoria rechazada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 
 		// Preparar respuesta y codificarla como JSON (se envia automaticamente a traves del encode)
 		resp := globals.PeticionMemoriaResponse{
@@ -126,7 +125,7 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json") // Setear Content-Type JSON (osea que la respuesta sera del tipo JSON)
 
 	if liberacionDeMemoria {
-		log.Printf("Liberacion de espacio aceptada: PID=%d", pedidoRecibido.PID)
+		Logger.Debug("Liberacion de espacio aceptada", "PID", pedidoRecibido.PID)
 
 		respuestaMemoria := globals.LiberacionMemoriaResponse{
 			Modulo:    "Memoria",
@@ -137,7 +136,7 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK) //Confirmar que la respuesta es 200 OK
 		json.NewEncoder(w).Encode(respuestaMemoria)
 	} else {
-		log.Printf("Liberacion de espacio fallida: PID=%d", pedidoRecibido.PID)
+		Logger.Debug("Liberacion de espacio fallida", "PID", pedidoRecibido.PID)
 
 		respuestaMemoria := globals.LiberacionMemoriaResponse{
 			Modulo:    "Memoria",
@@ -150,8 +149,49 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//-----------------------------------------------Funcion para instrucciones ------------------------------------------------
+// * Endpoint de pedido de espacio = /dump
+func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
+	var pedidoRecibido globals.DumpMemoryRequest
+	if err := json.NewDecoder(r.Body).Decode(&pedidoRecibido); err != nil {
+		http.Error(w, "JSON invalido", http.StatusBadRequest)
+		return
+	}
 
+	// Logica para verificar espacio y reservarlo
+
+	//! HAY QUE DESARROLLAR LA LOGICA DE DUMPEO DEL PROECESO
+
+	dumpMemoria := true //! Simulamos que dumpea (checkpoint 2)
+
+	if dumpMemoria {
+		// Si el pedido es valido, se hace la concesion de espacio
+		Logger.Debug("Solicitud de Dump Memory aceptada", "PID", pedidoRecibido.PID)
+
+		// Preparar respuesta y codificarla como JSON (se envia automaticamente a traves del encode)
+		resp := globals.DumpMemoryResponse{
+			Modulo:    "Memoria",
+			Respuesta: true, // Simulamos que se concede el espacio
+			Mensaje:   fmt.Sprintf("Dump Memory concedido para PID %d", pedidoRecibido.PID),
+		}
+		json.NewEncoder(w).Encode(resp)
+	} else {
+		// Si el pedido no es valido, se envia un mensaje de error
+		Logger.Debug("Solicitud de Dump Memory rechazada", "PID", pedidoRecibido.PID)
+
+		// Preparar respuesta y codificarla como JSON (se envia automaticamente a traves del encode)
+		resp := globals.DumpMemoryResponse{
+			Modulo:    "Memoria",
+			Respuesta: false,
+			Mensaje:   fmt.Sprintf("Espacio no concedido para PID %d", pedidoRecibido.PID),
+		}
+		json.NewEncoder(w).Encode(resp)
+	}
+
+}
+
+// -----------------------------------------------Funcion para instrucciones------------------------------------------------
+
+// * Endpoint de instrucciones = /instrucciones
 func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 
 	//verifica que el metodo sea POST ya que es el unico valido que nos puede llegar

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"utils/client"
+	"utils/globals"
 )
 
 // &-------------------------------------------Funcion para iniciar Server de Kernel-------------------------------------------------------------
@@ -18,6 +19,8 @@ func IniciarServerKernel(puerto int) {
 
 	//Declaro los handlers para el server
 	mux.HandleFunc("/handshake", HandshakeHandler)
+	mux.HandleFunc("/ping", PingHandler)
+	mux.HandleFunc("/desalojo", DesalojoHandler)
 
 	//Escucha el puerto y espera conexiones
 	err := http.ListenAndServe(stringPuerto, mux)
@@ -55,4 +58,23 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(respuestaPing)
+}
+
+// * Endpoint de desalojo = /desalojo
+func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var PeticionDesalojo globals.DesalojoRequest
+	if err := json.NewDecoder(r.Body).Decode(&PeticionDesalojo); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Verifica si se desaloja por: Planificador (SJF CD), IO, o por fin de proceso
+	// Dependiendo el motivo, se enviará el proceso a la cola correspondiente
+	AnalizarDesalojo(PeticionDesalojo.PID, PeticionDesalojo.MotivoDesalojo)
+
+	// Se replanifica para enviarle un proceso a CPU
+	PlanificadorCortoPlazo(Config_Kernel.SchedulerAlgorithm)
 }

@@ -74,7 +74,7 @@ func PlanificadorLargoPlazo(algoritmo string) {
 			MoverProcesoACola(ColaNew[0], &ColaReady)
 		}
 		if algoritmo == "PMCP" {
-			//! Lógica para PMCP
+			//* Lógica para PMCP
 		}
 	}
 }
@@ -83,19 +83,21 @@ func PlanificadorCortoPlazo(algoritmo string) {
 	for len(ColaReady) != 0 {
 		if algoritmo == "FIFO" {
 			MoverProcesoACola(ColaReady[0], &ColaExec)
+			//! ENVIAR PROCESO A CPU
 		}
 		if algoritmo == "SJF" {
-			//! Lógica para SJF sin desalojo
+			//* Lógica para SJF sin desalojo
 		}
 		if algoritmo == "SRT" {
-			//! Lógica para SJF con desalojo /SRT
+			//* Lógica para SJF con desalojo /SRT
 		}
 	}
 }
 
 func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
-	// ! El mutex actualmente lo estamos usando con todas las colas, pero seguramente estamos haciendo mucho overhead
-	// ! porque no todas las colas se usan al mismo tiempo. Hay que ver si podemos optimizar eso.
+	//& El mutex actualmente lo estamos usando con todas las colas, pero seguramente estamos haciendo mucho overhead
+	//& porque no todas las colas se usan al mismo tiempo. Hay que ver si podemos optimizar eso.
+
 	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
 
