@@ -151,7 +151,7 @@ func RegistrarDispositivoIO(ipIO string, puertoIO int, ioName string) Dispositiv
 	if existeDispositivo {
 		//Si existe, le sumamos una instancia
 		ListaDispositivosIO[posDispositivo].InstanciasIO++
-		//Retornamo el dispositivo actualizado
+		//Retornamos el dispositivo actualizado
 		return ListaDispositivosIO[posDispositivo]
 
 	} else {

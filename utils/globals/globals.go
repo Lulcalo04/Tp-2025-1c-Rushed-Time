@@ -126,17 +126,16 @@ type IoResponseSyscall struct {
 	Tiempo            float64 `json:"tiempo"`
 }
 
-<<<<<<< HEAD
 type CPUHandshakeHandler struct {
 	CPUID  string `json:"cpu_id"`
 	Puerto int    `json:"puerto"`
 	Ip     string `json:"ip"`
-=======
+}
+
 type IoHandshakeRequest struct {
 	IPio   string `json:"ip_io"`
 	PortIO int    `json:"port_io"`
 	Nombre string `json:"nombre"`
->>>>>>> d5114725abf52d4aeb5fb666da4c02f6ae408f99
 }
 
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
