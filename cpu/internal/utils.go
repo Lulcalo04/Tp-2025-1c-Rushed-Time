@@ -9,6 +9,7 @@ import (
 
 type ConfigCPU struct {
 	PortCPU          int    `json:"port_cpu"`
+	IpCpu            string `json:"ip_cpu"`
 	IPMemory         string `json:"ip_memory"`
 	PortMemory       int    `json:"port_memory"`
 	IPKernel         string `json:"ip_kernel"`
@@ -25,6 +26,13 @@ var Config_CPU *ConfigCPU
 
 var Logger *slog.Logger
 
+type PCB_CPU struct {
+	PID int
+	PC  int
+}
+
+var ProcesoEjecutando PCB_CPU
+
 func IniciarCPU() {
 
 	//Verifica el identificador de la cpu valido
@@ -37,7 +45,12 @@ func IniciarCPU() {
 	Logger = ConfigurarLoggerCPU(CpuId, Config_CPU.LogLevel)
 
 	//Realiza el handshake con el kernel
-	HandshakeConKernel("Kernel", CpuId)
+	if HandshakeConKernel(CpuId) {
+		CicloDeInstruccion()
+	} else {
+		Logger.Debug("Error, no se pudo realizar el handshake con el kernel")
+		return
+	}
 
 }
 
@@ -53,7 +66,6 @@ func VerificarIdentificadorCPU() string {
 }
 
 func CicloDeInstruccion() {
-
 	/*
 		for{
 			Fetch()

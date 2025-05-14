@@ -46,7 +46,7 @@ func LogFetchInstruccion(pid int, programCounter int) {
 }
 
 func LogInterrupcionRecibida() {
-	Logger.Info(fmt.Sprintf("## Llega interrupción al puerto Interrupt"))
+	Logger.Info("## Llega interrupción al puerto Interrupt")
 }
 
 func LogInstruccionEjecutada(pid int, instruccion string, parametros string) {

@@ -148,3 +148,30 @@ func PedirDumpMemory(pid int) bool {
 	}
 
 }
+
+func EnviarProcesoACPU(cpuIp string, cpuPuerto int, procesoPID int, procesoPC int) {
+
+	// Declaro la URL a la que me voy a conectar (handler de Petición de memoria con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/dispatch", cpuIp, cpuPuerto)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.ProcesoAEjecutarRequest{
+		PID: procesoPID,
+		PC:  procesoPC,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+}

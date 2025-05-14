@@ -84,6 +84,7 @@ func PlanificadorCortoPlazo(algoritmo string) {
 		if algoritmo == "FIFO" {
 			MoverProcesoACola(ColaReady[0], &ColaExec)
 			//! ENVIAR PROCESO A CPU
+			ElegirCpuYMandarProceso(ColaExec[0])
 		}
 		if algoritmo == "SJF" {
 			//* Lógica para SJF sin desalojo

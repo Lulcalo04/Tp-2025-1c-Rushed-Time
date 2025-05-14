@@ -86,57 +86,73 @@ type DesalojoResponse struct {
 	MotivoDesalojo string `json:"motivo_desalojo"`
 }
 
-type InitProcRequestSyscall struct {
+type InitProcSyscallRequest struct {
 	PID           int    `json:"pid"`
 	NombreArchivo string `json:"nombreArchivo"`
 	Tamanio       int    `json:"tamanio"`
 }
 
-type InitProcResponseSyscall struct {
+type InitProcSyscallResponse struct {
 	PID           int    `json:"pid"`
 	NombreArchivo string `json:"nombreArchivo"`
 	Tamanio       int    `json:"tamanio"`
 }
 
-type ExitRequestSyscall struct {
+type ExitSyscallRequest struct {
 	PID int `json:"pid"`
 }
 
-type ExitResponseSyscall struct {
+type ExitSyscallResponse struct {
 	PID int `json:"pid"`
 }
 
-type DumpMemoryRequestSyscall struct {
+type DumpMemorySyscallRequest struct {
 	PID int `json:"pid"`
 }
 
-type DumpMemoryResponseSyscall struct {
+type DumpMemorySyscallResponse struct {
 	PID int `json:"pid"`
 }
 
-type IoRequestSyscall struct {
+type IoSyscallRequest struct {
 	PID               int     `json:"pid"`
 	NombreDispositivo string  `json:"nombreDispositivo"`
 	Tiempo            float64 `json:"tiempo"`
 }
 
-type IoResponseSyscall struct {
+type IoSyscallResponse struct {
 	PID               int     `json:"pid"`
 	NombreDispositivo string  `json:"nombreDispositivo"`
 	Tiempo            float64 `json:"tiempo"`
 }
 
-<<<<<<< HEAD
-type CPUHandshakeHandler struct {
-	CPUID  string `json:"cpu_id"`
-	Puerto int    `json:"puerto"`
-	Ip     string `json:"ip"`
-=======
 type IoHandshakeRequest struct {
 	IPio   string `json:"ip_io"`
 	PortIO int    `json:"port_io"`
 	Nombre string `json:"nombre"`
->>>>>>> d5114725abf52d4aeb5fb666da4c02f6ae408f99
+}
+
+type CPUHandshakeRequest struct {
+	CPUID  string `json:"cpu_id"`
+	Puerto int    `json:"puerto"`
+	Ip     string `json:"ip"`
+}
+
+type CPUHandshakeResponse struct {
+	Modulo    string `json:"modulo"`
+	Respuesta bool   `json:"respuesta"`
+	Mensaje   string `json:"mensaje"`
+}
+
+type ProcesoAEjecutarRequest struct {
+	PID int `json:"pid"`
+	PC  int `json:"pc"`
+}
+
+type ProcesoAEjecutarResponse struct {
+	PID    int    `json:"pid"`
+	PC     int    `json:"pc"`
+	Motivo string `json:"motivo"`
 }
 
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------

@@ -8,15 +8,16 @@ import (
 	"utils/globals"
 )
 
-func HandshakeConKernel(nombre string, cpuid string) bool {
+func HandshakeConKernel(cpuid string) bool {
 
 	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/handshake", Config_CPU.IPKernel, Config_CPU.PortKernel)
+	url := fmt.Sprintf("http://%s:%d/handshake/cpu", Config_CPU.IPKernel, Config_CPU.PortKernel)
 
 	// Declaro el body de la petición
-	pedidoBody := globals.PeticionMemoriaRequest{
-		Modulo:     "Kernel",
-		ProcesoPCB: pcbDelProceso,
+	pedidoBody := globals.CPUHandshakeRequest{
+		CPUID:  cpuid,
+		Puerto: Config_CPU.PortCPU,
+		Ip:     Config_CPU.IpCpu,
 	}
 
 	// Serializo el body a JSON
@@ -29,22 +30,21 @@ func HandshakeConKernel(nombre string, cpuid string) bool {
 	// Hacemos la petición POST al server
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
 	if err != nil {
-		Logger.Debug("Error conectando con Memoria", "error", err)
+		Logger.Debug("Error conectando con Kernel", "error", err)
 		return false
 	}
 	defer resp.Body.Close() // Cierra la conexión al finalizar la función
 
 	// Decodifico la respuesta JSON del server
-	var respuestaMemoria globals.PeticionMemoriaResponse
-	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+	var respuestaKernel globals.CPUHandshakeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaKernel); err != nil {
 		Logger.Debug("Error decodificando respuesta JSON", "error", err)
 		return false
 	}
 
-	Logger.Debug("Espacio en Memoria concedido",
-		"modulo", respuestaMemoria.Modulo,
-		"respuesta", respuestaMemoria.Respuesta,
-		"mensaje", respuestaMemoria.Mensaje)
-
-	return true
+	if !respuestaKernel.Respuesta {
+		Logger.Debug("Error en el handshake con Kernel, Motivo: ", "mensaje", respuestaKernel.Mensaje)
+	}
+	//Devolvemos el bool para confirmar si el handshake fue exitoso
+	return respuestaKernel.Respuesta
 }
