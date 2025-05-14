@@ -115,9 +115,9 @@ type DumpMemorySyscallResponse struct {
 }
 
 type IoSyscallRequest struct {
-	PID               int     `json:"pid"`
-	NombreDispositivo string  `json:"nombreDispositivo"`
-	Tiempo            float64 `json:"tiempo"`
+	PID               int    `json:"pid"`
+	NombreDispositivo string `json:"nombreDispositivo"`
+	Tiempo            int    `json:"tiempo"`
 }
 
 type IoSyscallResponse struct {
