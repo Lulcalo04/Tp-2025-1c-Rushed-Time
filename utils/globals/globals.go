@@ -126,6 +126,12 @@ type IoResponseSyscall struct {
 	Tiempo            float64 `json:"tiempo"`
 }
 
+type IoHandshakeRequest struct {
+	IPio   string `json:"ip_io"`
+	PortIO int    `json:"port_io"`
+	Nombre string `json:"nombre"`
+}
+
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
 
 func IniciarConfiguracion(filePath string, config interface{}) {

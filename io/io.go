@@ -12,11 +12,11 @@ import (
 func main() {
 
 	// Verificación del nombre del dispositivo IO
-	dispositivoIO := io_internal.InicializarIO()
-	
+	ioName := io_internal.InicializarIO()
+
 	// Inicializar configuración
 	globals.IniciarConfiguracion("io/config.json", &io_internal.Config_IO)
-	
+
 	// Crear el logger
 	io_internal.Logger = globals.ConfigurarLogger("io", io_internal.Config_IO.LogLevel)
 
@@ -27,5 +27,5 @@ func main() {
 	time.Sleep(500 * time.Millisecond)
 
 	// Ahora sí, mandar el paquete a Kernel
-	io_internal.Conexion_Kernel(io_internal.Config_IO.IPKernel, io_internal.Config_IO.PortKernel, dispositivoIO.NombreIO, io_internal.Config_IO.IPIo, io_internal.Config_IO.PortIO)
+	io_internal.HandshakeKernel(io_internal.Config_IO.IPKernel, io_internal.Config_IO.PortKernel, ioName)
 }

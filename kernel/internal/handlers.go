@@ -19,6 +19,7 @@ func IniciarServerKernel(puerto int) {
 
 	//Declaro los handlers para el server
 	mux.HandleFunc("/handshake", HandshakeHandler)
+	mux.HandleFunc("/handshake/io", IoHandshakeHandler)
 	mux.HandleFunc("/ping", PingHandler)
 	mux.HandleFunc("/desalojo", DesalojoHandler)
 	mux.HandleFunc("/syscall/init_proc", InitProcHandler)
@@ -49,6 +50,22 @@ func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 		})
 }
 
+// * Endpoint de handshake IO = /handshake/io
+func IoHandshakeHandler(w http.ResponseWriter, r *http.Request) {
+	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
+	//!Falta validar en el cliente si la es un JSON o no
+	w.Header().Set("Content-Type", "application/json")
+
+	var dispositivoIOBody globals.IoHandshakeRequest
+	if err := json.NewDecoder(r.Body).Decode(&dispositivoIOBody); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
+		return
+	}
+
+	RegistrarDispositivoIO(dispositivoIOBody.IPio, dispositivoIOBody.PortIO, dispositivoIOBody.Nombre)
+	Logger.Debug("Handshake con IO realizado", "ip_io", dispositivoIOBody.IPio, "port_io", dispositivoIOBody.PortIO, "nombre", dispositivoIOBody.Nombre)
+}
+
 // * Endpoint de ping = /ping
 func PingHandler(w http.ResponseWriter, r *http.Request) {
 	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
@@ -63,6 +80,8 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(respuestaPing)
 }
+
+// &-------------------------------------------Endpoints de Syscalls/Kernel-------------------------------------------------------------
 
 // * Endpoint de desalojo = /desalojo
 func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
