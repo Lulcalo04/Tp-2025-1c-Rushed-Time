@@ -1,6 +1,11 @@
 package cpu_internal
 
-import "fmt"
+import (
+	"fmt"
+	"log/slog"
+	"os"
+	"utils/globals"
+)
 
 /*
 Fetch Instrucción: “## PID: <PID> - FETCH - Program Counter: <PROGRAM_COUNTER>”.
@@ -15,6 +20,26 @@ Página faltante en Caché: “PID: <PID> - Cache Miss - Pagina: <NUMERO_PAGINA>
 Página ingresada en Caché: “PID: <PID> - Cache Add - Pagina: <NUMERO_PAGINA>”
 Página Actualizada de Caché a Memoria: “PID: <PID> - Memory Update - Página: <NUMERO_PAGINA> - Frame: <FRAME_EN_MEMORIA_PRINCIPAL>”
 */
+
+func ConfigurarLoggerCPU(cpuId string, logLevelModulo string) *slog.Logger {
+
+	// Definimos la ruta del log
+	rutaDelLog := "cpu" + "/" + cpuId + ".log"
+	// Definimos el nivel de log
+	nivel := globals.PasarStringALogLevel(logLevelModulo)
+
+	logFile, err := os.OpenFile(rutaDelLog, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
+	if err != nil {
+		panic(err)
+	}
+
+	handler := slog.NewTextHandler(logFile, &slog.HandlerOptions{Level: nivel})
+
+	// Guardamos la instancia del logger en una variable global o accesible por el módulo
+	Logger := slog.New(handler)
+
+	return Logger
+}
 
 func LogFetchInstruccion(pid int, programCounter int) {
 	Logger.Info(fmt.Sprintf("## PID: %d - FETCH - Program Counter: %d", pid, programCounter))

@@ -25,6 +25,7 @@ func IniciarServerKernel(puerto int) {
 	mux.HandleFunc("/syscall/exit", ExitHandler)
 	mux.HandleFunc("/syscall/dump_memory", DumpMemoryHandler)
 	mux.HandleFunc("/syscall/io", IoHandler)
+	//mux.HandleFunc("/cpu/iniciar", )
 
 	//Escucha el puerto y espera conexiones
 	err := http.ListenAndServe(stringPuerto, mux)
