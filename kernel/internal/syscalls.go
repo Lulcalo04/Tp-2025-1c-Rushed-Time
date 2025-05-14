@@ -51,7 +51,7 @@ func SyscallDumpMemory(pid int) {
 	}
 }
 
-/* func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso float64) {
+/*  func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso float64) {
 	LogSyscall(pid, "IO")
 
 	//! HAY QUE BUSCAR QUE EXISTA EL DISPOSITIVO DE IO EN KERNEL
@@ -79,4 +79,4 @@ func SyscallDumpMemory(pid int) {
 		//! REALIZAR PEDIDO DE DESALOJO EN LA CPU
 		MoverProcesoACola(*pcbDelProceso, &ColaExit)
 	}
-} */
+}  */

@@ -111,6 +111,7 @@ func TerminarProceso(proceso globals.PCB) {
 }
 
 func AnalizarDesalojo(pid int, motivoDesalojo string) {
+
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
 
 	if motivoDesalojo == "Planificador" {

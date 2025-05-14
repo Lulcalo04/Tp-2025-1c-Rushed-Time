@@ -21,6 +21,10 @@ func IniciarServerKernel(puerto int) {
 	mux.HandleFunc("/handshake", HandshakeHandler)
 	mux.HandleFunc("/ping", PingHandler)
 	mux.HandleFunc("/desalojo", DesalojoHandler)
+	mux.HandleFunc("/syscall/init_proc", InitProcHandler)
+	mux.HandleFunc("/syscall/exit", ExitHandler)
+	mux.HandleFunc("/syscall/dump_memory", DumpMemoryHandler)
+	mux.HandleFunc("/syscall/io", IoHandler)
 
 	//Escucha el puerto y espera conexiones
 	err := http.ListenAndServe(stringPuerto, mux)
@@ -77,4 +81,60 @@ func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Se replanifica para enviarle un proceso a CPU
 	PlanificadorCortoPlazo(Config_Kernel.SchedulerAlgorithm)
+}
+
+// * Endpoint de InitProc = /syscall/init_proc
+func InitProcHandler(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var PeticionSyscall globals.InitProcRequestSyscall
+	if err := json.NewDecoder(r.Body).Decode(&PeticionSyscall); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
+		return
+	}
+
+	SyscallInitProc(PeticionSyscall.PID, PeticionSyscall.NombreArchivo, PeticionSyscall.Tamanio)
+}
+
+// * Endpoint de Exit = /syscall/exit
+func ExitHandler(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var PeticionSyscall globals.ExitRequestSyscall
+	if err := json.NewDecoder(r.Body).Decode(&PeticionSyscall); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
+		return
+	}
+
+	SyscallExit(PeticionSyscall.PID)
+}
+
+// * Endpoint de DumpMemory = /syscall/dump_memory
+func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var PeticionSyscall globals.DumpMemoryRequestSyscall
+	if err := json.NewDecoder(r.Body).Decode(&PeticionSyscall); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
+		return
+	}
+
+	SyscallDumpMemory(PeticionSyscall.PID)
+}
+
+// * Endpoint de io = /syscall/io
+func IoHandler(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var PeticionSyscall globals.IoRequestSyscall
+	if err := json.NewDecoder(r.Body).Decode(&PeticionSyscall); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
+		return
+	}
+	//! FALTA TERMINAR SYSCALL DE IO
+	//SyscallEntradaSalida(PeticionSyscall.PID, PeticionSyscall.NombreDispositivo, PeticionSyscall.Tiempo)
 }

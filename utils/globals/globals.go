@@ -74,16 +74,56 @@ type InstruccionesResponse struct {
 	Instrucciones []string `json:"instrucciones"`
 }
 
-type DesalojoRequest struct { 
+type DesalojoRequest struct {
 	PID            int    `json:"pid"`
 	PC             int    `json:"pc"`
 	MotivoDesalojo string `json:"motivo_desalojo"`
 }
 
-type DesalojoResponse struct { 
+type DesalojoResponse struct {
 	PID            int    `json:"pid"`
 	PC             int    `json:"pc"`
 	MotivoDesalojo string `json:"motivo_desalojo"`
+}
+
+type InitProcRequestSyscall struct {
+	PID           int    `json:"pid"`
+	NombreArchivo string `json:"nombreArchivo"`
+	Tamanio       int    `json:"tamanio"`
+}
+
+type InitProcResponseSyscall struct {
+	PID           int    `json:"pid"`
+	NombreArchivo string `json:"nombreArchivo"`
+	Tamanio       int    `json:"tamanio"`
+}
+
+type ExitRequestSyscall struct {
+	PID int `json:"pid"`
+}
+
+type ExitResponseSyscall struct {
+	PID int `json:"pid"`
+}
+
+type DumpMemoryRequestSyscall struct {
+	PID int `json:"pid"`
+}
+
+type DumpMemoryResponseSyscall struct {
+	PID int `json:"pid"`
+}
+
+type IoRequestSyscall struct {
+	PID               int     `json:"pid"`
+	NombreDispositivo string  `json:"nombreDispositivo"`
+	Tiempo            float64 `json:"tiempo"`
+}
+
+type IoResponseSyscall struct {
+	PID               int     `json:"pid"`
+	NombreDispositivo string  `json:"nombreDispositivo"`
+	Tiempo            float64 `json:"tiempo"`
 }
 
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
