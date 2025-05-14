@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"utils/globals"
 )
 
 type ConfigIO struct {
@@ -33,10 +34,16 @@ type Paquete struct {
 	Nombre string `json:"nombre"`
 }
 
+type DispositivoIO struct {
+	NombreIO     string
+	InstanciasIO int
+}
+
+var ListaDispositivosIO []DispositivoIO
+
 //-------------------------------------------------------------------------------------------------------------//
 
-func VerificarNombreIO() string {
-
+func InicializarIO() string {
 	if len(os.Args) < 2 {
 		fmt.Println("Error, mal escrito usa: ./io.go [nombreio]")
 		os.Exit(1)
@@ -91,7 +98,7 @@ func RecibirIOpaquete(w http.ResponseWriter, r *http.Request) {
 
 	LogFinalizacionIO(request.PID)
 
-	// Envio la respuesta al cliente, en este caso el kernel diciendole que termino el IO S
+	// Envio la respuesta al cliente, en este caso el kernel diciendole que termino el IO
 	w.Header().Set("Content-Type", "application/json")
 
 	// Envio el PID y el tiempo que duro el IO
@@ -105,36 +112,29 @@ func RecibirIOpaquete(w http.ResponseWriter, r *http.Request) {
 
 //------------------------------------------------------------------------------------------------------------------//
 
-func Conexion_Kernel(ip_kernel string, puerto_kernel int, nombre string, ip_IO string, puertoIO int) {
+func HandshakeKernel(ipKernel string, puertoKernel int, nombreIO string) {
 
-	paquete := Paquete{
-		IPio:   ip_IO,
-		PortIO: puertoIO,
-		Nombre: nombre,
-	}
 	//Aca estamos armando un paquete con el nombre del IO y la ip y puerto del IO
-
-	Logger.Debug("Paquete a enviar", "paquete", paquete)
-
-	EnviarPaqueteKernel(ip_kernel, puerto_kernel, paquete)
-
-}
-
-//-----------------------------------------------------------------------------------------------------------------//
-
-func EnviarPaqueteKernel(ip string, puerto int, paquete Paquete) {
+	paquete := globals.IoHandshakeRequest{
+		IPio:   Config_IO.IPIo,
+		PortIO: Config_IO.PortIO,
+		Nombre: nombreIO,
+	}
 
 	body, err := json.Marshal(paquete)
 	if err != nil {
 		Logger.Debug("Error codificando mensajes", "error", err.Error())
 	}
 
-	url := fmt.Sprintf("http://%s:%d/ConexionIOKernel", ip, puerto)
+	url := fmt.Sprintf("http://%s:%d/handshake/io", ipKernel, puertoKernel)
 
-	//Modificamos la url para que sea /COnexionIOKernel
+	//Modificamos la url para que sea /handshake/io
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		Logger.Debug("Error enviando mensajes", "ip", ip, "puerto", puerto)
+		Logger.Debug("Error enviando mensajes", "ip", ipKernel, "puerto", puertoKernel)
 	}
 	Logger.Debug("Respuesta del servidor", "status", resp.Status)
+
 }
+
+//-----------------------------------------------------------------------------------------------------------------//

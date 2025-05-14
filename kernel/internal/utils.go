@@ -21,6 +21,15 @@ type ConfigKernel struct {
 	LogLevel              string  `json:"log_level"`
 }
 
+type DispositivoIO struct {
+	NombreIO     string
+	IpIO         string
+	PortIO       int
+	InstanciasIO int
+}
+
+var ListaDispositivosIO []DispositivoIO
+
 var Config_Kernel *ConfigKernel
 
 var Logger *slog.Logger
@@ -130,4 +139,44 @@ func AnalizarDesalojo(pid int, motivoDesalojo string) {
 	} else {
 		Logger.Debug("Error, motivo de desalojo no válido", "motivo", motivoDesalojo)
 	}
+}
+
+// &-------------------------------------------Funciones de Administración de IO-------------------------------------------------------------
+
+func RegistrarDispositivoIO(ipIO string, puertoIO int, ioName string) DispositivoIO {
+
+	//Verificamos si existe el dispositivo IO, y retornamos su posicion en la lista
+	existeDispositivo, posDispositivo := VerificarDispositivo(ioName)
+
+	if existeDispositivo {
+		//Si existe, le sumamos una instancia
+		ListaDispositivosIO[posDispositivo].InstanciasIO++
+		//Retornamo el dispositivo actualizado
+		return ListaDispositivosIO[posDispositivo]
+
+	} else {
+		//Creamos un nuevo dispositivo IO
+		dispositivoIO := DispositivoIO{
+			NombreIO:     ioName,
+			IpIO:         ipIO,
+			PortIO:       puertoIO,
+			InstanciasIO: 1,
+		}
+		//Lo agregamos a la lista de dispositivos IO
+		ListaDispositivosIO = append(ListaDispositivosIO, dispositivoIO)
+
+		Logger.Debug("Dispositivo nuevo", "nombre", dispositivoIO.NombreIO, "instancias", dispositivoIO.InstanciasIO)
+
+		//Retornamos el nuevo dispositivo IO
+		return dispositivoIO
+	}
+}
+
+func VerificarDispositivo(ioName string) (bool, int) {
+	for posDispositivo, dispositivoIO := range ListaDispositivosIO {
+		if dispositivoIO.NombreIO == ioName {
+			return true, posDispositivo
+		}
+	}
+	return false, -1
 }
