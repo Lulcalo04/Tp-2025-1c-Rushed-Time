@@ -49,10 +49,10 @@ func IniciarKernel() {
 	go IniciarServerKernel(Config_Kernel.PortKernel)
 
 	//Realiza el handshake con memoria
-	client.HandshakeCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger)
+	//client.HandshakeCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger)
 
 	//Inicia los planificadores
-	IniciarPlanificadores()
+	//IniciarPlanificadores()
 }
 
 func InicializarProcesoCero() (string, int) {
@@ -179,4 +179,22 @@ func VerificarDispositivo(ioName string) (bool, int) {
 		}
 	}
 	return false, -1
+}
+
+func VerificarInstanciaDeIO(posDispositivo int) bool {
+	if ListaDispositivosIO[posDispositivo].InstanciasIO >= 1 {
+		ListaDispositivosIO[posDispositivo].InstanciasIO--
+		Logger.Debug("Instancias de IO", "nombre", ListaDispositivosIO[posDispositivo].NombreIO, "instancias", ListaDispositivosIO[posDispositivo].InstanciasIO)
+		return true
+	} else {
+		return false
+	}
+}
+
+func UsarDispositivoDeIO(posDispositivo int, pid int, milisegundosDeUso int) {
+	//Hacer peticion de uso de dispositivo IO
+	EnviarProcesoAIO(ListaDispositivosIO[posDispositivo], pid, milisegundosDeUso)
+	//Agregar instancia de IO
+	ListaDispositivosIO[posDispositivo].InstanciasIO++
+	Logger.Debug("Instancias de IO", "nombre", ListaDispositivosIO[posDispositivo].NombreIO, "instancias", ListaDispositivosIO[posDispositivo].InstanciasIO)
 }

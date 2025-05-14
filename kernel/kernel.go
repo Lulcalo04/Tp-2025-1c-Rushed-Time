@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	kernel_internal "kernel/internal"
+	"time"
 )
 
 func main() {
@@ -12,7 +13,9 @@ func main() {
 
 	//*Inicializa el proceso cero
 	//nombreArchivoPseudocodigo, tamanioProceso := kernel_internal.InicializarProcesoCero()
-	
+
+	time.Sleep(30 * time.Second)
+
 	//*Funcion de prueba
 	ImprimirDispositivosIO()
 }

@@ -138,6 +138,18 @@ type IoHandshakeRequest struct {
 	Nombre string `json:"nombre"`
 }
 
+type IORequest struct {
+	NombreDispositivo string `json:"nombre_dispositivo"`
+	PID               int    `json:"pid"`
+	Tiempo            int    `json:"tiempo"`
+}
+
+type IOResponse struct {
+	NombreDispositivo string `json:"nombre_dispositivo"`
+	PID               int    `json:"pid"`
+	Respuesta         bool   `json:"respuesta"`
+}
+
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
 
 func IniciarConfiguracion(filePath string, config interface{}) {

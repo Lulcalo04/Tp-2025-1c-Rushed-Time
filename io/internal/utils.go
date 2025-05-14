@@ -23,24 +23,6 @@ var Config_IO *ConfigIO
 
 var Logger *slog.Logger
 
-type IORequest struct { // Estructura que representa el response que recibe el IO desde el kernel
-	PID  int `json:"pid"`
-	Time int `json:"time"`
-}
-
-type Paquete struct {
-	IPio   string `json:"ip_io"`
-	PortIO int    `json:"port_io"`
-	Nombre string `json:"nombre"`
-}
-
-type DispositivoIO struct {
-	NombreIO     string
-	InstanciasIO int
-}
-
-var ListaDispositivosIO []DispositivoIO
-
 //-------------------------------------------------------------------------------------------------------------//
 
 func InicializarIO() string {
@@ -84,30 +66,29 @@ func RecibirIOpaquete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Declaro la variable request de tipo IORequest
-	var request IORequest
+	var paqueteKernel globals.IORequest
 
 	// Decodifico el request en la variable request, si no puedo decodificarlo, devuelvo un error
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&paqueteKernel); err != nil {
 		http.Error(w, "Error en el formato del request", http.StatusBadRequest)
 		return
 	}
+	Logger.Debug("Recibiendo paquete desde Kernel", "nombre_dispositivo", paqueteKernel.NombreDispositivo, "pid", paqueteKernel.PID, "tiempo", paqueteKernel.Tiempo)
+	LogInicioIO(paqueteKernel.PID, paqueteKernel.Tiempo)
 
-	LogInicioIO(request.PID, request.Time)
+	time.Sleep(time.Millisecond * time.Duration(paqueteKernel.Tiempo))
 
-	time.Sleep(time.Millisecond * time.Duration(request.Time))
-
-	LogFinalizacionIO(request.PID)
+	LogFinalizacionIO(paqueteKernel.PID)
 
 	// Envio la respuesta al cliente, en este caso el kernel diciendole que termino el IO
 	w.Header().Set("Content-Type", "application/json")
-
-	// Envio el PID y el tiempo que duro el IO
-	w.WriteHeader(http.StatusOK)
-	response := fmt.Sprintf(`{"pid": %d}`, request.PID)
-
-	//escribo la informacion en el body http de la respuesta
-	w.Write([]byte(response))
-
+	respuestaBody := globals.IOResponse{
+		NombreDispositivo: paqueteKernel.NombreDispositivo,
+		PID:               paqueteKernel.PID,
+		Respuesta:         true,
+	}
+	json.NewEncoder(w).Encode(respuestaBody)
+	Logger.Debug("Enviando respuesta al kernel", "nombre_dispositivo", paqueteKernel.NombreDispositivo, "pid", paqueteKernel.PID, "respuesta", respuestaBody.Respuesta)
 }
 
 //------------------------------------------------------------------------------------------------------------------//

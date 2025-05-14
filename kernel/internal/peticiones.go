@@ -148,3 +148,45 @@ func PedirDumpMemory(pid int) bool {
 	}
 
 }
+
+func EnviarProcesoAIO(dispositivo DispositivoIO, pid int, milisegundosDeUso int) {
+	url := fmt.Sprintf("http://%s:%d/io/request", dispositivo.IpIO, dispositivo.PortIO)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.IORequest{
+		NombreDispositivo: dispositivo.NombreIO,
+		PID:               pid,
+		Tiempo:            milisegundosDeUso,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con IO", "error", err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		Logger.Debug("Error: StatusCode no es 200 OK", "status_code", resp.StatusCode)
+		return
+	}
+
+	// Decodifico la respuesta JSON del server
+	var respuestaIO globals.IOResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaIO); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaIO.Respuesta {
+		Logger.Debug("IO Exitoso", "PID", pid)
+	} else {
+		Logger.Debug("Error en IO", "PID", pid)
+	}
+}
