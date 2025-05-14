@@ -2,11 +2,7 @@ package main
 
 import (
 	io_internal "inputoutput/internal"
-	"time"
 	"utils/globals"
-	//"fmt"
-	//"net"
-	//"time"
 )
 
 func main() {
@@ -23,9 +19,8 @@ func main() {
 	// PRIMERO levantar el servidor HTTP de IO en un hilo aparte para que no se bloquee el main
 	go io_internal.IniciarServerIO(io_internal.Config_IO.PortIO)
 
-	// Pequeño delay para asegurarnos que el server esté arriba
-	time.Sleep(500 * time.Millisecond)
-
-	// Ahora sí, mandar el paquete a Kernel
+	// Hacemos handshake con el kernel
 	io_internal.HandshakeKernel(io_internal.Config_IO.IPKernel, io_internal.Config_IO.PortKernel, ioName)
+	
+	select {}
 }

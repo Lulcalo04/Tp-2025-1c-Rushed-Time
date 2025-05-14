@@ -51,32 +51,30 @@ func SyscallDumpMemory(pid int) {
 	}
 }
 
-/*  func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso float64) {
+func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso int) {
 	LogSyscall(pid, "IO")
 
-	//! HAY QUE BUSCAR QUE EXISTA EL DISPOSITIVO DE IO EN KERNEL
-	existeDispositivo := VerificarNombreDispositivo(nombreDispositivo)
-
-	existeDispositivo = true // Simulamos que existe el dispositivo
+	//Verificamos si el dispositivo existe
+	existeDispositivo, posDispositivo := VerificarDispositivo(nombreDispositivo)
 
 	// Busco el PCB en la lista de Exec
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
 
 	if existeDispositivo {
 		//! SI EL DISPOSITIVO EXISTE, PERO ESTA EN USO, BLOQUEAR EL PROCESO EN LA COLA DEL DISPOSITIVO
-		instanciaDeIO := VerificarInstanciaDeIO(nombreDispositivo) //* FUNCION A DESARROLLAR
+		instanciaDeIO := VerificarInstanciaDeIO(posDispositivo)
 		MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
 		if instanciaDeIO {
 			//Si hay instancias de IO disponibles, se bloquea el proceso por estar usando la IO
-			UsarDispositivoDeIO(nombreDispositivo, pid, milisegundosDeUso) //* FUNCION A DESARROLLAR
+			UsarDispositivoDeIO(posDispositivo, pid, milisegundosDeUso)
 			MoverProcesoACola(*pcbDelProceso, &ColaReady)
 		} else {
 			//Si no hay instancias de IO disponibles, se bloquea el proceso en la cola del dispositivo
-			BloquearProcesoPorIO(nombreDispositivo, pid) //* FUNCION A DESARROLLAR
+			//BloquearProcesoPorIO(nombreDispositivo, pid) //* FUNCION A DESARROLLAR
 		}
 	} else {
 		//! NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
 		//! REALIZAR PEDIDO DE DESALOJO EN LA CPU
 		MoverProcesoACola(*pcbDelProceso, &ColaExit)
 	}
-}  */
+}

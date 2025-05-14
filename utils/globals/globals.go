@@ -126,6 +126,12 @@ type IoSyscallResponse struct {
 	Tiempo            float64 `json:"tiempo"`
 }
 
+type CPUHandshakeHandler struct {
+	CPUID  string `json:"cpu_id"`
+	Puerto int    `json:"puerto"`
+	Ip     string `json:"ip"`
+}
+
 type IoHandshakeRequest struct {
 	IPio   string `json:"ip_io"`
 	PortIO int    `json:"port_io"`
@@ -153,6 +159,18 @@ type ProcesoAEjecutarResponse struct {
 	PID    int    `json:"pid"`
 	PC     int    `json:"pc"`
 	Motivo string `json:"motivo"`
+}
+
+type IORequest struct {
+	NombreDispositivo string `json:"nombre_dispositivo"`
+	PID               int    `json:"pid"`
+	Tiempo            int    `json:"tiempo"`
+}
+
+type IOResponse struct {
+	NombreDispositivo string `json:"nombre_dispositivo"`
+	PID               int    `json:"pid"`
+	Respuesta         bool   `json:"respuesta"`
 }
 
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
