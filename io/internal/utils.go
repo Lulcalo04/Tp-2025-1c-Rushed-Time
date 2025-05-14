@@ -33,17 +33,56 @@ type Paquete struct {
 	Nombre string `json:"nombre"`
 }
 
+type DispositivoIO struct {
+	NombreIO     string
+	InstanciasIO int
+}
+
+var ListaDispositivosIO []DispositivoIO
+
 //-------------------------------------------------------------------------------------------------------------//
 
-func VerificarNombreIO() string {
-
+func InicializarIO() DispositivoIO {
 	if len(os.Args) < 2 {
 		fmt.Println("Error, mal escrito usa: ./io.go [nombreio]")
 		os.Exit(1)
 	}
+	//Nos guardamos el nombre del dispositivo IO
 	ioName := os.Args[1]
 
-	return ioName
+	//Verificamos si existe el dispositivo IO, y retornamos su posicion en la lista
+	existeDispositivo, posDispositivo := VerificarDispositivo(ioName)
+
+	if existeDispositivo {
+		//Si existe, le sumamos una instancia
+		ListaDispositivosIO[posDispositivo].InstanciasIO++
+		//Retornamo el dispositivo actualizado
+		return ListaDispositivosIO[posDispositivo]
+
+	} else {
+		//Creamos un nuevo dispositivo IO
+		dispositivoIO := DispositivoIO{
+			NombreIO:     ioName,
+			InstanciasIO: 1,
+		}
+		//Lo agregamos a la lista de dispositivos IO
+		ListaDispositivosIO = append(ListaDispositivosIO, dispositivoIO)
+
+		Logger.Debug("Dispositivo nuevo", "nombre", dispositivoIO.NombreIO, "instancias", dispositivoIO.InstanciasIO)
+
+		//Retornamos el nuevo dispositivo IO
+		return dispositivoIO
+	}
+}
+
+func VerificarDispositivo(ioName string) (bool, int) {
+
+	for posDispositivo, dispositivoIO := range ListaDispositivosIO {
+		if dispositivoIO.NombreIO == ioName {
+			return true, posDispositivo
+		}
+	}
+	return false, -1
 }
 
 //--------------------------------Server de conexion IO-Kernel-------------------------------------//
