@@ -173,6 +173,15 @@ type IOResponse struct {
 	Respuesta         bool   `json:"respuesta"`
 }
 
+type InstruccionAMemoriaRequest struct {
+	PID int `json:"pid"`
+	PC  int `json:"pc"`
+}
+
+type InstruccionAMemoriaResponse struct {
+	InstruccionAEjecutar string `json:"instruccion"`
+}
+
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
 
 func IniciarConfiguracion(filePath string, config interface{}) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"utils/globals"
 )
 
@@ -27,8 +28,9 @@ var Config_CPU *ConfigCPU
 var Logger *slog.Logger
 
 type PCB_CPU struct {
-	PID int
-	PC  int
+	PID               int
+	PC                int
+	InstruccionActual string
 }
 
 var ProcesoEjecutando PCB_CPU
@@ -65,13 +67,35 @@ func VerificarIdentificadorCPU() string {
 	return CpuId
 }
 
+func CopiarPrimeraPalabra(origen string) string {
+	// Usamos strings.Fields para dividir el string en palabras
+	palabras := strings.Fields(origen)
+
+	// Si hay al menos una palabra, devolvemos la primera
+	if len(palabras) > 0 {
+		return palabras[0]
+	}
+
+	// Si no hay palabras, devolvemos un string vacío
+	return ""
+}
+
 func CicloDeInstruccion() {
-	/*
-		for{
-			Fetch()
-			Decode()
-			Execute()
-			Check Interrupt()
-		}
-	*/
+
+	for {
+		Fetch()
+		//Decode()
+		//Execute()
+		//Check Interrupt()
+	}
+
+}
+
+func Fetch() {
+	SolicitarSiguienteInstruccionMemoria(ProcesoEjecutando.PID, ProcesoEjecutando.PC)
+	return
+}
+
+func Decode() {
+
 }
