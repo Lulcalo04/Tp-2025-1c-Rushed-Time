@@ -149,12 +149,12 @@ func PedirDumpMemory(pid int) bool {
 
 }
 
-func EnviarProcesoAIO(dispositivo DispositivoIO, pid int, milisegundosDeUso int) {
-	url := fmt.Sprintf("http://%s:%d/io/request", dispositivo.IpIO, dispositivo.PortIO)
+func EnviarProcesoAIO(instanciaDeIO InstanciaIO, pid int, milisegundosDeUso int) {
+	url := fmt.Sprintf("http://%s:%d/io/request", instanciaDeIO.IpIO, instanciaDeIO.PortIO)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.IORequest{
-		NombreDispositivo: dispositivo.NombreIO,
+		NombreDispositivo: instanciaDeIO.NombreIO,
 		PID:               pid,
 		Tiempo:            milisegundosDeUso,
 	}

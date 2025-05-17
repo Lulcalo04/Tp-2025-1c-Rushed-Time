@@ -74,6 +74,7 @@ func RecibirIOpaquete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	Logger.Debug("Recibiendo paquete desde Kernel", "nombre_dispositivo", paqueteKernel.NombreDispositivo, "pid", paqueteKernel.PID, "tiempo", paqueteKernel.Tiempo)
+
 	LogInicioIO(paqueteKernel.PID, paqueteKernel.Tiempo)
 
 	time.Sleep(time.Millisecond * time.Duration(paqueteKernel.Tiempo))

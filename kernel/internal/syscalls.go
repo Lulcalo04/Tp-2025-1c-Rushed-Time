@@ -55,25 +55,25 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 	LogSyscall(pid, "IO")
 
 	//Verificamos si el dispositivo existe
-	existeDispositivo, posDispositivo := VerificarDispositivo(nombreDispositivo)
+	existeDispositivo := VerificarDispositivo(nombreDispositivo)
 
 	// Busco el PCB en la lista de Exec
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
 
 	if existeDispositivo {
-		//! SI EL DISPOSITIVO EXISTE, PERO ESTA EN USO, BLOQUEAR EL PROCESO EN LA COLA DEL DISPOSITIVO
-		instanciaDeIO := VerificarInstanciaDeIO(posDispositivo)
+		//& SI EL DISPOSITIVO EXISTE, PERO ESTA EN USO, BLOQUEAR EL PROCESO EN LA COLA DEL DISPOSITIVO
+		instanciaDeIO := VerificarInstanciaDeIO(nombreDispositivo)
 		MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
 		if instanciaDeIO {
 			//Si hay instancias de IO disponibles, se bloquea el proceso por estar usando la IO
-			UsarDispositivoDeIO(posDispositivo, pid, milisegundosDeUso)
+			UsarDispositivoDeIO(nombreDispositivo, pid, milisegundosDeUso)
 			MoverProcesoACola(*pcbDelProceso, &ColaReady)
 		} else {
 			//Si no hay instancias de IO disponibles, se bloquea el proceso en la cola del dispositivo
-			//BloquearProcesoPorIO(nombreDispositivo, pid) //* FUNCION A DESARROLLAR
+			BloquearProcesoPorIO(nombreDispositivo, pid) //* FUNCION A DESARROLLAR
 		}
 	} else {
-		//! NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
+		//& NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
 		//! REALIZAR PEDIDO DE DESALOJO EN LA CPU
 		MoverProcesoACola(*pcbDelProceso, &ColaExit)
 	}
