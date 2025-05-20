@@ -217,3 +217,51 @@ func EnviarProcesoACPU(cpuIp string, cpuPuerto int, procesoPID int, procesoPC in
 	}
 	defer resp.Body.Close() // Cierra la conexión al finalizar la función
 }
+
+func PeticionDesalojo(pid int, motivoDesalojo string) {
+
+	cpuDelPID := BuscarCPUporPID(pid)
+	if cpuDelPID == nil {
+		Logger.Debug("No se encontró el CPU para el PID", "PID", pid)
+		return
+	}
+
+	url := fmt.Sprintf("http://%s:%d/desalojo", cpuDelPID.Ip, cpuDelPID.Puerto)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.DesalojoRequest{
+		PID: pid,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con CPU", "error", err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		Logger.Debug("Error: StatusCode no es 200 OK", "status_code", resp.StatusCode)
+		return
+	}
+
+	// Decodifico la respuesta JSON del server
+	var respuestaDesalojo globals.DesalojoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaDesalojo); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	// Verifica si se desaloja por: Planificador (SJF CD), IO, o por fin de proceso
+	// Dependiendo el motivo, se enviará el proceso a la cola correspondiente
+	AnalizarDesalojo(respuestaDesalojo.PID, respuestaDesalojo.PC, motivoDesalojo)
+
+	// Se replanifica para enviarle un proceso a CPU
+	PlanificadorCortoPlazo(Config_Kernel.SchedulerAlgorithm)
+}

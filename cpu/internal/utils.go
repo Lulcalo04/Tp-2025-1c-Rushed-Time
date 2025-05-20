@@ -31,9 +31,11 @@ type PCB_CPU struct {
 	PID               int
 	PC                int
 	InstruccionActual string
+	Interrupt         bool
 }
 
 var ProcesoEjecutando PCB_CPU
+var InterrupcionAtendida bool = false
 
 func IniciarCPU() {
 
@@ -77,7 +79,9 @@ func CicloDeInstruccion() {
 		Fetch()
 		Decode()
 		//Execute()
-		//Check Interrupt()
+		if CheckInterrupt() {
+			break
+		}
 	}
 
 }
@@ -96,4 +100,16 @@ func Decode() {
 		MMU(argumentoInstrucciones[1])
 	}
 
+}
+
+func CheckInterrupt() bool {
+
+	if ProcesoEjecutando.Interrupt {
+		//Cortar bucle de ciclo de instruccion
+		InterrupcionAtendida = true
+		ProcesoEjecutando.Interrupt = false
+		return true
+	}
+
+	return false
 }

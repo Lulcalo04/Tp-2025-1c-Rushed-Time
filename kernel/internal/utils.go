@@ -33,6 +33,7 @@ type IdentificadorCPU struct {
 	Puerto  int
 	Ip      string
 	Ocupado bool
+	PID     int
 }
 
 var ListaDispositivosIO []DispositivoIO
@@ -128,9 +129,10 @@ func TerminarProceso(proceso globals.PCB) {
 	LogFinDeProceso(proceso.PID)
 }
 
-func AnalizarDesalojo(pid int, motivoDesalojo string) {
+func AnalizarDesalojo(pid int, pc int, motivoDesalojo string) {
 
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
+	pcbDelProceso.PC = pc
 
 	if motivoDesalojo == "Planificador" {
 		if pcbDelProceso != nil {
@@ -141,7 +143,11 @@ func AnalizarDesalojo(pid int, motivoDesalojo string) {
 		if pcbDelProceso != nil {
 			Logger.Debug("Desalojo por IO", "pid", pid)
 		}
-	} else if motivoDesalojo == "FinProceso" {
+	} else if motivoDesalojo == "DUMP_MEMORY" {
+		if pcbDelProceso != nil {
+			Logger.Debug("Desalojo por DUMP_MEMORY", "pid", pid)
+		}
+	} else if motivoDesalojo == "EXIT" {
 		if pcbDelProceso != nil {
 			TerminarProceso(*pcbDelProceso)
 		}
@@ -208,6 +214,8 @@ func UsarDispositivoDeIO(posDispositivo int, pid int, milisegundosDeUso int) {
 	Logger.Debug("Instancias de IO", "nombre", ListaDispositivosIO[posDispositivo].NombreIO, "instancias", ListaDispositivosIO[posDispositivo].InstanciasIO)
 }
 
+// &-------------------------------------------Funciones de CPU-------------------------------------------------------------
+
 func VerificarIdentificadorCPU(cpuID string) bool {
 	for _, dispositivoCPU := range ListaIdentificadoresCPU {
 		if dispositivoCPU.CPUID == cpuID {
@@ -260,13 +268,21 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) {
 	cpu := ObtenerCpuDisponible()
 	if cpu != nil {
 		cpu.Ocupado = true
+		cpu.PID = proceso.PID
 		Logger.Debug("CPU elegida: ", "cpu_id", cpu.CPUID, ", Mandando proceso_pid: ", proceso.PID)
+		EnviarProcesoACPU(cpu.Ip, cpu.Puerto, proceso.PID, proceso.PC)
 	} else {
 		Logger.Debug("No hay CPU disponible para el proceso ", "proceso_pid", proceso.PID)
 		return
 	}
 
-	// Enviar el proceso a la CPU elegida
-	EnviarProcesoACPU(cpu.Ip, cpu.Puerto, proceso.PID, proceso.PC)
+}
 
+func BuscarCPUporPID(pid int) *IdentificadorCPU {
+	for _, cpu := range ListaIdentificadoresCPU {
+		if cpu.PID == pid {
+			return &cpu
+		}
+	}
+	return nil
 }

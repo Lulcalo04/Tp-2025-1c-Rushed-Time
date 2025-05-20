@@ -75,15 +75,12 @@ type InstruccionesResponse struct {
 }
 
 type DesalojoRequest struct {
-	PID            int    `json:"pid"`
-	PC             int    `json:"pc"`
-	MotivoDesalojo string `json:"motivo_desalojo"`
+	PID int `json:"pid"`
 }
 
 type DesalojoResponse struct {
-	PID            int    `json:"pid"`
-	PC             int    `json:"pc"`
-	MotivoDesalojo string `json:"motivo_desalojo"`
+	PID int `json:"pid"`
+	PC  int `json:"pc"`
 }
 
 type InitProcSyscallRequest struct {

@@ -22,7 +22,8 @@ func SyscallExit(pid int) {
 
 	//Busco el PCB en la lista de Exit
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExit)
-	//! REALIZAR PEDIDO DE DESALOJO EN LA CPU
+	//Desalojo el proceso de la CPU
+	PeticionDesalojo(pid, "EXIT")
 	//Termino el proceso, avisandole memoria que libere el espacio y buscando
 	TerminarProceso(*pcbDelProceso)
 }
@@ -36,17 +37,22 @@ Caso contrario, se desbloquea normalmente pasando a READY.
 func SyscallDumpMemory(pid int) {
 	LogSyscall(pid, "DUMP_MEMORY")
 
+	//Busco el PCB en la lista de Exit
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
 
-	//! FALTA BLOQUEAR LA EJECUCION DEL PROCESO EN CPU
+	//Desalojo el proceso de la CPU
+	PeticionDesalojo(pid, "DUMP_MEMORY")
+
+	//Bloque el proceso
 	MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
 
+	//Pido el dump a memoria y espero la respuesta
 	respuestaDelDump := PedirDumpMemory(pid)
 
+	//Analizo la respuesta
 	if respuestaDelDump {
 		MoverProcesoACola(*pcbDelProceso, &ColaReady)
 	} else {
-		//! REALIZAR PEDIDO DE DESALOJO EN LA CPU
 		MoverProcesoACola(*pcbDelProceso, &ColaExit)
 	}
 }
