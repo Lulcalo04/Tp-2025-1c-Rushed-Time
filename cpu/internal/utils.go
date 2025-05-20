@@ -67,24 +67,15 @@ func VerificarIdentificadorCPU() string {
 	return CpuId
 }
 
-func CopiarPrimeraPalabra(origen string) string {
-	// Usamos strings.Fields para dividir el string en palabras
-	palabras := strings.Fields(origen)
+func MMU(direccionLogica string) {
 
-	// Si hay al menos una palabra, devolvemos la primera
-	if len(palabras) > 0 {
-		return palabras[0]
-	}
-
-	// Si no hay palabras, devolvemos un string vacío
-	return ""
 }
 
 func CicloDeInstruccion() {
 
 	for {
 		Fetch()
-		//Decode()
+		Decode()
 		//Execute()
 		//Check Interrupt()
 	}
@@ -93,9 +84,16 @@ func CicloDeInstruccion() {
 
 func Fetch() {
 	SolicitarSiguienteInstruccionMemoria(ProcesoEjecutando.PID, ProcesoEjecutando.PC)
-	return
 }
 
 func Decode() {
+
+	// Devuelve en un slice de strings las palabras de la instruccion actual separadas por espacios
+	argumentoInstrucciones := strings.Fields(ProcesoEjecutando.InstruccionActual)
+
+	if (argumentoInstrucciones[0] == "WRITE") || (argumentoInstrucciones[0] == "READ") || (argumentoInstrucciones[0] == "GOTO") {
+		// Si la instruccion es WRITE READ O GOTO, Se tiene que utilizar la MMU para traducir la direccion logica a fisica
+		MMU(argumentoInstrucciones[1])
+	}
 
 }

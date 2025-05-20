@@ -173,6 +173,5 @@ func IoHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
-	//! FALTA TERMINAR SYSCALL DE IO
-	//SyscallEntradaSalida(PeticionSyscall.PID, PeticionSyscall.NombreDispositivo, PeticionSyscall.Tiempo)
+	SyscallEntradaSalida(PeticionSyscall.PID, PeticionSyscall.NombreDispositivo, PeticionSyscall.Tiempo)
 }

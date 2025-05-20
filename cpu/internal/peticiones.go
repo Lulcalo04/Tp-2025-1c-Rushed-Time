@@ -48,3 +48,43 @@ func HandshakeConKernel(cpuid string) bool {
 	//Devolvemos el bool para confirmar si el handshake fue exitoso
 	return respuestaKernel.Respuesta
 }
+
+func SolicitarSiguienteInstruccionMemoria(pid int, pc int) {
+
+	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/instruccion", Config_CPU.IPMemory, Config_CPU.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.InstruccionAMemoriaRequest{
+		PID: pid,
+		PC:  pc,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	// Decodifico la respuesta JSON del server
+	var respuestaMemoria globals.InstruccionAMemoriaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	ProcesoEjecutando.InstruccionActual = respuestaMemoria.InstruccionAEjecutar
+}
+
+//! No estamos seguros de que es lo que tenemos que enviarle a memoria y que es lo que nos va a devolver
+// func solicitarInfoMMU () {
+//}
