@@ -22,10 +22,12 @@ func IniciarServerMemoria(puerto int) {
 
 	//Declaro los handlers para el server
 	mux.HandleFunc("/handshake", HandshakeHandler)
+	//mux.HandleFunc("/handshake/cpu", )
 	mux.HandleFunc("/ping", PingHandler)
 	mux.HandleFunc("/espacio/pedir", PidenEspacioHandler)
 	mux.HandleFunc("/espacio/liberar", LiberarEspacioHandler)
-	mux.HandleFunc("/instrucciones", InstruccionesHandler) //Escucha el puerto y espera conexiones
+	mux.HandleFunc("/cpu/instrucciones", InstruccionesHandler)
+	//mux.HandleFunc("/cpu/frame", )
 	mux.HandleFunc("/dump", DumpMemoryHandler)
 
 	err := http.ListenAndServe(stringPuerto, mux)

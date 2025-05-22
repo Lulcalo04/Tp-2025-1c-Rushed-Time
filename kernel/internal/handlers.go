@@ -73,7 +73,7 @@ func CPUHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 	//!Falta validar en el cliente si la es un JSON o no
 	w.Header().Set("Content-Type", "application/json")
 
-	var dispositivoCPUBody globals.CPUHandshakeRequest
+	var dispositivoCPUBody globals.CPUToKernelHandshakeRequest
 	if err := json.NewDecoder(r.Body).Decode(&dispositivoCPUBody); err != nil {
 		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return

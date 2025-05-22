@@ -123,25 +123,19 @@ type IoSyscallResponse struct {
 	Tiempo            float64 `json:"tiempo"`
 }
 
-type CPUHandshakeHandler struct {
-	CPUID  string `json:"cpu_id"`
-	Puerto int    `json:"puerto"`
-	Ip     string `json:"ip"`
-}
-
 type IoHandshakeRequest struct {
 	IPio   string `json:"ip_io"`
 	PortIO int    `json:"port_io"`
 	Nombre string `json:"nombre"`
 }
 
-type CPUHandshakeRequest struct {
+type CPUToKernelHandshakeRequest struct {
 	CPUID  string `json:"cpu_id"`
 	Puerto int    `json:"puerto"`
 	Ip     string `json:"ip"`
 }
 
-type CPUHandshakeResponse struct {
+type CPUToKernelHandshakeResponse struct {
 	Modulo    string `json:"modulo"`
 	Respuesta bool   `json:"respuesta"`
 	Mensaje   string `json:"mensaje"`
@@ -177,6 +171,26 @@ type InstruccionAMemoriaRequest struct {
 
 type InstruccionAMemoriaResponse struct {
 	InstruccionAEjecutar string `json:"instruccion"`
+}
+
+type CPUToMemoriaHandshakeRequest struct {
+	CPUID string `json:"cpu_id"`
+}
+
+type CPUToMemoriaHandshakeResponse struct {
+	TamanioMemoria   int `json:"tamanio_memoria"`
+	TamanioPagina    int `json:"tamanio_pagina"`
+	EntradasPorTabla int `json:"entradas_por_tabla"`
+	NivelesDeTabla   int `json:"niveles_de_tabla"`
+}
+
+type SolicitudFrameRequest struct {
+	PID              int   `json:"pid"`
+	EntradasPorNivel []int `json:"entradas_por_nivel"`
+}
+
+type SolicitudFrameResponse struct {
+	Frame int `json:"frame"`
 }
 
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------

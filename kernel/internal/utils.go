@@ -225,9 +225,9 @@ func VerificarIdentificadorCPU(cpuID string) bool {
 	return false
 }
 
-func RegistrarIdentificadorCPU(cpuID string, puerto int, ip string) globals.CPUHandshakeResponse {
+func RegistrarIdentificadorCPU(cpuID string, puerto int, ip string) globals.CPUToKernelHandshakeResponse {
 
-	bodyRespuesta := globals.CPUHandshakeResponse{
+	bodyRespuesta := globals.CPUToKernelHandshakeResponse{
 		Modulo: "Kernel",
 	}
 
