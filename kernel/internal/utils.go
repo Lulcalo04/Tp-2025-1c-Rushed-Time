@@ -21,13 +21,6 @@ type ConfigKernel struct {
 	LogLevel              string  `json:"log_level"`
 }
 
-type DispositivoIO struct {
-	NombreIO     string
-	IpIO         string
-	PortIO       int
-	InstanciasIO int
-}
-
 type IdentificadorCPU struct {
 	CPUID   string
 	Puerto  int
@@ -36,7 +29,19 @@ type IdentificadorCPU struct {
 	PID     int
 }
 
-var ListaDispositivosIO []DispositivoIO
+type DispositivoIO struct {
+	InstanciasDispositivo []InstanciaIO
+	ColaEsperaProcesos    []globals.PCB
+}
+
+type InstanciaIO struct {
+	NombreIO string
+	IpIO     string
+	PortIO   int
+	Estado   string
+}
+
+var ListaDispositivosIO map[string]*DispositivoIO
 
 var ListaIdentificadoresCPU []IdentificadorCPU
 
@@ -158,60 +163,73 @@ func AnalizarDesalojo(pid int, pc int, motivoDesalojo string) {
 
 // &-------------------------------------------Funciones de Administración de IO-------------------------------------------------------------
 
-func RegistrarDispositivoIO(ipIO string, puertoIO int, ioName string) DispositivoIO {
+func RegistrarInstanciaIO(nombre string, puerto int, ip string) {
+	instancia := InstanciaIO{NombreIO: nombre, IpIO: ip, PortIO: puerto, Estado: "Libre"}
 
-	//Verificamos si existe el dispositivo IO, y retornamos su posicion en la lista
-	existeDispositivo, posDispositivo := VerificarDispositivo(ioName)
-
-	if existeDispositivo {
-		//Si existe, le sumamos una instancia
-		ListaDispositivosIO[posDispositivo].InstanciasIO++
-		//Retornamos el dispositivo actualizado
-		return ListaDispositivosIO[posDispositivo]
-
+	if disp, ok := ListaDispositivosIO[nombre]; ok {
+		disp.InstanciasDispositivo = append(disp.InstanciasDispositivo, instancia)
 	} else {
-		//Creamos un nuevo dispositivo IO
-		dispositivoIO := DispositivoIO{
-			NombreIO:     ioName,
-			IpIO:         ipIO,
-			PortIO:       puertoIO,
-			InstanciasIO: 1,
-		}
-		//Lo agregamos a la lista de dispositivos IO
-		ListaDispositivosIO = append(ListaDispositivosIO, dispositivoIO)
-
-		Logger.Debug("Dispositivo nuevo", "nombre", dispositivoIO.NombreIO, "instancias", dispositivoIO.InstanciasIO)
-
-		//Retornamos el nuevo dispositivo IO
-		return dispositivoIO
-	}
-}
-
-func VerificarDispositivo(ioName string) (bool, int) {
-	for posDispositivo, dispositivoIO := range ListaDispositivosIO {
-		if dispositivoIO.NombreIO == ioName {
-			return true, posDispositivo
+		ListaDispositivosIO[nombre] = &DispositivoIO{
+			ColaEsperaProcesos:    []globals.PCB{},
+			InstanciasDispositivo: []InstanciaIO{instancia},
 		}
 	}
-	return false, -1
+	Logger.Debug("Dispositivo nuevo", "nombre", nombre, "instancias", len(ListaDispositivosIO[nombre].InstanciasDispositivo))
 }
 
-func VerificarInstanciaDeIO(posDispositivo int) bool {
-	if ListaDispositivosIO[posDispositivo].InstanciasIO >= 1 {
-		ListaDispositivosIO[posDispositivo].InstanciasIO--
-		Logger.Debug("Instancias de IO", "nombre", ListaDispositivosIO[posDispositivo].NombreIO, "instancias", ListaDispositivosIO[posDispositivo].InstanciasIO)
-		return true
-	} else {
-		return false
+func VerificarDispositivo(ioName string) bool {
+	for nombreDispositivo := range ListaDispositivosIO {
+		if nombreDispositivo == ioName {
+			return true
+		}
 	}
+	return false
 }
 
-func UsarDispositivoDeIO(posDispositivo int, pid int, milisegundosDeUso int) {
-	//Hacer peticion de uso de dispositivo IO
-	EnviarProcesoAIO(ListaDispositivosIO[posDispositivo], pid, milisegundosDeUso)
-	//Agregar instancia de IO
-	ListaDispositivosIO[posDispositivo].InstanciasIO++
-	Logger.Debug("Instancias de IO", "nombre", ListaDispositivosIO[posDispositivo].NombreIO, "instancias", ListaDispositivosIO[posDispositivo].InstanciasIO)
+func VerificarInstanciaDeIO(nombreDispositivo string) bool {
+	for _, instancia := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
+		if instancia.Estado == "Libre" {
+			return true
+		}
+	}
+	return false
+}
+
+func UsarDispositivoDeIO(nombreDispositivo string, pid int, milisegundosDeUso int) {
+	//Buscamos el PCB en la cola de blocked
+	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
+	//Lo agregamos a la cola de espera del dispositivo
+	ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos = append(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos, *pcbDelProceso)
+
+	//Ejecuto el primer proceso de la cola de espera (en bucle)
+	for len(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos) != 0 {
+		instanciaDeIO, hayInstancias := BuscarPrimerInstanciaLibre(nombreDispositivo)
+		if !hayInstancias {
+			BloquearProcesoPorIO(nombreDispositivo, pid)
+			return
+		}
+		EnviarProcesoAIO(instanciaDeIO, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].PID, milisegundosDeUso)
+	}
+
+	Logger.Debug("Instancias de IO", "nombre", nombreDispositivo, "instancias", len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
+}
+
+func BuscarPrimerInstanciaLibre(nombreDispositivo string) (InstanciaIO, bool) {
+	for _, instancia := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
+		if instancia.Estado == "Libre" {
+			return instancia, true
+		}
+	}
+	Logger.Debug("No hay instancias libres", "nombre", nombreDispositivo)
+	return InstanciaIO{}, false
+}
+
+func BloquearProcesoPorIO(nombreDispositivo string, pid int) {
+	//Buscamos el PCB en la cola de blocked
+	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
+	//Agregar el proceso a la cola de espera del dispositivo
+	ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos = append(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos, *pcbDelProceso)
+
 }
 
 // &-------------------------------------------Funciones de CPU-------------------------------------------------------------

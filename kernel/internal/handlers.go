@@ -62,7 +62,7 @@ func IoHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RegistrarDispositivoIO(dispositivoIOBody.IPio, dispositivoIOBody.PortIO, dispositivoIOBody.Nombre)
+	RegistrarInstanciaIO(dispositivoIOBody.IPio, dispositivoIOBody.PortIO, dispositivoIOBody.Nombre)
 	Logger.Debug("Handshake con IO realizado", "ip_io", dispositivoIOBody.IPio, "port_io", dispositivoIOBody.PortIO, "nombre", dispositivoIOBody.Nombre)
 }
 

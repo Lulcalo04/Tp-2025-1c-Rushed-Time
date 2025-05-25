@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	kernel_internal "kernel/internal"
 	"time"
 )
@@ -17,13 +16,14 @@ func main() {
 	time.Sleep(30 * time.Second)
 
 	//*Funcion de prueba
-	ImprimirDispositivosIO()
+	/* ImprimirDispositivosIO() */
 }
 
-// Función de prueba para imprimir los dispositivos de IO
+/* // Función de prueba para imprimir los dispositivos de IO
 func ImprimirDispositivosIO() {
 	fmt.Println("Dispositivos de IO registrados:")
 	for _, dispositivo := range kernel_internal.ListaDispositivosIO {
 		fmt.Printf("Nombre: %s, Instancias: %d\n", dispositivo.NombreIO, dispositivo.InstanciasIO)
 	}
 }
+*/
