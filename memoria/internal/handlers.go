@@ -22,12 +22,15 @@ func IniciarServerMemoria(puerto int) {
 
 	//Declaro los handlers para el server
 	mux.HandleFunc("/handshake", HandshakeHandler)
-	//mux.HandleFunc("/handshake/cpu", )
+	mux.HandleFunc("/handshake/cpu", HandshakeConCPU)
 	mux.HandleFunc("/ping", PingHandler)
 	mux.HandleFunc("/espacio/pedir", PidenEspacioHandler)
 	mux.HandleFunc("/espacio/liberar", LiberarEspacioHandler)
 	mux.HandleFunc("/cpu/instrucciones", InstruccionesHandler)
-	//mux.HandleFunc("/cpu/frame", )
+	mux.HandleFunc("/cpu/frame", CalcularFrameHandler)
+	mux.HandleFunc("/cpu/write", HacerWriteHandler)
+	mux.HandleFunc("/cpu/read", HacerReadHandler)
+	mux.HandleFunc("/cpu/goto", HacerGotoHandler)
 	mux.HandleFunc("/dump", DumpMemoryHandler)
 
 	err := http.ListenAndServe(stringPuerto, mux)
@@ -49,6 +52,27 @@ func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 			"modulo":  "Memoria",
 			"mensaje": "Conexion aceptada desde " + r.RemoteAddr,
 		})
+}
+
+func HandshakeConCPU(w http.ResponseWriter, r *http.Request) {
+	// Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
+	w.Header().Set("Content-Type", "application/json")
+
+	var cpuHandshakeRequest globals.CPUToMemoriaHandshakeRequest
+	if err := json.NewDecoder(r.Body).Decode(&cpuHandshakeRequest); err != nil {
+		http.Error(w, "JSON invalido", http.StatusBadRequest)
+		return
+	}
+
+	// Simulamos el handshake con la CPU (checkpoint 2)
+	cpuHandshakeResponse := globals.CPUToMemoriaHandshakeResponse{
+		TamanioMemoria:   Config_Memoria.MemorySize,
+		TamanioPagina:    Config_Memoria.PageSize,
+		EntradasPorTabla: Config_Memoria.EntriesPerPage,
+		NivelesDeTabla:   Config_Memoria.NumberOfLevels,
+	}
+
+	json.NewEncoder(w).Encode(cpuHandshakeResponse)
 }
 
 // * Endpoint de ping = /ping
@@ -241,4 +265,78 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 
 	//Codifica el objeto resp en formato JSON y lo envia al cliente
 	json.NewEncoder(w).Encode(resp)
+}
+
+func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
+
+	var request globals.SolicitudFrameRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "JSON invalido", http.StatusBadRequest)
+		return
+	}
+
+	// Simulamos la logica de calculo de frame (checkpoint 2)
+	frame := 2 //! REQUETE HARDCODEADO
+
+	response := globals.SolicitudFrameResponse{
+		Frame: frame,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
+
+	var request globals.CPUWriteAMemoriaRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "JSON invalido", http.StatusBadRequest)
+		return
+	}
+
+	// Simulamos la logica de escritura en memoria (checkpoint 2)
+	respuestaWrite := true //! Simulacion
+
+	response := globals.CPUWriteAMemoriaResponse{
+		Respuesta: respuestaWrite,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
+	var request globals.CPUReadAMemoriaRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "JSON invalido", http.StatusBadRequest)
+		return
+	}
+
+	// Simulamos la logica de lectura en memoria (checkpoint 2)
+	respuestaRead := true //! Simulacion
+
+	response := globals.CPUReadAMemoriaResponse{
+		Respuesta: respuestaRead,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func HacerGotoHandler(w http.ResponseWriter, r *http.Request) {
+	var request globals.CPUGotoAMemoriaRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "JSON invalido", http.StatusBadRequest)
+		return
+	}
+
+	// Simulamos la logica de salto en memoria (checkpoint 2)
+	respuestaGoto := true //! Simulacion
+
+	response := globals.CPUGotoAMemoriaResponse{
+		Respuesta: respuestaGoto,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

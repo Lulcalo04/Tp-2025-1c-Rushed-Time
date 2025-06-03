@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"utils/globals"
 )
 
@@ -159,4 +160,307 @@ func PeticionFrameAMemoria(entradasPorNivel []int, pid int) int {
 
 	return respuestaMemoria.Frame
 
+}
+
+func PeticionWriteAMemoria(direccionFisica int, instruccion string, data string, pid int) {
+
+	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/cpu/write", Config_CPU.IPMemory, Config_CPU.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.CPUWriteAMemoriaRequest{
+		PID:             pid,
+		Instruccion:     instruccion,
+		DireccionFisica: direccionFisica,
+		Data:            data,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaMemoria globals.CPUWriteAMemoriaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaMemoria.Respuesta {
+		LogLecturaEscrituraMemoria(pid, instruccion, direccionFisica, data)
+	} else {
+		Logger.Debug("Error al escribir en memoria", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica, "data", data)
+	}
+
+	return
+
+}
+
+func PeticionReadAMemoria(direccionFisica int, instruccion string, data string, pid int) {
+	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/cpu/read", Config_CPU.IPMemory, Config_CPU.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.CPUReadAMemoriaRequest{
+		PID:             pid,
+		Instruccion:     instruccion,
+		DireccionFisica: direccionFisica,
+		Data:            data,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaMemoria globals.CPUReadAMemoriaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaMemoria.Respuesta {
+		LogLecturaEscrituraMemoria(pid, instruccion, direccionFisica, data)
+	} else {
+		Logger.Debug("Error al leer de memoria", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica, "data", data)
+	}
+
+	return
+}
+
+func PeticionGotoAMemoria(direccionFisica int, instruccion string, pid int) {
+
+	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/cpu/goto", Config_CPU.IPMemory, Config_CPU.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.CPUGotoAMemoriaRequest{
+		PID:             pid,
+		Instruccion:     instruccion,
+		DireccionFisica: direccionFisica,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaMemoria globals.CPUGotoAMemoriaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaMemoria.Respuesta {
+		Logger.Debug("Goto exitoso", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica)
+	} else {
+		Logger.Debug("Error Goto", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica)
+	}
+
+	return
+}
+
+func PeticionIOKernel(pid int, nombreDispositivo string, tiempo string) {
+
+	tiempoInt, err := strconv.Atoi(tiempo)
+	if err != nil {
+		Logger.Error("Error al convertir direccionLogica a int", "error", err)
+		return
+	}
+
+	// Declaro la URL a la que me voy a conectar (handler de IO con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/syscall/io", Config_CPU.IPKernel, Config_CPU.PortKernel)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.IoSyscallRequest{
+		PID:               pid,
+		NombreDispositivo: nombreDispositivo,
+		Tiempo:            tiempoInt,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Kernel", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaKernel globals.IoSyscallResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaKernel); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaKernel.Respuesta {
+		Logger.Debug("Petición IO exitosa", "pid", pid, "nombreDispositivo", nombreDispositivo, "tiempo", tiempo)
+	} else {
+		Logger.Debug("Error en la petición IO", "pid", pid, "nombreDispositivo", nombreDispositivo, "tiempo", tiempo)
+	}
+
+	return
+}
+
+func PeticionInitProcKernel(pid int, nombreArchivo string, tamanio string) {
+
+	tamanioInt, err := strconv.Atoi(tamanio)
+	if err != nil {
+		Logger.Error("Error al convertir tamanio a int", "error", err)
+		return
+	}
+
+	// Declaro la URL a la que me voy a conectar (handler de IO con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/syscall/init_proc", Config_CPU.IPKernel, Config_CPU.PortKernel)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.InitProcSyscallRequest{
+		PID:           pid,
+		NombreArchivo: nombreArchivo,
+		Tamanio:       tamanioInt,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Kernel", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaKernel globals.InitProcSyscallResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaKernel); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaKernel.Respuesta {
+		Logger.Debug("Petición InitProc exitosa", "pid", pid, "nombre", nombreArchivo, "tamanio", tamanio)
+	} else {
+		Logger.Debug("Error en la petición InitProc", "pid", pid, "nombre", nombreArchivo, "tamanio", tamanio)
+	}
+
+	return
+}
+
+func PeticionDumpMemoryKernel(pid int) {
+
+	// Declaro la URL a la que me voy a conectar (handler de IO con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/syscall/dump_memory", Config_CPU.IPKernel, Config_CPU.PortKernel)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.DumpMemorySyscallRequest{
+		PID: pid,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Kernel", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaKernel globals.DumpMemorySyscallResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaKernel); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaKernel.Respuesta {
+		Logger.Debug("Petición DumpMemory exitosa", "pid", pid)
+	} else {
+		Logger.Debug("Error en la petición DumpMemory", "pid", pid)
+	}
+
+	return
+}
+
+func PeticionExitKernel(pid int) {
+	// Declaro la URL a la que me voy a conectar (handler de IO con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/syscall/exit", Config_CPU.IPKernel, Config_CPU.PortKernel)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.ExitSyscallRequest{
+		PID: pid,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Kernel", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaKernel globals.ExitSyscallResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaKernel); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaKernel.Respuesta {
+		Logger.Debug("Petición Exit exitosa", "pid", pid)
+	} else {
+		Logger.Debug("Error en la petición Exit", "pid", pid)
+	}
+
+	return
 }

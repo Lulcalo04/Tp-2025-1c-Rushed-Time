@@ -90,9 +90,7 @@ type InitProcSyscallRequest struct {
 }
 
 type InitProcSyscallResponse struct {
-	PID           int    `json:"pid"`
-	NombreArchivo string `json:"nombreArchivo"`
-	Tamanio       int    `json:"tamanio"`
+	Respuesta bool `json:"respuesta"`
 }
 
 type ExitSyscallRequest struct {
@@ -100,7 +98,7 @@ type ExitSyscallRequest struct {
 }
 
 type ExitSyscallResponse struct {
-	PID int `json:"pid"`
+	Respuesta bool `json:"respuesta"`
 }
 
 type DumpMemorySyscallRequest struct {
@@ -108,7 +106,7 @@ type DumpMemorySyscallRequest struct {
 }
 
 type DumpMemorySyscallResponse struct {
-	PID int `json:"pid"`
+	Respuesta bool `json:"respuesta"`
 }
 
 type IoSyscallRequest struct {
@@ -118,9 +116,7 @@ type IoSyscallRequest struct {
 }
 
 type IoSyscallResponse struct {
-	PID               int     `json:"pid"`
-	NombreDispositivo string  `json:"nombreDispositivo"`
-	Tiempo            float64 `json:"tiempo"`
+	Respuesta bool `json:"respuesta"`
 }
 
 type IoHandshakeRequest struct {
@@ -191,6 +187,38 @@ type SolicitudFrameRequest struct {
 
 type SolicitudFrameResponse struct {
 	Frame int `json:"frame"`
+}
+
+type CPUWriteAMemoriaRequest struct {
+	PID             int    `json:"pid"`
+	Instruccion     string `json:"instruccion"`
+	DireccionFisica int    `json:"direccion_fisica"`
+	Data            string `json:"data"`
+}
+
+type CPUWriteAMemoriaResponse struct {
+	Respuesta bool `json:"respuesta"`
+}
+
+type CPUReadAMemoriaRequest struct {
+	PID             int    `json:"pid"`
+	Instruccion     string `json:"instruccion"`
+	DireccionFisica int    `json:"direccion_fisica"`
+	Data            string `json:"data"`
+}
+
+type CPUReadAMemoriaResponse struct {
+	Respuesta bool `json:"respuesta"`
+}
+
+type CPUGotoAMemoriaRequest struct {
+	PID             int    `json:"pid"`
+	Instruccion     string `json:"instruccion"`
+	DireccionFisica int    `json:"direccion_fisica"`
+}
+
+type CPUGotoAMemoriaResponse struct {
+	Respuesta bool `json:"respuesta"`
 }
 
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
