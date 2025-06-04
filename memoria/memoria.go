@@ -7,6 +7,7 @@ import (
 
 func main() {
 
+	memoria_internal.InicializarMemoria()
 	//Inicializa la config de memoria
 	globals.IniciarConfiguracion("memoria/config.json", &memoria_internal.Config_Memoria)
 

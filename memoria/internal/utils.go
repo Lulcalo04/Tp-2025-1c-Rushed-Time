@@ -28,4 +28,20 @@ type InstruccionesResponse struct {
 	Instrucciones []string `json:"instrucciones"`
 }
 
+// FrameID es el índice de un marco físico en memoriaPrincipal (0 .. numFrames-1).
+type FrameID int
+
+// EntradaTabla puede ser:
+//
+//	– nil                 → aún no asignado
+//	– *TablaPags          → una subtabla en un nivel intermedio
+//	– FrameID             → en el nivel final, apunta a un marco físico
+type EntradaTabla interface{}
+
+// TablaPags representa una tabla de páginas en un nivel concreto.
+type TablaPags struct {
+	// Entradas tiene siempre longitud = Config_Memoria.EntriesPerTable.
+	Entradas []EntradaTabla
+}
+
 //-------------------------------------------------------------------------
