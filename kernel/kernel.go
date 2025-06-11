@@ -11,7 +11,7 @@ func main() {
 	kernel_internal.IniciarKernel()
 
 	//*Inicializa el proceso cero
-	//nombreArchivoPseudocodigo, tamanioProceso := kernel_internal.InicializarProcesoCero()
+	// nombreArchivoPseudocodigo, tamanioProceso := kernel_internal.InicializarProcesoCero()
 
 	time.Sleep(30 * time.Second)
 

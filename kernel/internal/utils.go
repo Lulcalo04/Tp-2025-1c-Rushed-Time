@@ -68,7 +68,7 @@ func IniciarKernel() {
 	//client.HandshakeCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger)
 
 	//Inicia los planificadores
-	//IniciarPlanificadores()
+	IniciarPlanificadores()
 }
 
 func InicializarProcesoCero() (string, int) {
@@ -115,6 +115,7 @@ func InicializarPCB(tamanioEnMemoria int) {
 
 	LogCreacionDeProceso(ContadorPID)
 	MoverProcesoACola(pcb, &ColaNew)
+	PlanificadorLargoPlazo(Config_Kernel.SchedulerAlgorithm)
 
 }
 
@@ -282,7 +283,7 @@ func ObtenerCpuDisponible() *IdentificadorCPU {
 	return nil
 }
 
-func ElegirCpuYMandarProceso(proceso globals.PCB) {
+func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 
 	cpu := ObtenerCpuDisponible()
 	if cpu != nil {
@@ -292,9 +293,9 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) {
 		EnviarProcesoACPU(cpu.Ip, cpu.Puerto, proceso.PID, proceso.PC)
 	} else {
 		Logger.Debug("No hay CPU disponible para el proceso ", "proceso_pid", proceso.PID)
-		return
+		return false
 	}
-
+		return true
 }
 
 func BuscarCPUporPID(pid int) *IdentificadorCPU {

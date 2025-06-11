@@ -72,9 +72,21 @@ func PlanificadorLargoPlazo(algoritmo string) {
 				return                      // Salgo del for
 			}
 			MoverProcesoACola(ColaNew[0], &ColaReady)
+			PlanificadorCortoPlazo(Config_Kernel.ReadyIngressAlgorithm)
 		}
 		if algoritmo == "PMCP" {
-			//* Lógica para PMCP
+			// Si memoria responde...
+			if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
+				Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
+				return
+			}
+			respuestaMemoria := PedirEspacioAMemoria(ColaNew[pcbMasChico()])
+			if !respuestaMemoria {
+				hayEspacioEnMemoria = false // Seteo la variable del for a false
+				return                      // Salgo del for
+			}
+			MoverProcesoACola(ColaNew[pcbMasChico()], &ColaReady)
+			PlanificadorCortoPlazo(Config_Kernel.ReadyIngressAlgorithm)
 		}
 	}
 }
@@ -83,8 +95,11 @@ func PlanificadorCortoPlazo(algoritmo string) {
 	for len(ColaReady) != 0 {
 		if algoritmo == "FIFO" {
 			MoverProcesoACola(ColaReady[0], &ColaExec)
-			//! ENVIAR PROCESO A CPU
-			ElegirCpuYMandarProceso(ColaExec[0])
+			if !ElegirCpuYMandarProceso(ColaExec[0]){
+				// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
+				MoverProcesoACola(ColaExec[0], &ColaReady)
+				return
+			}
 		}
 		if algoritmo == "SJF" {
 			//* Lógica para SJF sin desalojo
@@ -148,6 +163,20 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
 	}
 
+}
+
+func pcbMasChico() int {
+	//& Esta función es un ejemplo de cómo se podría implementar el algoritmo PMCP (Proceso Más Chiquito Primero)
+	//& que se basa en el tamaño del PCB para decidir cuál proceso mover a la cola Ready.
+
+	// Encontrar el PCB más chico
+	minIndex := 0
+	for i := 1; i < len(ColaNew); i++ {
+		if ColaNew[i].TamanioEnMemoria < ColaNew[minIndex].TamanioEnMemoria {
+			minIndex = i
+		}
+	}
+	return minIndex
 }
 
 func Prueba() {
