@@ -13,6 +13,7 @@ type ConfigMemoria struct {
 	SwapDelay      int    `json:"swap_delay"`
 	LogLevel       string `json:"log_level"`
 	DumpPath       string `json:"dump_path"`
+	SciptsPath     string `json:"scripts_path"`
 }
 
 var Config_Memoria *ConfigMemoria
