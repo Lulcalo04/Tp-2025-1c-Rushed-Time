@@ -57,35 +57,76 @@ func IniciarPlanificadores() {
 
 func PlanificadorLargoPlazo(algoritmo string) {
 	// Mientras hay
-	for hayEspacioEnMemoria && len(ColaNew) != 0 {
+	for hayEspacioEnMemoria && (len(ColaNew) != 0 || len(ColaSuspReady) != 0) {
 		if algoritmo == "FIFO" {
 			// Si memoria responde...
 			if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
 				Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
 				return
 			}
-			// Pido espacio en memoria para el primer proceso de la cola New
-			respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
-			// Si memoria responde que no hay espacio...
-			if !respuestaMemoria {
-				hayEspacioEnMemoria = false // Seteo la variable del for a false
-				return                      // Salgo del for
+
+			//! Estaria piola hacer una funcion que resuma todo esto, pero por ahora lo dejo asi
+			//Verifico si hay procesos en la cola SuspReady
+			if len(ColaSuspReady) != 0 {
+
+				// Pido espacio en memoria para el primer proceso de la cola SuspReady
+				respuestaMemoria := PedirEspacioAMemoria(ColaSuspReady[0])
+
+				// Si memoria responde que no hay espacio..
+				if !respuestaMemoria {
+					hayEspacioEnMemoria = false // Seteo la variable del for a false
+					return                      // Salgo del for
+				}
+
+				MoverProcesoACola(ColaSuspReady[0], &ColaReady)
+			} else { //Si no hay procesos en SuspReady, ya se que hay en New
+
+				// Pido espacio en memoria para el primer proceso de la cola New
+				respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
+
+				// Si memoria responde que no hay espacio...
+				if !respuestaMemoria {
+					hayEspacioEnMemoria = false // Seteo la variable del for a false
+					return                      // Salgo del for
+				}
+
+				MoverProcesoACola(ColaNew[0], &ColaReady)
 			}
-			MoverProcesoACola(ColaNew[0], &ColaReady)
+
 			PlanificadorCortoPlazo(Config_Kernel.ReadyIngressAlgorithm)
 		}
+
 		if algoritmo == "PMCP" {
 			// Si memoria responde...
 			if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
 				Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
 				return
 			}
-			respuestaMemoria := PedirEspacioAMemoria(ColaNew[pcbMasChico()])
-			if !respuestaMemoria {
-				hayEspacioEnMemoria = false // Seteo la variable del for a false
-				return                      // Salgo del for
+
+			//Verifico si hay procesos en la cola SuspReady
+			if len(ColaSuspReady) != 0 {
+				// Pido espacio en memoria para el primer proceso de la cola New
+				respuestaMemoria := PedirEspacioAMemoria(ColaSuspReady[pcbMasChico()])
+
+				// Si memoria responde que no hay espacio...
+				if !respuestaMemoria {
+					hayEspacioEnMemoria = false // Seteo la variable del for a false
+					return                      // Salgo del for
+				}
+
+				MoverProcesoACola(ColaSuspReady[pcbMasChico()], &ColaReady)
+			} else {
+				// Pido espacio en memoria para el primer proceso de la cola New
+				respuestaMemoria := PedirEspacioAMemoria(ColaNew[pcbMasChico()])
+
+				// Si memoria responde que no hay espacio...
+				if !respuestaMemoria {
+					hayEspacioEnMemoria = false // Seteo la variable del for a false
+					return                      // Salgo del for
+				}
+
+				MoverProcesoACola(ColaNew[pcbMasChico()], &ColaReady)
 			}
-			MoverProcesoACola(ColaNew[pcbMasChico()], &ColaReady)
 			PlanificadorCortoPlazo(Config_Kernel.ReadyIngressAlgorithm)
 		}
 	}
@@ -95,7 +136,7 @@ func PlanificadorCortoPlazo(algoritmo string) {
 	for len(ColaReady) != 0 {
 		if algoritmo == "FIFO" {
 			MoverProcesoACola(ColaReady[0], &ColaExec)
-			if !ElegirCpuYMandarProceso(ColaExec[0]){
+			if !ElegirCpuYMandarProceso(ColaExec[0]) {
 				// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
 				MoverProcesoACola(ColaExec[0], &ColaReady)
 				return
@@ -161,6 +202,38 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 
 	if proceso.Estado != procesoEstadoAnterior {
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
+	}
+
+}
+
+func MoverProcesoABlocked(pid int) {
+
+	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
+
+	MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
+
+	IniciarContadorBlocked(*pcbDelProceso, Config_Kernel.SuspensionTime)
+
+}
+
+func MoverProcesoDeBlockedA(pid int, colaDestino *[]globals.PCB) {
+
+	CancelarContadorBlocked(pid)
+
+	//Busco el PCB del proceso actualizado en la cola de blocked
+	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
+
+	// Si no se encuentra el PCB del proceso en la cola de blocked, xq el plani de mediano plazo lo movió a SuspBlocked
+	if pcbDelProceso == nil {
+		Logger.Debug("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
+
+		// Busco el PCB del proceso en la cola de SuspBlocked
+		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+		//Lo muevo a la cola destino
+		MoverProcesoACola(*pcbDelProceso, colaDestino)
+	} else {
+		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
+		MoverProcesoACola(*pcbDelProceso, colaDestino)
 	}
 
 }

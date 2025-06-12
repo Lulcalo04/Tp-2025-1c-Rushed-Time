@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"time"
 	"utils/client"
 	"utils/globals"
 )
@@ -51,6 +52,8 @@ var Config_Kernel *ConfigKernel
 var Logger *slog.Logger
 
 var ContadorPID int
+
+var canceladoresBlocked = make(map[int]chan struct{})
 
 // &-------------------------------------------Funciones de Kernel-------------------------------------------------------------
 
@@ -295,7 +298,7 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 		Logger.Debug("No hay CPU disponible para el proceso ", "proceso_pid", proceso.PID)
 		return false
 	}
-		return true
+	return true
 }
 
 func BuscarCPUporPID(pid int) *IdentificadorCPU {
@@ -305,4 +308,33 @@ func BuscarCPUporPID(pid int) *IdentificadorCPU {
 		}
 	}
 	return nil
+}
+
+func IniciarContadorBlocked(pcb globals.PCB, milisegundos int) {
+	cancel := make(chan struct{})
+	canceladoresBlocked[pcb.PID] = cancel
+
+	go func() {
+		timer := time.NewTimer(time.Duration(milisegundos) * time.Millisecond)
+		select {
+		case <-timer.C:
+			// Verifica que el proceso siga en Blocked
+			if BuscarProcesoEnCola(pcb.PID, &ColaBlocked) != nil {
+				MoverProcesoACola(pcb, &ColaSuspBlocked)
+				//! PEDIR A MEMORIA QUE HAGA EL SWAP 
+			}
+		case <-cancel:
+			timer.Stop()
+			// El proceso salio de Blocked antes de tiempo
+		}
+		delete(canceladoresBlocked, pcb.PID)
+	}()
+}
+
+// Llama a esto cuando el proceso salga de Blocked por otro motivo
+func CancelarContadorBlocked(pid int) {
+	if cancel, ok := canceladoresBlocked[pid]; ok {
+		close(cancel)
+		delete(canceladoresBlocked, pid)
+	}
 }

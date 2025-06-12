@@ -37,43 +37,33 @@ Caso contrario, se desbloquea normalmente pasando a READY.
 func SyscallDumpMemory(pid int) {
 	LogSyscall(pid, "DUMP_MEMORY")
 
-	//Busco el PCB en la lista de Exit
-	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
-
 	//Desalojo el proceso de la CPU
 	PeticionDesalojo(pid, "DUMP_MEMORY")
 
 	//Bloque el proceso
-	MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
+	MoverProcesoABlocked(pid)
 
 	//Pido el dump a memoria y espero la respuesta
 	respuestaDelDump := PedirDumpMemory(pid)
 
 	//Analizo la respuesta
 	if respuestaDelDump {
-		MoverProcesoACola(*pcbDelProceso, &ColaReady)
+		MoverProcesoDeBlockedA(pid, &ColaReady)
 	} else {
-		MoverProcesoACola(*pcbDelProceso, &ColaExit)
+		MoverProcesoDeBlockedA(pid, &ColaExit)
 	}
 }
 
 func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso int) {
 	LogSyscall(pid, "IO")
 
-	//Verificamos si el dispositivo existe
-	existeDispositivo := VerificarDispositivo(nombreDispositivo)
-
-	// Busco el PCB en la lista de Exec
-	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
-
-	if existeDispositivo {
+	if VerificarDispositivo(nombreDispositivo) {
 		//& SI EL DISPOSITIVO EXISTE, PERO ESTA EN USO, BLOQUEAR EL PROCESO EN LA COLA DEL DISPOSITIVO
-		instanciaDeIO := VerificarInstanciaDeIO(nombreDispositivo)
-		MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
-		if instanciaDeIO {
+		MoverProcesoABlocked(pid)
+		if VerificarInstanciaDeIO(nombreDispositivo) {
 			//Si hay instancias de IO disponibles, se bloquea el proceso por estar usando la IO
 			UsarDispositivoDeIO(nombreDispositivo, pid, milisegundosDeUso)
-			MoverProcesoACola(*pcbDelProceso, &ColaReady)
+			MoverProcesoDeBlockedA(pid, &ColaReady)
 		} else {
 			//Si no hay instancias de IO disponibles, se bloquea el proceso en la cola del dispositivo
 			BloquearProcesoPorIO(nombreDispositivo, pid) //* FUNCION A DESARROLLAR
@@ -81,6 +71,9 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 	} else {
 		//& NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
 		//! REALIZAR PEDIDO DE DESALOJO EN LA CPU
+
+		// Busco el PCB en la lista de Exec
+		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
 		MoverProcesoACola(*pcbDelProceso, &ColaExit)
 	}
 }
