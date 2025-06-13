@@ -15,6 +15,8 @@ type ConfigMemoria struct {
 	DumpPath       string `json:"dump_path"`
 }
 
+var MemoriaGlobal *Memoria
+
 var Config_Memoria *ConfigMemoria
 
 var Logger *slog.Logger

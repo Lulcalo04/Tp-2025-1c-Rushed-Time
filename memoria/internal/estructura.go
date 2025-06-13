@@ -21,6 +21,8 @@ func InicializarMemoria() {
 	}
 }
 
+//---------------- FUNCIONES DE MEMORIA ----------------
+
 func NuevaMemoria(memorySize, pageSize int) *Memoria {
 	// 1) Crear el slice de bytes de tamaño memorySize
 	datos := make([]byte, memorySize)
@@ -67,29 +69,68 @@ func (mp *Memoria) liberarFrame(frameID int) {
 	// (O opcionalmente: limpiar el contenido de data[frameID*frameSize : (frameID+1)*frameSize])
 }
 
-//  prototipo de funcion para leer y escribir en un frame dado.
-
-// dirección física = frameID*frameSize + offset
-/*func (mp *Memoria) LeerDesdeFrame(frameID, offset, length int) ([]byte, error) {
-
-	inicio := frameID*mp.pageSize + offset
-	fin := inicio + length
-	if inicio < 0 || fin > len(mp.datos) {
+func (mp *Memoria) LeerBytes(offset, length int) ([]byte, error) {
+	if offset < 0 || offset+length > len(mp.datos) {
 		return nil, fmt.Errorf("fuera de límites de memoria")
 	}
 	// Copiamos a un slice nuevo para no exponer el arreglo interno
 	copia := make([]byte, length)
-	copy(copia, mp.datos[inicio:fin])
+	copy(copia, mp.datos[offset:offset+length])
 	return copia, nil
+	//Devuelve un slice de bytes que contiene los datos leídos desde el offset especificado.
 }
 
-func (mp *Memoria) EscribirEnFrame(frameID, offset int, contenido []byte) error {
-	inicio := frameID*mp.pageSize + offset
-	fin := inicio + len(contenido)
-	if inicio < 0 || fin > len(mp.datos) {
+func (mp *Memoria) EscribirBytes(offset int, contenido []byte) error {
+	if offset < 0 || offset+len(contenido) > len(mp.datos) {
 		return fmt.Errorf("fuera de límites de memoria")
 	}
-	copy(mp.datos[inicio:fin], contenido)
+	copy(mp.datos[offset:offset+len(contenido)], contenido)
 	return nil
 }
-*/
+
+//------------------- TABLAS DE PAGINAS -------------------
+
+func NuevaTablaPags() *TablaPags {
+	// 1) Crear un slice de entradas con la longitud de EntriesPerTable
+	entradas := make([]EntradaTabla, Config_Memoria.EntriesPerPage)
+
+	// 2) Inicializar todas las entradas a nil (aún no asignadas)
+	for i := range entradas {
+		entradas[i] = nil
+	}
+
+	return &TablaPags{
+		Entradas: entradas,
+	}
+}
+
+func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame int, nivelActual int) {
+	E := Config_Memoria.EntriesPerPage
+	N := Config_Memoria.NumberOfLevels
+
+	//1. Calcular divisor
+	divisor := 1
+	for i := 0; i < N-nivelActual-1; i++ {
+		divisor *= E
+	}
+
+	//2. Calcular indice correspondiente en este nivel
+	indice := (numPagina / divisor) % E
+
+	//3. Estoy en el último nivel?
+	if nivelActual < N {
+		//No es el ultimo nivel, entonces debo insertar una subtabla
+		if tabla.Entradas[indice] == nil {
+			// Crear una nueva subtabla si no existe
+			tabla.Entradas[indice] = NuevaTablaPags()
+		}
+		// Llamar recursivamente para insertar en la subtabla
+		subTabla := tabla.Entradas[indice].(*TablaPags)
+
+		//Recusion: bajo un nivel
+		mp.insertarEnMultinivel(subTabla, numPagina, frame, nivelActual+1)
+	} else {
+		// Si es el último nivel, asignar el frame directamente
+		tabla.Entradas[indice] = FrameID(frame)
+	}
+}
