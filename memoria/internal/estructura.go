@@ -61,6 +61,7 @@ func (mp *Memoria) obtenerFrameLibre() (int, error) {
 
 // Funcion para liberar un frame
 func (mp *Memoria) liberarFrame(frameID int) {
+	
 	if frameID < 0 || frameID >= mp.totalFrames {
 		fmt.Printf("Error: frameID %d fuera de rango", frameID)
 		return
@@ -70,10 +71,11 @@ func (mp *Memoria) liberarFrame(frameID int) {
 }
 
 func (mp *Memoria) LeerBytes(offset, length int) ([]byte, error) {
+	// Verificamos que el offset y la longitud estén dentro de los límites del slice de datos
 	if offset < 0 || offset+length > len(mp.datos) {
 		return nil, fmt.Errorf("fuera de límites de memoria")
 	}
-	// Copiamos a un slice nuevo para no exponer el arreglo interno
+	// Copiamos a un slice nuevo para no modificar los datos originales
 	copia := make([]byte, length)
 	copy(copia, mp.datos[offset:offset+length])
 	return copia, nil
@@ -81,9 +83,11 @@ func (mp *Memoria) LeerBytes(offset, length int) ([]byte, error) {
 }
 
 func (mp *Memoria) EscribirBytes(offset int, contenido []byte) error {
+
 	if offset < 0 || offset+len(contenido) > len(mp.datos) {
 		return fmt.Errorf("fuera de límites de memoria")
 	}
+	// le agrego al slice de datos el contenido en la posición indicada por offset
 	copy(mp.datos[offset:offset+len(contenido)], contenido)
 	return nil
 }
@@ -96,29 +100,65 @@ func NuevaTablaPags() *TablaPags {
 
 	// 2) Inicializar todas las entradas a nil (aún no asignadas)
 	for i := range entradas {
+		// Asignamos nil a cada entrada
 		entradas[i] = nil
 	}
-
 	return &TablaPags{
+		// asignamos el slice de entradas
 		Entradas: entradas,
 	}
 }
 
 func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame int, nivelActual int) {
-	E := Config_Memoria.EntriesPerPage
-	N := Config_Memoria.NumberOfLevels
-
-	//1. Calcular divisor
+	entradas := Config_Memoria.EntriesPerPage
+	nivelMaximo := Config_Memoria.NumberOfLevels
+	// Calcular divisor para obtener el índice correspondiente en este nivel
 	divisor := 1
-	for i := 0; i < N-nivelActual-1; i++ {
-		divisor *= E
+	for i := 0; i < nivelMaximo-nivelActual-1; i++ {
+		divisor *= entradas
+	}
+	indice := (numPagina / divisor) % entradas
+	// Último nivel: asigno directamente el frame físico
+	if nivelActual == nivelMaximo-1 {
+		tabla.Entradas[indice] = FrameID(frame)
+		return
+	}
+	// Si la entrada no existe, crear subtabla
+	if tabla.Entradas[indice] == nil {
+		tabla.Entradas[indice] = NuevaTablaPags()
 	}
 
-	//2. Calcular indice correspondiente en este nivel
-	indice := (numPagina / divisor) % E
+	// Type assertion segura
+	subTabla, ok := tabla.Entradas[indice].(*TablaPags)
+	if !ok {
+		Logger.Info(fmt.Sprintf("Error: entrada no es una subtabla en nivel %d", nivelActual))
+		return
+	}
+	// Llamada recursiva
+	mp.insertarEnMultinivel(subTabla, numPagina, frame, nivelActual+1)
+}
 
-	//3. Estoy en el último nivel?
-	if nivelActual < N {
+
+
+/*
+
+Primer version 
+
+func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame int, nivelActual int) {
+	entradas := Config_Memoria.EntriesPerPage
+	nivelMaximo := Config_Memoria.NumberOfLevels
+
+	//Calcular divisor
+	divisor := 1
+	for i := 0; i < nivelMaximo-nivelActual-1; i++ {
+		divisor *= entradas
+	}
+
+	//Calcular indice correspondiente en este nivel
+	indice := (numPagina / divisor) % entradas
+
+	// Estoy en el último nivel?
+	if nivelActual < nivelMaximo {
 		//No es el ultimo nivel, entonces debo insertar una subtabla
 		if tabla.Entradas[indice] == nil {
 			// Crear una nueva subtabla si no existe
@@ -126,7 +166,6 @@ func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame i
 		}
 		// Llamar recursivamente para insertar en la subtabla
 		subTabla := tabla.Entradas[indice].(*TablaPags)
-
 		//Recusion: bajo un nivel
 		mp.insertarEnMultinivel(subTabla, numPagina, frame, nivelActual+1)
 	} else {
@@ -134,3 +173,4 @@ func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame i
 		tabla.Entradas[indice] = FrameID(frame)
 	}
 }
+	*/
