@@ -59,12 +59,18 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 
 	if VerificarDispositivo(nombreDispositivo) {
 		//& SI EL DISPOSITIVO EXISTE, PERO ESTA EN USO, BLOQUEAR EL PROCESO EN LA COLA DEL DISPOSITIVO
+
+		LogMotivoDeBloqueo(pid, nombreDispositivo)
 		MoverProcesoABlocked(pid)
+
 		if VerificarInstanciaDeIO(nombreDispositivo) {
+
 			//Si hay instancias de IO disponibles, se bloquea el proceso por estar usando la IO
 			UsarDispositivoDeIO(nombreDispositivo, pid, milisegundosDeUso)
 			MoverProcesoDeBlockedAReady(pid)
+
 		} else {
+			
 			//Si no hay instancias de IO disponibles, se bloquea el proceso en la cola del dispositivo
 			BloquearProcesoPorIO(nombreDispositivo, pid, milisegundosDeUso) //* FUNCION A DESARROLLAR
 		}

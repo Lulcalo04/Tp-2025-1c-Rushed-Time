@@ -221,6 +221,12 @@ type CPUGotoAMemoriaResponse struct {
 	Respuesta bool `json:"respuesta"`
 }
 
+type IOtoKernelDesconexionRequest struct {
+	NombreDispositivo string `json:"nombre_dispositivo"`
+	IpInstancia	 string `json:"ip_instancia"`
+	PuertoInstancia int    `json:"puerto_instancia"`
+}
+
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
 
 func IniciarConfiguracion(filePath string, config interface{}) {

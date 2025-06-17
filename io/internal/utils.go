@@ -7,8 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 	"utils/globals"
+	
 )
 
 type ConfigIO struct {
@@ -18,6 +21,7 @@ type ConfigIO struct {
 	IPIo       string `json:"ip_io"`
 	LogLevel   string `json:"log_level"`
 }
+
 
 var Config_IO *ConfigIO
 
@@ -35,7 +39,7 @@ func InicializarIO() string {
 	return ioName
 }
 
-//--------------------------------Server de conexion IO-Kernel-------------------------------------//
+// & -------------------------------- Server de IO -------------------------------------//
 
 func IniciarServerIO(puerto int) {
 
@@ -55,7 +59,7 @@ func IniciarServerIO(puerto int) {
 	}
 }
 
-//-------------------------------------------------------------------------------------------------------------//
+// & ----------------------------------------------- Handlers ------------------------------------------------------------------//
 
 func RecibirSolicitudIO(w http.ResponseWriter, r *http.Request) {
 
@@ -81,10 +85,10 @@ func RecibirSolicitudIO(w http.ResponseWriter, r *http.Request) {
 
 	LogFinalizacionIO(paqueteKernel.PID)
 
-	notificarFinalizacionIO(paqueteKernel.PID, paqueteKernel.NombreDispositivo)
+	NotificarFinalizacionIO(paqueteKernel.PID, paqueteKernel.NombreDispositivo)
 }
 
-// & -----------------------------------------------Peticiones------------------------------------------------------------------//
+// & ----------------------------------------------- Peticiones ------------------------------------------------------------------//
 
 func HandshakeKernel(ipKernel string, puertoKernel int, nombreIO string) {
 
@@ -110,7 +114,7 @@ func HandshakeKernel(ipKernel string, puertoKernel int, nombreIO string) {
 
 }
 
-func notificarFinalizacionIO(pid int, nombreDispositivo string) {
+func NotificarFinalizacionIO(pid int, nombreDispositivo string) {
 
 	respuestaIO := globals.IOResponse{
 		NombreDispositivo: nombreDispositivo,
@@ -123,7 +127,7 @@ func notificarFinalizacionIO(pid int, nombreDispositivo string) {
 		Logger.Debug("Error codificando mensajes", "error", err.Error())
 	}
 
-	url := fmt.Sprintf("http://%s:%d/fin/io", Config_IO.IPKernel, Config_IO.PortKernel)
+	url := fmt.Sprintf("http://%s:%d/io/fin", Config_IO.IPKernel, Config_IO.PortKernel)
 
 	Logger.Debug("Enviando respuesta al kernel", "nombre_dispositivo", respuestaIO.NombreDispositivo, "pid", respuestaIO.PID, "respuesta", respuestaIO.Respuesta)
 
@@ -133,4 +137,42 @@ func notificarFinalizacionIO(pid int, nombreDispositivo string) {
 	}
 
 	Logger.Debug("Respuesta del servidor", "status", resp.Status)
+}
+
+func NotificarDesconexionDispositivo(nombreDispositivo string, ipInstancia string, puertoInstancia int){
+	
+	RequestIO := globals.IOtoKernelDesconexionRequest{
+		NombreDispositivo: nombreDispositivo,
+		IpInstancia: ipInstancia,
+		PuertoInstancia: puertoInstancia,
+	}
+
+	body, err := json.Marshal(RequestIO)
+	if err != nil {
+		Logger.Debug("Error codificando mensajes", "error", err.Error())
+	}
+
+	url := fmt.Sprintf("http://%s:%d/io/desconexion", Config_IO.IPKernel, Config_IO.PortKernel)
+
+	Logger.Debug("Enviando Request a kernel")
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		Logger.Debug("Error enviando mensajes", "ip", Config_IO.IPKernel, "puerto", Config_IO.PortKernel)
+	}
+
+	Logger.Debug("Request del servidor", "status", resp.Status)
+}
+
+func EscucharSeñalDesconexion(nombreDispositivo string) {
+	canalDeEscucha := make(chan os.Signal, 1) // Creamos un canal para escuchar señales
+	signal.Notify(canalDeEscucha, os.Interrupt, syscall.SIGTERM) // Escucha señales de interrupción
+	<-canalDeEscucha // Espera a recibir una señal de interrupción (Ctrl+C o SIGTERM)
+
+	// Antes de salir, notificamos al kernel de la desconexión
+	
+	NotificarDesconexionDispositivo(nombreDispositivo, Config_IO.IPIo, Config_IO.PortIO)
+
+	Logger.Debug("Recibido Ctrl+C, desconectando del kernel...")
+	os.Exit(0)
 }

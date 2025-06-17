@@ -186,8 +186,8 @@ func RegistrarInstanciaIO(nombre string, puerto int, ip string) {
 			OcuparInstanciaDeIO(nombre, instancia, disp.ColaEsperaProcesos[0].Proceso.PID)
 			UsarDispositivoDeIO(nombre, disp.ColaEsperaProcesos[0].Proceso.PID, disp.ColaEsperaProcesos[0].Tiempo)
 		}
-	
-	//Si no existe el dispositivo IO, lo creamos
+
+		//Si no existe el dispositivo IO, lo creamos
 	} else {
 		ListaDispositivosIO[nombre] = &DispositivoIO{
 			ColaEsperaProcesos:    []ProcesoEsperando{},
@@ -196,6 +196,49 @@ func RegistrarInstanciaIO(nombre string, puerto int, ip string) {
 	}
 
 	Logger.Debug("Dispositivo nuevo", "nombre", nombre, "instancias", len(ListaDispositivosIO[nombre].InstanciasDispositivo))
+}
+
+func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puertoInstancia int) {
+	// Recorro la lista de instancias del dispositivo IO en búsqueda de la instancia a eliminar
+	for pos, instanciaBuscada := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
+
+		// Busco que coincida el IP y el puerto de la instancia
+		if instanciaBuscada.IpIO == ipInstancia && instanciaBuscada.PortIO == puertoInstancia {
+
+			// Mandamos al proceso que estaba usando la instancia a Exit
+			MoverProcesoDeBlockedAExit(instanciaBuscada.PID)
+			Logger.Debug("Desconexion de IO, se envia proceso a Exit", "pid", instanciaBuscada.PID)
+
+			// Borramos la instancia de IO de la lista de instancias del dispositivo IO
+			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo = append(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[:pos], ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[pos+1:]...)
+
+			// Si la instancia desconectada era la única que quedaba...
+			if len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo) == 0 {
+
+				// Y además hay procesos en espera...
+				if len(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos) != 0 {
+
+					// Recorro la lista de procesos bloqueados por la IO y los mando a Exit
+					for _, procesoEnEspera := range ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos {
+						MoverProcesoDeBlockedAExit(procesoEnEspera.Proceso.PID)
+						Logger.Debug("Desconexion de IO, se envia proceso a Exit", "pid", procesoEnEspera.Proceso.PID)
+					}
+				}
+
+				// Borramos del mapa de dispositivos IO el dispositivo que ya no tiene instancias
+				delete(ListaDispositivosIO, nombreDispositivo)
+
+			} else {
+				Logger.Debug("Instancias disponibles", "nombre", nombreDispositivo, "instancias", len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
+			}
+
+			Logger.Debug("Instancia de IO desconectada", "nombre", nombreDispositivo, "ip", ipInstancia, "puerto", puertoInstancia)
+
+		} else {
+			Logger.Debug("Instancia de IO no encontrada", "nombre", nombreDispositivo, "ip", ipInstancia, "puerto", puertoInstancia)
+		}
+	}
+
 }
 
 func VerificarDispositivo(ioName string) bool {
@@ -311,6 +354,8 @@ func ProcesarFinIO(pid int, nombreDispositivo string) {
 		OcuparInstanciaDeIO(nombreDispositivo, *instanciaDeIO, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Proceso.PID)
 		UsarDispositivoDeIO(nombreDispositivo, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Proceso.PID, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Tiempo)
 	}
+
+	LogFinDeIO(pid)
 
 }
 

@@ -32,8 +32,9 @@ func IniciarServerKernel(puerto int) {
 	mux.HandleFunc("/syscall/dump_memory", DumpMemoryHandler)
 	mux.HandleFunc("/syscall/io", IoHandler)
 
-	//^ Fin de IO
-	mux.HandleFunc("/fin/io", FinIOHandler)
+	//^ Handlers para IO
+	mux.HandleFunc("/io/fin", FinIOHandler)
+	mux.HandleFunc("/io/desconexion", DesconexionIOHandler)
 
 	//Escucha el puerto y espera conexiones
 	err := http.ListenAndServe(stringPuerto, mux)
@@ -160,12 +161,12 @@ func IoHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
-	
+
 	SyscallEntradaSalida(PeticionSyscall.PID, PeticionSyscall.NombreDispositivo, PeticionSyscall.Tiempo)
 }
 
 // & -------------------------------------------Handlers para IO-------------------------------------------------------------
-// * Endpoint fin de IO = /fin/io
+// * Endpoint fin de IO = /io/fin
 func FinIOHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -190,5 +191,22 @@ func FinIOHandler(w http.ResponseWriter, r *http.Request) {
 		"respuesta", respuestaIO.Respuesta)
 }
 
+// * Endpoint de desconexión de IO = /io/desconexion
+func DesconexionIOHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 
-//! HACER FUNC DE DISPOSITIVO DESCONECTADO 
+	// Decodificar el body
+	var pedidoIO globals.IOtoKernelDesconexionRequest
+	if err := json.NewDecoder(r.Body).Decode(&pedidoIO); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
+		return
+	}
+
+	Logger.Debug("Desconexion de IO recibida",
+		"nombre_dispositivo", pedidoIO.NombreDispositivo,
+		"ip_instancia", pedidoIO.IpInstancia,
+		"puerto_instancia", pedidoIO.PuertoInstancia)
+
+	// Procesar la desconexión de IO
+	DesconectarInstanciaIO(pedidoIO.NombreDispositivo, pedidoIO.IpInstancia, pedidoIO.PuertoInstancia)
+}
