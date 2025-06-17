@@ -177,18 +177,10 @@ func EnviarProcesoAIO(instanciaDeIO InstanciaIO, pid int, milisegundosDeUso int)
 		return
 	}
 
-	// Decodifico la respuesta JSON del server
-	var respuestaIO globals.IOResponse
-	if err := json.NewDecoder(resp.Body).Decode(&respuestaIO); err != nil {
-		Logger.Debug("Error decodificando respuesta JSON", "error", err)
-		return
-	}
-
-	if respuestaIO.Respuesta {
-		Logger.Debug("IO Exitoso", "PID", pid)
-	} else {
-		Logger.Debug("Error en IO", "PID", pid)
-	}
+	Logger.Debug("Petición de IO enviada",
+		"nombre_dispositivo", instanciaDeIO.NombreIO,
+		"pid", pid,
+		"tiempo", milisegundosDeUso)
 }
 
 func EnviarProcesoACPU(cpuIp string, cpuPuerto int, procesoPID int, procesoPC int) {

@@ -33,7 +33,12 @@ type IdentificadorCPU struct {
 
 type DispositivoIO struct {
 	InstanciasDispositivo []InstanciaIO
-	ColaEsperaProcesos    []globals.PCB
+	ColaEsperaProcesos    []ProcesoEsperando
+}
+
+type ProcesoEsperando struct {
+	Proceso globals.PCB
+	Tiempo  int
 }
 
 type InstanciaIO struct {
@@ -41,6 +46,7 @@ type InstanciaIO struct {
 	IpIO     string
 	PortIO   int
 	Estado   string
+	PID      int // PID del proceso que está usando la instancia, -1 si está libre
 }
 
 var ListaDispositivosIO map[string]*DispositivoIO
@@ -169,16 +175,26 @@ func AnalizarDesalojo(pid int, pc int, motivoDesalojo string) {
 // &-------------------------------------------Funciones de Administración de IO-------------------------------------------------------------
 
 func RegistrarInstanciaIO(nombre string, puerto int, ip string) {
-	instancia := InstanciaIO{NombreIO: nombre, IpIO: ip, PortIO: puerto, Estado: "Libre"}
+	instancia := InstanciaIO{NombreIO: nombre, IpIO: ip, PortIO: puerto, Estado: "Libre", PID: -1}
 
+	// Si ya existe el dispositivo IO, agregamos la instancia
 	if disp, ok := ListaDispositivosIO[nombre]; ok {
 		disp.InstanciasDispositivo = append(disp.InstanciasDispositivo, instancia)
+
+		//Al tener una nueva instancia libre, si hay un proceso en espera, la ocupamos
+		if len(disp.ColaEsperaProcesos) != 0 {
+			OcuparInstanciaDeIO(nombre, instancia, disp.ColaEsperaProcesos[0].Proceso.PID)
+			UsarDispositivoDeIO(nombre, disp.ColaEsperaProcesos[0].Proceso.PID, disp.ColaEsperaProcesos[0].Tiempo)
+		}
+	
+	//Si no existe el dispositivo IO, lo creamos
 	} else {
 		ListaDispositivosIO[nombre] = &DispositivoIO{
-			ColaEsperaProcesos:    []globals.PCB{},
+			ColaEsperaProcesos:    []ProcesoEsperando{},
 			InstanciasDispositivo: []InstanciaIO{instancia},
 		}
 	}
+
 	Logger.Debug("Dispositivo nuevo", "nombre", nombre, "instancias", len(ListaDispositivosIO[nombre].InstanciasDispositivo))
 }
 
@@ -201,22 +217,48 @@ func VerificarInstanciaDeIO(nombreDispositivo string) bool {
 }
 
 func UsarDispositivoDeIO(nombreDispositivo string, pid int, milisegundosDeUso int) {
-	//Buscamos el PCB en la cola de blocked
-	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
-	//Lo agregamos a la cola de espera del dispositivo
-	ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos = append(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos, *pcbDelProceso)
+	// Buscamos una instancia de IO libre para el proceso
+	instanciaDeIOLibre, estaLibre := BuscarPrimerInstanciaLibre(nombreDispositivo)
 
-	//Ejecuto el primer proceso de la cola de espera (en bucle)
-	for len(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos) != 0 {
-		instanciaDeIO, hayInstancias := BuscarPrimerInstanciaLibre(nombreDispositivo)
-		if !hayInstancias {
-			BloquearProcesoPorIO(nombreDispositivo, pid)
-			return
-		}
-		EnviarProcesoAIO(instanciaDeIO, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].PID, milisegundosDeUso)
+	if !estaLibre {
+		Logger.Debug("No hay instancias libres del dispositivo IO", "nombre", nombreDispositivo)
+		BloquearProcesoPorIO(nombreDispositivo, pid, milisegundosDeUso)
+		return
 	}
 
+	// Ocupamos la instancia de IO libre con el PID del proceso
+	OcuparInstanciaDeIO(nombreDispositivo, instanciaDeIOLibre, pid)
+	// Enviamos el proceso a la instancia de IO
+	EnviarProcesoAIO(instanciaDeIOLibre, pid, milisegundosDeUso)
+
 	Logger.Debug("Instancias de IO", "nombre", nombreDispositivo, "instancias", len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
+}
+
+func OcuparInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO, pid int) {
+
+	for i, instanciaIO := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
+
+		if instanciaIO == instancia {
+			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].Estado = "Ocupada"
+			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].PID = pid
+			Logger.Debug("Instancia de IO ocupada", "nombre", nombreDispositivo, "instancia", instancia.NombreIO, "pid", pid)
+			return
+		}
+	}
+
+	Logger.Debug("Error al ocupar la instancia de IO", "nombre", nombreDispositivo, "instancia", instancia.NombreIO, "pid", pid)
+}
+
+func LiberarInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO) {
+	for i, instanciaIO := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
+		if instanciaIO == instancia {
+			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].Estado = "Libre"
+			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].PID = -1
+			Logger.Debug("Instancia de IO liberada", "nombre", nombreDispositivo, "instancia", instancia.NombreIO)
+			return
+		}
+	}
+	Logger.Debug("Error al liberar la instancia de IO", "nombre", nombreDispositivo, "instancia", instancia.NombreIO)
 }
 
 func BuscarPrimerInstanciaLibre(nombreDispositivo string) (InstanciaIO, bool) {
@@ -229,11 +271,46 @@ func BuscarPrimerInstanciaLibre(nombreDispositivo string) (InstanciaIO, bool) {
 	return InstanciaIO{}, false
 }
 
-func BloquearProcesoPorIO(nombreDispositivo string, pid int) {
-	//Buscamos el PCB en la cola de blocked
+func BloquearProcesoPorIO(nombreDispositivo string, pid int, tiempoEspera int) {
+
+	//Buscamos el PCB del proceso en la cola de blocked
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
+
+	ProcesoEsperando := ProcesoEsperando{
+		Proceso: *pcbDelProceso,
+		Tiempo:  tiempoEspera,
+	}
 	//Agregar el proceso a la cola de espera del dispositivo
-	ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos = append(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos, *pcbDelProceso)
+	ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos = append(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos, ProcesoEsperando)
+
+}
+
+func BuscarInstanciaDeIOporPID(nombreDispositivo string, pid int) *InstanciaIO {
+	for _, instancia := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
+		if instancia.PID == pid {
+			return &instancia
+		}
+	}
+	Logger.Debug("No se encontró la instancia de IO para el PID", "nombre", nombreDispositivo, "pid", pid)
+	return nil
+}
+
+func ProcesarFinIO(pid int, nombreDispositivo string) {
+
+	// Buscamos en Blocked / SuspBlocked el proceso que terminó su IO y lo mandamos a Ready
+	MoverProcesoDeBlockedAReady(pid)
+
+	// Buscamos la instancia de IO que estaba ocupada por el PID
+	instanciaDeIO := BuscarInstanciaDeIOporPID(nombreDispositivo, pid)
+
+	// Liberamos la instancia de IO que estaba ocupada por el PID
+	LiberarInstanciaDeIO(nombreDispositivo, *instanciaDeIO)
+
+	if len(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos) != 0 {
+		// Si hay procesos esperando en la cola de espera del dispositivo, ocupamos la instancia recientemente liberada
+		OcuparInstanciaDeIO(nombreDispositivo, *instanciaDeIO, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Proceso.PID)
+		UsarDispositivoDeIO(nombreDispositivo, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Proceso.PID, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Tiempo)
+	}
 
 }
 
@@ -321,7 +398,7 @@ func IniciarContadorBlocked(pcb globals.PCB, milisegundos int) {
 			// Verifica que el proceso siga en Blocked
 			if BuscarProcesoEnCola(pcb.PID, &ColaBlocked) != nil {
 				MoverProcesoACola(pcb, &ColaSuspBlocked)
-				//! PEDIR A MEMORIA QUE HAGA EL SWAP 
+				//! PEDIR A MEMORIA QUE HAGA EL SWAP
 			}
 		case <-cancel:
 			timer.Stop()

@@ -216,7 +216,7 @@ func MoverProcesoABlocked(pid int) {
 
 }
 
-func MoverProcesoDeBlockedA(pid int, colaDestino *[]globals.PCB) {
+func MoverProcesoDeBlockedAExit(pid int) {
 
 	CancelarContadorBlocked(pid)
 
@@ -229,11 +229,39 @@ func MoverProcesoDeBlockedA(pid int, colaDestino *[]globals.PCB) {
 
 		// Busco el PCB del proceso en la cola de SuspBlocked
 		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+
+		//! BORRAR EL PROCESO DE SWAP Y LIBERAR LA MEMORIA
+
 		//Lo muevo a la cola destino
-		MoverProcesoACola(*pcbDelProceso, colaDestino)
+		MoverProcesoACola(*pcbDelProceso, &ColaExit)
 	} else {
 		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
-		MoverProcesoACola(*pcbDelProceso, colaDestino)
+		MoverProcesoACola(*pcbDelProceso, &ColaExit)
+	}
+
+}
+
+func MoverProcesoDeBlockedAReady(pid int) {
+
+	CancelarContadorBlocked(pid)
+
+	//Busco el PCB del proceso actualizado en la cola de blocked
+	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
+
+	// Si no se encuentra el PCB del proceso en la cola de blocked, xq el plani de mediano plazo lo movió a SuspBlocked
+	if pcbDelProceso == nil {
+		Logger.Debug("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
+
+		// Busco el PCB del proceso en la cola de SuspBlocked
+		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+
+		//! SACAR EL PROCESO DE SWAP
+
+		//Lo muevo a la cola destino
+		MoverProcesoACola(*pcbDelProceso, &ColaSuspReady)
+	} else {
+		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
+		MoverProcesoACola(*pcbDelProceso, &ColaReady)
 	}
 
 }

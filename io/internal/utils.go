@@ -46,7 +46,7 @@ func IniciarServerIO(puerto int) {
 	mux := http.NewServeMux()
 
 	//Declaro los handlers para el server
-	mux.HandleFunc("/io/request", RecibirIOpaquete)
+	mux.HandleFunc("/io/request", RecibirSolicitudIO)
 
 	//Escucha el puerto y espera conexiones
 	err := http.ListenAndServe(stringPuerto, mux)
@@ -57,7 +57,7 @@ func IniciarServerIO(puerto int) {
 
 //-------------------------------------------------------------------------------------------------------------//
 
-func RecibirIOpaquete(w http.ResponseWriter, r *http.Request) {
+func RecibirSolicitudIO(w http.ResponseWriter, r *http.Request) {
 
 	// Verificar que el metodo sea POST ya que es el unico valido que nos puede llegar
 	if r.Method != http.MethodPost {
@@ -81,18 +81,10 @@ func RecibirIOpaquete(w http.ResponseWriter, r *http.Request) {
 
 	LogFinalizacionIO(paqueteKernel.PID)
 
-	// Envio la respuesta al cliente, en este caso el kernel diciendole que termino el IO
-	w.Header().Set("Content-Type", "application/json")
-	respuestaBody := globals.IOResponse{
-		NombreDispositivo: paqueteKernel.NombreDispositivo,
-		PID:               paqueteKernel.PID,
-		Respuesta:         true,
-	}
-	json.NewEncoder(w).Encode(respuestaBody)
-	Logger.Debug("Enviando respuesta al kernel", "nombre_dispositivo", paqueteKernel.NombreDispositivo, "pid", paqueteKernel.PID, "respuesta", respuestaBody.Respuesta)
+	notificarFinalizacionIO(paqueteKernel.PID, paqueteKernel.NombreDispositivo)
 }
 
-//------------------------------------------------------------------------------------------------------------------//
+// & -----------------------------------------------Peticiones------------------------------------------------------------------//
 
 func HandshakeKernel(ipKernel string, puertoKernel int, nombreIO string) {
 
@@ -110,7 +102,6 @@ func HandshakeKernel(ipKernel string, puertoKernel int, nombreIO string) {
 
 	url := fmt.Sprintf("http://%s:%d/handshake/io", ipKernel, puertoKernel)
 
-	//Modificamos la url para que sea /handshake/io
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		Logger.Debug("Error enviando mensajes", "ip", ipKernel, "puerto", puertoKernel)
@@ -119,4 +110,27 @@ func HandshakeKernel(ipKernel string, puertoKernel int, nombreIO string) {
 
 }
 
-//-----------------------------------------------------------------------------------------------------------------//
+func notificarFinalizacionIO(pid int, nombreDispositivo string) {
+
+	respuestaIO := globals.IOResponse{
+		NombreDispositivo: nombreDispositivo,
+		PID:               pid,
+		Respuesta:         true,
+	}
+
+	body, err := json.Marshal(respuestaIO)
+	if err != nil {
+		Logger.Debug("Error codificando mensajes", "error", err.Error())
+	}
+
+	url := fmt.Sprintf("http://%s:%d/fin/io", Config_IO.IPKernel, Config_IO.PortKernel)
+
+	Logger.Debug("Enviando respuesta al kernel", "nombre_dispositivo", respuestaIO.NombreDispositivo, "pid", respuestaIO.PID, "respuesta", respuestaIO.Respuesta)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		Logger.Debug("Error enviando mensajes", "ip", Config_IO.IPKernel, "puerto", Config_IO.PortKernel)
+	}
+
+	Logger.Debug("Respuesta del servidor", "status", resp.Status)
+}

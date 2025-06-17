@@ -48,9 +48,9 @@ func SyscallDumpMemory(pid int) {
 
 	//Analizo la respuesta
 	if respuestaDelDump {
-		MoverProcesoDeBlockedA(pid, &ColaReady)
+		MoverProcesoDeBlockedAReady(pid)
 	} else {
-		MoverProcesoDeBlockedA(pid, &ColaExit)
+		MoverProcesoDeBlockedAExit(pid)
 	}
 }
 
@@ -63,10 +63,10 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 		if VerificarInstanciaDeIO(nombreDispositivo) {
 			//Si hay instancias de IO disponibles, se bloquea el proceso por estar usando la IO
 			UsarDispositivoDeIO(nombreDispositivo, pid, milisegundosDeUso)
-			MoverProcesoDeBlockedA(pid, &ColaReady)
+			MoverProcesoDeBlockedAReady(pid)
 		} else {
 			//Si no hay instancias de IO disponibles, se bloquea el proceso en la cola del dispositivo
-			BloquearProcesoPorIO(nombreDispositivo, pid) //* FUNCION A DESARROLLAR
+			BloquearProcesoPorIO(nombreDispositivo, pid, milisegundosDeUso) //* FUNCION A DESARROLLAR
 		}
 	} else {
 		//& NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
@@ -74,6 +74,7 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 
 		// Busco el PCB en la lista de Exec
 		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
+		// Mando el proceso a Exit
 		MoverProcesoACola(*pcbDelProceso, &ColaExit)
 	}
 }

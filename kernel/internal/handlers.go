@@ -17,15 +17,23 @@ func IniciarServerKernel(puerto int) {
 	//Declaro el server
 	mux := http.NewServeMux()
 
-	//Declaro los handlers para el server
+	//^ Handshakes
 	mux.HandleFunc("/handshake", HandshakeHandler)
 	mux.HandleFunc("/handshake/io", IoHandshakeHandler)
 	mux.HandleFunc("/handshake/cpu", CPUHandshakeHandler)
+
+	//^ Ping
+	//* Este endpoint es utilizado por el cliente para verificar que el kernel está activo
 	mux.HandleFunc("/ping", PingHandler)
+
+	//^ Syscalls
 	mux.HandleFunc("/syscall/init_proc", InitProcHandler)
 	mux.HandleFunc("/syscall/exit", ExitHandler)
 	mux.HandleFunc("/syscall/dump_memory", DumpMemoryHandler)
 	mux.HandleFunc("/syscall/io", IoHandler)
+
+	//^ Fin de IO
+	mux.HandleFunc("/fin/io", FinIOHandler)
 
 	//Escucha el puerto y espera conexiones
 	err := http.ListenAndServe(stringPuerto, mux)
@@ -67,7 +75,6 @@ func IoHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // * Endpoint de handshake CPU = /handshake/CPU
-
 func CPUHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
 	//!Falta validar en el cliente si la es un JSON o no
@@ -143,7 +150,7 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 	SyscallDumpMemory(PeticionSyscall.PID)
 }
 
-// * Endpoint de io = /syscall/io
+// * Endpoint de IO = /syscall/io
 func IoHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
@@ -153,5 +160,35 @@ func IoHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
+	
 	SyscallEntradaSalida(PeticionSyscall.PID, PeticionSyscall.NombreDispositivo, PeticionSyscall.Tiempo)
 }
+
+// & -------------------------------------------Handlers para IO-------------------------------------------------------------
+// * Endpoint fin de IO = /fin/io
+func FinIOHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Decodificar el body
+	var respuestaIO globals.IOResponse
+	if err := json.NewDecoder(r.Body).Decode(&respuestaIO); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
+		return
+	}
+
+	Logger.Debug("Finalización de IO recibida",
+		"nombre_dispositivo", respuestaIO.NombreDispositivo,
+		"pid", respuestaIO.PID,
+		"respuesta", respuestaIO.Respuesta,
+	)
+
+	ProcesarFinIO(respuestaIO.PID, respuestaIO.NombreDispositivo)
+
+	Logger.Debug("Fin de IO procesado",
+		"nombre_dispositivo", respuestaIO.NombreDispositivo,
+		"pid", respuestaIO.PID,
+		"respuesta", respuestaIO.Respuesta)
+}
+
+
+//! HACER FUNC DE DISPOSITIVO DESCONECTADO 
