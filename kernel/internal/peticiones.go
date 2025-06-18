@@ -253,7 +253,4 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 	// Verifica si se desaloja por: Planificador (SJF CD), IO, o por fin de proceso
 	// Dependiendo el motivo, se enviará el proceso a la cola correspondiente
 	AnalizarDesalojo(respuestaDesalojo.PID, respuestaDesalojo.PC, motivoDesalojo)
-
-	// Se replanifica para enviarle un proceso a CPU
-	PlanificadorCortoPlazo(Config_Kernel.SchedulerAlgorithm)
 }

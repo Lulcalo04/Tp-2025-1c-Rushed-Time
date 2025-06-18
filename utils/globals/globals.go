@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"time"
 )
 
 // &-------------------------------------------Tipos de datos para el manejo de los estados de los procesos-------------------------------------------
@@ -20,14 +21,22 @@ const (
 	Exit        Estado = "EXIT"
 )
 
+type EstructuraRafaga struct{
+	TiempoDeRafaga   float64
+	YaCalculado 	     bool
+}
+
 // &-------------------------------------------Structs de PCB para los procesos-------------------------------------------
 type PCB struct {
-	PID               int            `json:"pid"`
-	PC                int            `json:"pc"`
-	Estado            Estado         `json:"estado"`
-	MetricasDeEstados map[Estado]int `json:"metricas_de_estados"`
-	MetricasDeTiempos map[Estado]int `json:"metricas_de_tiempos"` //en milisegundos, con una libreria especifica
-	TamanioEnMemoria  int            `json:"tamanio_en_memoria"`  //Por ahora lo tomamos como entero, pero puede variar
+	PID                  int                      `json:"pid"`                     // Identificador único del proceso
+	PC                   int                      `json:"pc"`                      // Contador de programa, indica la posición de la instrucción a ejecutar
+	Estado               Estado                   `json:"estado"`                  // Estado actual del proceso
+	InicioEstadoActual   time.Time                `json:"inicio_estado_actual"`    // Marca el tiempo en que el proceso entra al estado actual
+	MetricasDeEstados    map[Estado]int           `json:"metricas_de_estados"`     // Contador de veces que el proceso estuvo en cada estado
+	MetricasDeTiempos    map[Estado]time.Duration `json:"metricas_de_tiempos"`     // Contador de tiempo que el proceso estuvo en cada estado
+	TamanioEnMemoria     int                      `json:"tamanio_en_memoria"`      // Tamaño del proceso en memoria, en bytes
+	EstimacionDeRafaga   EstructuraRafaga         `json:"estimacion_de_rafaga"`    // Estimación de la duración de la próxima ráfaga de CPU del proceso
+	TiempoDeUltimaRafaga time.Duration            `json:"tiempo_de_ultima_rafaga"` // Marca el tiempo que duró su última ráfaga de CPU
 }
 
 // &-------------------------------------------Structs de handlers (Request y Response)-------------------------------------------
@@ -223,8 +232,8 @@ type CPUGotoAMemoriaResponse struct {
 
 type IOtoKernelDesconexionRequest struct {
 	NombreDispositivo string `json:"nombre_dispositivo"`
-	IpInstancia	 string `json:"ip_instancia"`
-	PuertoInstancia int    `json:"puerto_instancia"`
+	IpInstancia       string `json:"ip_instancia"`
+	PuertoInstancia   int    `json:"puerto_instancia"`
 }
 
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------

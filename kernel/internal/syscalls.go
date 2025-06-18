@@ -20,12 +20,8 @@ siguiendo lo descrito anteriormente para Finalización de procesos. */
 func SyscallExit(pid int) {
 	LogSyscall(pid, "EXIT")
 
-	//Busco el PCB en la lista de Exit
-	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExit)
 	//Desalojo el proceso de la CPU
 	PeticionDesalojo(pid, "EXIT")
-	//Termino el proceso, avisandole memoria que libere el espacio y buscando
-	TerminarProceso(*pcbDelProceso)
 }
 
 /* DUMP_MEMORY, esta syscall le solicita a la memoria, junto al PID que lo solicitó, que haga un Dump del proceso.
@@ -56,11 +52,14 @@ func SyscallDumpMemory(pid int) {
 
 func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso int) {
 	LogSyscall(pid, "IO")
-
+	
 	if VerificarDispositivo(nombreDispositivo) {
 		//& SI EL DISPOSITIVO EXISTE, PERO ESTA EN USO, BLOQUEAR EL PROCESO EN LA COLA DEL DISPOSITIVO
-
+		
 		LogMotivoDeBloqueo(pid, nombreDispositivo)
+
+		PeticionDesalojo(pid, "IO")
+
 		MoverProcesoABlocked(pid)
 
 		if VerificarInstanciaDeIO(nombreDispositivo) {
@@ -76,11 +75,7 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 		}
 	} else {
 		//& NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
-		//! REALIZAR PEDIDO DE DESALOJO EN LA CPU
-
-		// Busco el PCB en la lista de Exec
-		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
-		// Mando el proceso a Exit
-		MoverProcesoACola(*pcbDelProceso, &ColaExit)
+		
+		PeticionDesalojo(pid, "EXIT")
 	}
 }

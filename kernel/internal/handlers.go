@@ -48,7 +48,6 @@ func IniciarServerKernel(puerto int) {
 // * Endpoint de handshake = /handshake
 func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
-	//!Falta validar en el cliente si la es un JSON o no
 	w.Header().Set("Content-Type", "application/json")
 
 	//Se utiliza el encoder para enviar la respuesta en formato JSON
@@ -62,7 +61,6 @@ func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 // * Endpoint de handshake IO = /handshake/io
 func IoHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
-	//!Falta validar en el cliente si la es un JSON o no
 	w.Header().Set("Content-Type", "application/json")
 
 	var dispositivoIOBody globals.IoHandshakeRequest
@@ -78,7 +76,6 @@ func IoHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 // * Endpoint de handshake CPU = /handshake/CPU
 func CPUHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
-	//!Falta validar en el cliente si la es un JSON o no
 	w.Header().Set("Content-Type", "application/json")
 
 	var dispositivoCPUBody globals.CPUToKernelHandshakeRequest
@@ -95,7 +92,6 @@ func CPUHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 // * Endpoint de ping = /ping
 func PingHandler(w http.ResponseWriter, r *http.Request) {
 	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
-	//!Falta validar en el cliente si la es un JSON o no
 	w.Header().Set("Content-Type", "application/json")
 
 	//Se utiliza el encoder para enviar la respuesta en formato JSON

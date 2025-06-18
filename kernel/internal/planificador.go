@@ -3,6 +3,7 @@ package kernel_internal
 import (
 	"fmt"
 	"sync"
+	"time"
 	"utils/client"
 	"utils/globals"
 )
@@ -14,9 +15,6 @@ var ColaBlocked []globals.PCB
 var ColaSuspReady []globals.PCB
 var ColaSuspBlocked []globals.PCB
 var ColaExit []globals.PCB
-
-//var algoritmoCortoPlazo string
-//var algoritmoLargoPlazo string
 
 var ColaEstados = map[*[]globals.PCB]globals.Estado{
 	&ColaNew:         globals.Estado("NEW"),
@@ -136,19 +134,50 @@ func PlanificadorCortoPlazo(algoritmo string) {
 	for len(ColaReady) != 0 {
 		if algoritmo == "FIFO" {
 			MoverProcesoACola(ColaReady[0], &ColaExec)
-			if !ElegirCpuYMandarProceso(ColaExec[0]) {
+			ultimo := ColaExec[len(ColaExec)-1]
+			if !ElegirCpuYMandarProceso(ultimo) {
 				// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
-				MoverProcesoACola(ColaExec[0], &ColaReady)
+				MoverProcesoACola(ultimo, &ColaReady)
 				return
 			}
 		}
 		if algoritmo == "SJF" {
-			//* Lógica para SJF sin desalojo
+			for _, proceso := range ColaReady {
+				if proceso.MetricasDeEstados[globals.Exec] != 0 && proceso.EstimacionDeRafaga.YaCalculado == false {
+					//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
+					proceso.EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * float64(proceso.TiempoDeUltimaRafaga.Milliseconds())) + (1-Config_Kernel.Alpha) * proceso.EstimacionDeRafaga.TiempoDeRafaga
+					proceso.EstimacionDeRafaga.YaCalculado = true
+				}
+			}
+			pcbElegido := elegirPcbConEstimacionMasChica()
+			pcbElegido.EstimacionDeRafaga.YaCalculado = false
+			MoverProcesoACola(pcbElegido, &ColaExec)
+			ultimo := ColaExec[len(ColaExec)-1]
+			if !ElegirCpuYMandarProceso(ultimo) {
+				// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
+				MoverProcesoACola(ultimo, &ColaReady)
+				return
+			}
+		}
 		}
 		if algoritmo == "SRT" {
 			//* Lógica para SJF con desalojo /SRT
 		}
+}
+
+func elegirPcbConEstimacionMasChica() globals.PCB {
+	var maxIndex float64
+	var pcb globals.PCB
+	for i, num := range ColaReady {
+		if i == 0 {
+			maxIndex = num.EstimacionDeRafaga.TiempoDeRafaga
+			pcb = num
+		} else if num.EstimacionDeRafaga.TiempoDeRafaga < maxIndex {
+			maxIndex = num.EstimacionDeRafaga.TiempoDeRafaga
+			pcb = num
+		}
 	}
+	return pcb
 }
 
 func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
@@ -160,9 +189,9 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 
 	// Obtener el mutex de la cola de origen
 	var mutexOrigen *sync.Mutex
-	for cola, estado := range ColaEstados {
+	for colaOrigen, estado := range ColaEstados {
 		if proceso.Estado == estado {
-			mutexOrigen = ColaMutexes[cola]
+			mutexOrigen = ColaMutexes[colaOrigen]
 			break
 		}
 	}
@@ -172,12 +201,12 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 
 	// Bloquear ambas colas (origen y destino)
 	if mutexOrigen != nil {
-		mutexOrigen.Lock()
-		defer mutexOrigen.Unlock()
+		mutexOrigen.Lock()         // Bloquear mutexOrigen si no es nil
+		defer mutexOrigen.Unlock() // Defer para desbloquear al final de la función
 	}
 	if mutexDestino != nil {
-		mutexDestino.Lock()
-		defer mutexDestino.Unlock()
+		mutexDestino.Lock()         // Bloquear mutexDestino
+		defer mutexDestino.Unlock() // Defer para desbloquear al final de la función
 	}
 
 	// Buscar y eliminar el proceso de su cola actual
@@ -201,6 +230,22 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 	}
 
 	if proceso.Estado != procesoEstadoAnterior {
+
+		// Si el proceso estaba en Exec, hay que guardar el tiempo de la última ráfaga
+		if procesoEstadoAnterior == globals.Exec {
+			proceso.TiempoDeUltimaRafaga = time.Since(proceso.InicioEstadoActual) // Toma el tiempo transcurrido desde que el proceso entró al estado Exec
+		}
+
+		// Actualizar la métrica de tiempo por estado del proceso
+		duracion := time.Since(proceso.InicioEstadoActual)           // Toma el tiempo transcurrido desde que el proceso entró al estado origen
+		proceso.MetricasDeTiempos[procesoEstadoAnterior] += duracion // Actualiza el tiempo acumulado en el estado anterior
+
+		// Actualizar la métrica de estado del proceso
+		proceso.MetricasDeEstados[proceso.Estado]++
+
+		// Reiniciar el contador de tiempo para el nuevo estado
+		proceso.InicioEstadoActual = time.Now()
+
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
 	}
 

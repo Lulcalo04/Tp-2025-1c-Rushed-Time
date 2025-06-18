@@ -114,12 +114,18 @@ func InicializarPCB(tamanioEnMemoria int) {
 	ContadorPID++
 
 	pcb := globals.PCB{
-		PID:               ContadorPID,
-		PC:                0,
-		Estado:            globals.New,
-		MetricasDeEstados: make(map[globals.Estado]int),
-		MetricasDeTiempos: make(map[globals.Estado]int),
-		TamanioEnMemoria:  tamanioEnMemoria,
+		PID:                  ContadorPID,
+		PC:                   0,
+		Estado:               globals.New,
+		InicioEstadoActual:   time.Now(),
+		MetricasDeEstados:    make(map[globals.Estado]int),
+		MetricasDeTiempos:    make(map[globals.Estado]time.Duration),
+		TamanioEnMemoria:     tamanioEnMemoria,
+		EstimacionDeRafaga: globals.EstructuraRafaga{
+			TiempoDeRafaga: float64 (Config_Kernel.InitialEstimate),
+			YaCalculado: true,
+		},
+		TiempoDeUltimaRafaga: 0,
 	}
 
 	LogCreacionDeProceso(ContadorPID)
@@ -416,11 +422,11 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 		cpu.PID = proceso.PID
 		Logger.Debug("CPU elegida: ", "cpu_id", cpu.CPUID, ", Mandando proceso_pid: ", proceso.PID)
 		EnviarProcesoACPU(cpu.Ip, cpu.Puerto, proceso.PID, proceso.PC)
+		return true
 	} else {
 		Logger.Debug("No hay CPU disponible para el proceso ", "proceso_pid", proceso.PID)
 		return false
 	}
-	return true
 }
 
 func BuscarCPUporPID(pid int) *IdentificadorCPU {
