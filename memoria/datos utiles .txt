@@ -1,0 +1,84 @@
+Estructura de la paginacion multinivel jerarquica del tp: 
+
+
+Ejemplo de como funcionaria: 
+
+Tenemos:
+ pagina 6 -> ruta: [1][3][1] // Existe la direccion
+ pagina 7 -> ruta: [1][3][2] // No existe la direccion
+
+ Para la estructura de la pagina 6 seria algo asi: 
+
+Raíz (nivel 0)
+ └── entrada[1] → subtabla (nivel 1)
+       └── entrada[3] → subtabla (nivel 2)
+             └── entrada[1] = frameID
+
+  [1] → subtabla (apuntada desde el nivel 0)
+  [3] → subtabla (apuntada desde el nivel 1)
+  [1] = frameX   (apuntada desde el nivel 2)
+
+lo podemos ver asi: Nivel 0 → [1], Nivel 1 → [3], Nivel 2 → [1] -> frameID
+
+pero para la pagina 7 tenemos: 
+
+Raíz (nivel 0)
+ └── entrada[1] → subtabla (nivel 1)
+       └── entrada[2] → subtabla (nivel 2)
+             └── entrada[2] = (no asignada / nil / página no existe)
+
+
+[1] -> (apuntada desde el nivel 0)
+[3] -> (apuntada desde el nivel 1)
+[2] -> (apuntada desde el nivel 2) -> No Existe, entonces completo con el nuevo frame.  
+
+lo podemos ver asi : Nivel 0 → [1], Nivel 1 → [3], Nivel 2 → [2] -> nil
+
+Al momento de asignar el nuevo frame implementamos la logica de "hayEspacio" 
+
+---------------------- Para Kernel ---------------------------
+
+1. Calculo la cantidad de paginas segun lo que pida Kernel
+2. Por cada pagina logica tengo que: 
+  * Generar los indices de tabla ( nivel=, nivel1, ..., nivel5)
+  * Busco por la jerarquia la ubicacion: 
+     - Si una tabla hija no existe, la creo 
+     - si es el ultimo nivel, reservo un frame fisico libre y le doy el lugar a Kernel. 
+
+
+---------------------- Para CPU -------------------------------------
+
+
+
+
+
+Creo el proceso -> genero su tabla raiz y jerarquia de tablas y  reservo los frames.
+Leer o escribir -> busco en la jerarquia de paginas para traducir la direccion logica a fisica
+Suspender proceso -> guardo su estructura en un archivo SWAP, importante NO elimino sus tablas, las va necesitar cuando vuelva a Ready.
+Termino el proceso -> Libero los frames y elimino sus tablas. 
+
+Trabajo con CPU: 
+
+CPU me va dar el PID, la DIRECCION LOGICA y el SIZE cada vez que necesite leer/escribir. 
+En la jerarquia de tablas de proceso (rootTables[PID]), busco en los niveles usando los indices. 
+Cuando llego al final voy a obtener el frameID y accedo a memoria con memoria[frameID*tamanioPagina + offset]
+
+// Falta pensar el tema de swap 
+
+------------------------ Funciones necesarias generales -----------------------
+
+TYPE ASSERTION: como usamos una variable interface {} (o sea, tipo cualquiera) no sabemos que hay adentro, entonces cuando 
+la usemos tenemos que verificar que lo que nos devuelve es del tipo de dato que necesitamos. 
+
+lo hacemos con un if: 
+
+ if tabla.Entradas[indice] == [dato que necesito ] 
+ {
+    blablablablablabla
+ }
+else {
+    Logger.Info(fmt.Sprintf("Error"))
+}
+
+----------------------------------- SWAP -------------------------------------------------
+

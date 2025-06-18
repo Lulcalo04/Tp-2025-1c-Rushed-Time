@@ -70,6 +70,17 @@ func (mp *Memoria) liberarFrame(frameID int) {
 	// (O opcionalmente: limpiar el contenido de data[frameID*frameSize : (frameID+1)*frameSize])
 }
 
+func (mp *Memoria) framesLibres() int {
+	// Contamos cuántos frames están libres
+	libres := 0
+	for _, libre := range mp.listaDeFrames {
+		if libre {
+			libres++
+		}
+	}
+	return libres
+}
+
 func (mp *Memoria) LeerBytes(offset, length int) ([]byte, error) {
 	// Verificamos que el offset y la longitud estén dentro de los límites del slice de datos
 	if offset < 0 || offset+length > len(mp.datos) {
@@ -138,8 +149,6 @@ func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame i
 	mp.insertarEnMultinivel(subTabla, numPagina, frame, nivelActual+1)
 }
 
-
-
 /*
 
 Primer version 
@@ -174,3 +183,5 @@ func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame i
 	}
 }
 	*/
+
+	

@@ -21,6 +21,8 @@ var Config_Memoria *ConfigMemoria
 
 var Logger *slog.Logger
 
+
+
 type InstruccionesRequest struct {
 	PID int `json:"pid"`
 }

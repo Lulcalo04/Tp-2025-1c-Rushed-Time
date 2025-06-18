@@ -99,11 +99,37 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Logica para verificar espacio y reservarlo
+	// LOGICA PARA VERIFICAR Y RESERVAR ESPACIO EN MEMORIA
+	tamanioSolicitado := pedidoRecibido.ProcesoPCB.TamanioEnMemoria
 
-	//! HAY QUE DESARROLLAR LA LOGICA DE RESERVA DE ESPACIO EN MEMORIA MAS ADELANTE
+	//Este calculo es para determinar cuantas paginas  se necesitan para el tamanio solicitado, se suma el PageSize y se resta 1 para redondear hacia arriba
+	framesNecesarios := (tamanioSolicitado + Config_Memoria.PageSize - 1) / Config_Memoria.PageSize 
+	
+	//verificar si hay suficiente espacio en memoria para el proceso
+	framesLibres := MemoriaGlobal.framesLibres()
+	pedidoEnMemoria := false
 
-	pedidoEnMemoria := true //! Simulamos que se concede el espacio (checkpoint 2)
+	var framesAsignados []int = []int{} // Slice para almacenar los frames asignados
+
+	if framesLibres >= framesNecesarios {
+		Logger.Debug("Solicitud a Memoria aceptada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
+		pedidoEnMemoria = true 
+		//Reservar espacio en memoria
+		for i := 0; i < framesNecesarios; i++ {
+			frameID, err := MemoriaGlobal.obtenerFrameLibre()
+			if err != nil {
+				http.Error(w, "Error al reservar frames", http.StatusInternalServerError)
+				return
+			}
+			framesAsignados = append(framesAsignados, frameID)
+		}
+	} else {
+		pedidoEnMemoria = false
+		Logger.Debug("Solicitud a Memoria rechazada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
+		http.Error(w, "No hay suficiente espacio en memoria", http.StatusInsufficientStorage)
+		return
+	}
+ 
 
 	if pedidoEnMemoria {
 		// Si el pedido es valido, se hace la concesion de espacio
