@@ -121,8 +121,10 @@ func NuevaTablaPags() *TablaPags {
 }
 
 func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame int, nivelActual int) {
+
 	entradas := Config_Memoria.EntriesPerPage
 	nivelMaximo := Config_Memoria.NumberOfLevels
+
 	// Calcular divisor para obtener el índice correspondiente en este nivel
 	divisor := 1
 	for i := 0; i < nivelMaximo-nivelActual-1; i++ {
@@ -134,12 +136,12 @@ func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame i
 		tabla.Entradas[indice] = FrameID(frame)
 		return
 	}
-	// Si la entrada no existe, crear subtabla
+	// Si la entrada no existe, creo una  subtabla
 	if tabla.Entradas[indice] == nil {
 		tabla.Entradas[indice] = NuevaTablaPags()
 	}
 
-	// Type assertion segura
+	// Type assertion
 	subTabla, ok := tabla.Entradas[indice].(*TablaPags)
 	if !ok {
 		Logger.Info(fmt.Sprintf("Error: entrada no es una subtabla en nivel %d", nivelActual))
@@ -149,39 +151,3 @@ func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame i
 	mp.insertarEnMultinivel(subTabla, numPagina, frame, nivelActual+1)
 }
 
-/*
-
-Primer version 
-
-func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame int, nivelActual int) {
-	entradas := Config_Memoria.EntriesPerPage
-	nivelMaximo := Config_Memoria.NumberOfLevels
-
-	//Calcular divisor
-	divisor := 1
-	for i := 0; i < nivelMaximo-nivelActual-1; i++ {
-		divisor *= entradas
-	}
-
-	//Calcular indice correspondiente en este nivel
-	indice := (numPagina / divisor) % entradas
-
-	// Estoy en el último nivel?
-	if nivelActual < nivelMaximo {
-		//No es el ultimo nivel, entonces debo insertar una subtabla
-		if tabla.Entradas[indice] == nil {
-			// Crear una nueva subtabla si no existe
-			tabla.Entradas[indice] = NuevaTablaPags()
-		}
-		// Llamar recursivamente para insertar en la subtabla
-		subTabla := tabla.Entradas[indice].(*TablaPags)
-		//Recusion: bajo un nivel
-		mp.insertarEnMultinivel(subTabla, numPagina, frame, nivelActual+1)
-	} else {
-		// Si es el último nivel, asignar el frame directamente
-		tabla.Entradas[indice] = FrameID(frame)
-	}
-}
-	*/
-
-	

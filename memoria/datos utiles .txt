@@ -49,9 +49,6 @@ Al momento de asignar el nuevo frame implementamos la logica de "hayEspacio"
 ---------------------- Para CPU -------------------------------------
 
 
-
-
-
 Creo el proceso -> genero su tabla raiz y jerarquia de tablas y  reservo los frames.
 Leer o escribir -> busco en la jerarquia de paginas para traducir la direccion logica a fisica
 Suspender proceso -> guardo su estructura en un archivo SWAP, importante NO elimino sus tablas, las va necesitar cuando vuelva a Ready.

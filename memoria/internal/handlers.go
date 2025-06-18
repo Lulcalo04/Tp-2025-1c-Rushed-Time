@@ -109,21 +109,28 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	framesLibres := MemoriaGlobal.framesLibres()
 	pedidoEnMemoria := false
 
-	var framesAsignados []int = []int{} // Slice para almacenar los frames asignados
-
 	if framesLibres >= framesNecesarios {
 		Logger.Debug("Solicitud a Memoria aceptada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 		pedidoEnMemoria = true 
+
+		// Crear tabla raíz si no existe
+		if MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID] == nil {
+			MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID] = NuevaTablaPags()
+		}
+		tablaRaiz := MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID]
+	
+
 		//Reservar espacio en memoria
-		for i := 0; i < framesNecesarios; i++ {
+		for pagina := 0; pagina < framesNecesarios; pagina++ {
 			frameID, err := MemoriaGlobal.obtenerFrameLibre()
 			if err != nil {
 				http.Error(w, "Error al reservar frames", http.StatusInternalServerError)
 				return
 			}
-			framesAsignados = append(framesAsignados, frameID)
+			// Insertar en la tabla de páginas
+			MemoriaGlobal.insertarEnMultinivel(tablaRaiz, pagina, frameID, 0)
 		}
-	} else {
+	}else {
 		pedidoEnMemoria = false
 		Logger.Debug("Solicitud a Memoria rechazada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 		http.Error(w, "No hay suficiente espacio en memoria", http.StatusInsufficientStorage)
@@ -138,7 +145,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		// Preparar respuesta y codificarla como JSON (se envia automaticamente a traves del encode)
 		resp := globals.PeticionMemoriaResponse{
 			Modulo:    "Memoria",
-			Respuesta: true, // Simulamos que se concede el espacio
+			Respuesta: true,
 			Mensaje:   fmt.Sprintf("Espacio concedido para PID %d con %d de espacio", pedidoRecibido.ProcesoPCB.PID, pedidoRecibido.ProcesoPCB.TamanioEnMemoria),
 		}
 		json.NewEncoder(w).Encode(resp)
@@ -154,7 +161,6 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewEncoder(w).Encode(resp)
 	}
-
 }
 
 // * Endpoint de liberacion de espacio = /espacio/liberar
@@ -240,6 +246,10 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+//--------------------------------------------------Crear Proceso---------------------------------------------------------
+
+
 
 // -----------------------------------------------Funcion para instrucciones------------------------------------------------
 
