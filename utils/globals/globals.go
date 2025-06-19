@@ -209,6 +209,8 @@ type CPUReadAMemoriaRequest struct {
 
 type CPUReadAMemoriaResponse struct {
 	Respuesta bool `json:"respuesta"`
+	Data      int `json:"data"` // Datos leídos de la memoria
+
 }
 
 type CPUGotoAMemoriaRequest struct {

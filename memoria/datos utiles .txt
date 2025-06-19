@@ -79,3 +79,21 @@ else {
 
 ----------------------------------- SWAP -------------------------------------------------
 
+------------------------------------Checkpoint 3 -----------------------------------------
+
+Leer config (memory_size, page_size, etc.)	               (listo)
+Iniciar memoria principal ([]byte)	                           (listo)
+Crear y gestionar bitmap de frames	                           (listo)
+Crear tablas multinivel por proceso	                           (listo)
+Traducir dirección lógica → física	                           (listo, creo, hay que preguntar bien en soporte)
+Atender INIT_PROC, SUSPEND, EXIT del Kernel	               (falta)
+Atender LEER y ESCRIBIR de CPU	                           (falta)
+Exponer endpoints HTTP para todas las funciones	               (listo)
+Logs obligatorios                                              (listo)           
+Simulación básica de swap (puede ser memoria o archivo)        (falta)
+
+
+----------------------------------------Leer en memoria ----------------------------------------
+
+1. Validar que el proceso y la dirección existen.
+3. Leer el valor almacenado en la memoria 

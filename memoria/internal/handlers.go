@@ -304,7 +304,7 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 
 //-------------------------------------------------Funcion para darle el frame a CPU ------------------------------------------------
 
-// * Endpoint de frame = /cpu/frame
+// * Endpoint de frame = /cpu/frame (traduccion de direcciones)
 func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
         http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
@@ -317,14 +317,14 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Buscar la tabla de páginas raíz del proceso
+	// Busca la tabla de páginas raíz del proceso
     tablaRaiz := MemoriaGlobal.tablas[request.PID]
     if tablaRaiz == nil {
         http.Error(w, "Proceso no encontrado en memoria", http.StatusNotFound)
         return
     }
 	
-	// Buscar el frame físico recorriendo la tabla multinivel
+	// Busca el frame físico recorriendo la tabla multinivel
 	frame, ok := MemoriaGlobal.buscarFramePorEntradas(tablaRaiz, request.EntradasPorNivel)
 	if !ok {
 		http.Error(w, "Página no asignada en memoria", http.StatusNotFound)
@@ -338,9 +338,6 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
-
-
-
 
 func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -361,24 +358,38 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-
 func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
 	var request globals.CPUReadAMemoriaRequest
+	
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
 		return
 	}
 
-	// Simulamos la logica de lectura en memoria (checkpoint 2)
-	respuestaRead := true //! Simulacion
+    tablaRaiz := MemoriaGlobal.tablas[request.PID]
+    if tablaRaiz == nil {
+        http.Error(w, "Proceso no encontrado en memoria", http.StatusNotFound)
+        return
+    }
+	//!preguntar a los chicos que tipo de direccion nos mandan 
+	var direccionFisica = request.DireccionFisica
 
-	response := globals.CPUReadAMemoriaResponse{
-		Respuesta: respuestaRead,
-	}
+    if direccionFisica < 0 || direccionFisica >= len(MemoriaGlobal.datos) {
+        http.Error(w, "JSON invalido", http.StatusBadRequest)
+        return
+    }
+
+    var respuestaRead int = int(MemoriaGlobal.datos[direccionFisica])
+
+    response := globals.CPUReadAMemoriaResponse{
+        Respuesta: true,
+		Data:      respuestaRead,
+    }
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
 
 func HacerGotoHandler(w http.ResponseWriter, r *http.Request) {
 	var request globals.CPUGotoAMemoriaRequest
