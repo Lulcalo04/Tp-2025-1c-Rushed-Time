@@ -1,7 +1,8 @@
 package kernel_internal
 
 import (
-	"fmt"
+	"bufio"
+	"os"
 	"sync"
 	"time"
 	"utils/client"
@@ -45,124 +46,209 @@ var ColaMutexes = map[*[]globals.PCB]*sync.Mutex{
 }
 
 var hayEspacioEnMemoria bool = true
+var MutexCpuLibres sync.Mutex
+var CpuLibres bool = true
 
 func IniciarPlanificadores() {
 
-	PlanificadorLargoPlazo(Config_Kernel.SchedulerAlgorithm)
-	PlanificadorCortoPlazo(Config_Kernel.ReadyIngressAlgorithm)
+	//ESPERAR ENTER
+	Logger.Debug("Presione ENTER para iniciar los planificadores")
+	bufio.NewReader(os.Stdin).ReadBytes('\n')
+	Logger.Debug("Iniciando planificadores...")
 
+	go PlanificadorLargoPlazo()
+	go PlanificadorCortoPlazo()
 }
 
-func PlanificadorLargoPlazo(algoritmo string) {
-	// Mientras hay
-	for hayEspacioEnMemoria && (len(ColaNew) != 0 || len(ColaSuspReady) != 0) {
-		if algoritmo == "FIFO" {
-			// Si memoria responde...
-			if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
-				Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
-				return
-			}
+var planificadorLargoMutex sync.Mutex // Mutex para evitar doble planificador de largo plazo
+var LargoNotifier = make(chan struct{})
 
-			//! Estaria piola hacer una funcion que resuma todo esto, pero por ahora lo dejo asi
-			//Verifico si hay procesos en la cola SuspReady
-			if len(ColaSuspReady) != 0 {
+func PlanificadorLargoPlazo() {
 
-				// Pido espacio en memoria para el primer proceso de la cola SuspReady
-				respuestaMemoria := PedirEspacioAMemoria(ColaSuspReady[0])
-
-				// Si memoria responde que no hay espacio..
-				if !respuestaMemoria {
-					hayEspacioEnMemoria = false // Seteo la variable del for a false
-					return                      // Salgo del for
+	algoritmo := Config_Kernel.SchedulerAlgorithm
+	for {
+		planificadorLargoMutex.Lock()
+		<-LargoNotifier
+		// Mientras hay
+		for hayEspacioEnMemoria && (len(ColaNew) != 0 || len(ColaSuspReady) != 0) {
+			if algoritmo == "FIFO" {
+				// Si memoria responde...
+				if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
+					Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
+					return
 				}
 
-				MoverProcesoACola(ColaSuspReady[0], &ColaReady)
-			} else { //Si no hay procesos en SuspReady, ya se que hay en New
+				//! Estaria piola hacer una funcion que resuma todo esto, pero por ahora lo dejo asi
+				//Verifico si hay procesos en la cola SuspReady
+				if len(ColaSuspReady) != 0 {
 
-				// Pido espacio en memoria para el primer proceso de la cola New
-				respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
+					// Pido espacio en memoria para el primer proceso de la cola SuspReady
+					respuestaMemoria := PedirEspacioAMemoria(ColaSuspReady[0])
 
-				// Si memoria responde que no hay espacio...
-				if !respuestaMemoria {
-					hayEspacioEnMemoria = false // Seteo la variable del for a false
-					return                      // Salgo del for
+					// Si memoria responde que no hay espacio..
+					if !respuestaMemoria {
+						hayEspacioEnMemoria = false // Seteo la variable del for a false
+						return                      // Salgo del for
+					}
+
+					MoverProcesoACola(ColaSuspReady[0], &ColaReady)
+					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
+				} else { //Si no hay procesos en SuspReady, ya se que hay en New
+
+					// Pido espacio en memoria para el primer proceso de la cola New
+					respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
+
+					// Si memoria responde que no hay espacio...
+					if !respuestaMemoria {
+						hayEspacioEnMemoria = false // Seteo la variable del for a false
+						return                      // Salgo del for
+					}
+
+					MoverProcesoACola(ColaNew[0], &ColaReady)
+					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 				}
 
-				MoverProcesoACola(ColaNew[0], &ColaReady)
 			}
 
-			PlanificadorCortoPlazo(Config_Kernel.ReadyIngressAlgorithm)
+			if algoritmo == "PMCP" {
+				// Si memoria responde...
+				if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
+					Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
+					return
+				}
+
+				//Verifico si hay procesos en la cola SuspReady
+				if len(ColaSuspReady) != 0 {
+					// Pido espacio en memoria para el primer proceso de la cola New
+					respuestaMemoria := PedirEspacioAMemoria(ColaSuspReady[pcbMasChico()])
+
+					// Si memoria responde que no hay espacio...
+					if !respuestaMemoria {
+						hayEspacioEnMemoria = false // Seteo la variable del for a false
+						return                      // Salgo del for
+					}
+
+					MoverProcesoACola(ColaSuspReady[pcbMasChico()], &ColaReady)
+					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
+				} else {
+					// Pido espacio en memoria para el primer proceso de la cola New
+					respuestaMemoria := PedirEspacioAMemoria(ColaNew[pcbMasChico()])
+
+					// Si memoria responde que no hay espacio...
+					if !respuestaMemoria {
+						hayEspacioEnMemoria = false // Seteo la variable del for a false
+						return                      // Salgo del for
+					}
+
+					MoverProcesoACola(ColaNew[pcbMasChico()], &ColaReady)
+					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
+				}
+
+			}
 		}
-
-		if algoritmo == "PMCP" {
-			// Si memoria responde...
-			if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
-				Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
-				return
-			}
-
-			//Verifico si hay procesos en la cola SuspReady
-			if len(ColaSuspReady) != 0 {
-				// Pido espacio en memoria para el primer proceso de la cola New
-				respuestaMemoria := PedirEspacioAMemoria(ColaSuspReady[pcbMasChico()])
-
-				// Si memoria responde que no hay espacio...
-				if !respuestaMemoria {
-					hayEspacioEnMemoria = false // Seteo la variable del for a false
-					return                      // Salgo del for
-				}
-
-				MoverProcesoACola(ColaSuspReady[pcbMasChico()], &ColaReady)
-			} else {
-				// Pido espacio en memoria para el primer proceso de la cola New
-				respuestaMemoria := PedirEspacioAMemoria(ColaNew[pcbMasChico()])
-
-				// Si memoria responde que no hay espacio...
-				if !respuestaMemoria {
-					hayEspacioEnMemoria = false // Seteo la variable del for a false
-					return                      // Salgo del for
-				}
-
-				MoverProcesoACola(ColaNew[pcbMasChico()], &ColaReady)
-			}
-			PlanificadorCortoPlazo(Config_Kernel.ReadyIngressAlgorithm)
-		}
+		planificadorLargoMutex.Unlock()
 	}
 }
 
-func PlanificadorCortoPlazo(algoritmo string) {
-	for len(ColaReady) != 0 {
-		if algoritmo == "FIFO" {
-			MoverProcesoACola(ColaReady[0], &ColaExec)
-			ultimo := ColaExec[len(ColaExec)-1]
-			if !ElegirCpuYMandarProceso(ultimo) {
-				// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
-				MoverProcesoACola(ultimo, &ColaReady)
-				return
-			}
-		}
-		if algoritmo == "SJF" {
-			for _, proceso := range ColaReady {
-				if proceso.MetricasDeEstados[globals.Exec] != 0 && proceso.EstimacionDeRafaga.YaCalculado == false {
-					//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
-					proceso.EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * float64(proceso.TiempoDeUltimaRafaga.Milliseconds())) + (1-Config_Kernel.Alpha) * proceso.EstimacionDeRafaga.TiempoDeRafaga
-					proceso.EstimacionDeRafaga.YaCalculado = true
+var planificadorCortoMutex sync.Mutex // Mutex para evitar doble planificador de corto plazo
+var CortoNotifier = make(chan struct{})
+
+func PlanificadorCortoPlazo() {
+
+	algoritmo := Config_Kernel.ReadyIngressAlgorithm
+	for {
+		planificadorCortoMutex.Lock()
+		<-CortoNotifier
+
+		for len(ColaReady) != 0 {
+			if algoritmo == "FIFO" && CpuLibres {
+				// Seleccionamos el primer proceso de la cola Ready y lo enviamos a Exec
+				MoverProcesoACola(ColaReady[0], &ColaExec)
+
+				// Sabemos que el proceso que acabamos de mover a Exec es el último de la cola
+				ultimo := ColaExec[len(ColaExec)-1]
+
+				// Intentamos enviar el proceso a la CPU
+				if !ElegirCpuYMandarProceso(ultimo) {
+					// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
+					MoverProcesoACola(ultimo, &ColaReady)
+					MutexCpuLibres.Lock()
+					CpuLibres = false // Indicamos que la CPU no está libre
+					MutexCpuLibres.Unlock()
+					return
 				}
 			}
-			pcbElegido := elegirPcbConEstimacionMasChica()
-			pcbElegido.EstimacionDeRafaga.YaCalculado = false
-			MoverProcesoACola(pcbElegido, &ColaExec)
-			ultimo := ColaExec[len(ColaExec)-1]
-			if !ElegirCpuYMandarProceso(ultimo) {
-				// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
-				MoverProcesoACola(ultimo, &ColaReady)
-				return
+			if algoritmo == "SJF" && CpuLibres {
+				// Recorremos la cola de Ready
+				for _, proceso := range ColaReady {
+					// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
+					if proceso.MetricasDeEstados[globals.Exec] != 0 && !proceso.EstimacionDeRafaga.YaCalculado {
+						//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
+						proceso.EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * float64(proceso.TiempoDeUltimaRafaga.Milliseconds())) + (1-Config_Kernel.Alpha)*proceso.EstimacionDeRafaga.TiempoDeRafaga
+						proceso.EstimacionDeRafaga.YaCalculado = true
+					}
+				}
+
+				// Una vez que calculamos las estimaciones de ráfaga, elegimos el proceso con la estimación más pequeña
+				pcbElegido := elegirPcbConEstimacionMasChica()
+
+				// Cambiamos el boolean de YaCalculado a false para que se vuelva a calcular en la próxima iteración
+				pcbElegido.EstimacionDeRafaga.YaCalculado = false
+
+				// Movemos el proceso elegido a la cola Exec
+
+				MoverProcesoACola(pcbElegido, &ColaExec)
+
+				ultimo := ColaExec[len(ColaExec)-1]
+				if !ElegirCpuYMandarProceso(ultimo) {
+					// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
+					MoverProcesoACola(ultimo, &ColaReady)
+					CpuLibres = false // Indicamos que la CPU no está libre
+					return
+				}
+			}
+			if algoritmo == "SRT" {
+				//* Lógica para SJF con desalojo /SRT
+				// Recorremos la cola de Ready
+				if CpuLibres {
+					for _, proceso := range ColaReady {
+						// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
+						if proceso.MetricasDeEstados[globals.Exec] != 0 && !proceso.EstimacionDeRafaga.YaCalculado {
+							//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
+							proceso.EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * float64(proceso.TiempoDeUltimaRafaga.Milliseconds())) + (1-Config_Kernel.Alpha)*proceso.EstimacionDeRafaga.TiempoDeRafaga
+							proceso.EstimacionDeRafaga.YaCalculado = true
+						}
+					}
+
+					// Una vez que calculamos las estimaciones de ráfaga, elegimos el proceso con la estimación más pequeña
+					pcbElegido := elegirPcbConEstimacionMasChica()
+
+					// Cambiamos el boolean de YaCalculado a false para que se vuelva a calcular en la próxima iteración
+					pcbElegido.EstimacionDeRafaga.YaCalculado = false
+
+					// Movemos el proceso elegido a la cola Exec
+
+					MoverProcesoACola(pcbElegido, &ColaExec)
+
+					ultimo := ColaExec[len(ColaExec)-1]
+					if !ElegirCpuYMandarProceso(ultimo) {
+						// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
+						MoverProcesoACola(ultimo, &ColaReady)
+						MutexCpuLibres.Lock()
+						CpuLibres = false // Indicamos que la CPU no está libre
+						MutexCpuLibres.Unlock()
+						return
+					}
+				} else {
+					// Si no hay cpu libres, elegir a victima de SRT
+					//! ANALIZAR TIEMPO RESTANTE DE CADA CPU
+					// Si el proceso nuevo de ready (el ultimo) tiene una estimacion menor a los de exec
+					// Desalojar al que mas tiempo le quede
+				}
 			}
 		}
-		}
-		if algoritmo == "SRT" {
-			//* Lógica para SJF con desalojo /SRT
-		}
+		planificadorCortoMutex.Unlock()
+	}
 }
 
 func elegirPcbConEstimacionMasChica() globals.PCB {
@@ -251,7 +337,7 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 
 }
 
-func MoverProcesoABlocked(pid int) {
+func MoverProcesoDeExecABlocked(pid int) {
 
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
 
@@ -273,15 +359,15 @@ func MoverProcesoDeBlockedAExit(pid int) {
 		Logger.Debug("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
 
 		// Busco el PCB del proceso en la cola de SuspBlocked
-		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+		//pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
 
 		//! BORRAR EL PROCESO DE SWAP Y LIBERAR LA MEMORIA
 
-		//Lo muevo a la cola destino
-		MoverProcesoACola(*pcbDelProceso, &ColaExit)
+		//Lo muevo a la cola exit y lo termino
+		TerminarProceso(pid, &ColaSuspBlocked)
 	} else {
-		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
-		MoverProcesoACola(*pcbDelProceso, &ColaExit)
+		// Como lo encontré en la cola de blocked, lo muevo a la cola exit y lo termino
+		TerminarProceso(pid, &ColaBlocked)
 	}
 
 }
@@ -304,9 +390,11 @@ func MoverProcesoDeBlockedAReady(pid int) {
 
 		//Lo muevo a la cola destino
 		MoverProcesoACola(*pcbDelProceso, &ColaSuspReady)
+		LargoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 	} else {
 		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
 		MoverProcesoACola(*pcbDelProceso, &ColaReady)
+		CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 	}
 
 }
@@ -323,35 +411,4 @@ func pcbMasChico() int {
 		}
 	}
 	return minIndex
-}
-
-func Prueba() {
-
-	InicializarPCB(1024)
-
-	fmt.Println("Antes del plani de largo plazo...")
-
-	fmt.Println("\n---------------------------------------")
-	fmt.Println("Cola New antes:", ColaNew)
-	fmt.Println("Cola Ready antes:", ColaReady)
-	fmt.Println("---------------------------------------\n ")
-
-	fmt.Println("Despues del plani de largo plazo...")
-
-	PlanificadorLargoPlazo("FIFO")
-
-	fmt.Println("\n---------------------------------------")
-	fmt.Println("Cola New despues:", ColaNew)
-	fmt.Println("Cola Ready despues:", ColaReady)
-	fmt.Println("---------------------------------------\n ")
-
-	fmt.Println("Despues del plani de corto plazo...")
-
-	PlanificadorCortoPlazo("FIFO")
-
-	fmt.Println("\n---------------------------------------")
-	fmt.Println("Cola Ready:", ColaReady)
-	fmt.Println("Cola Exec:", ColaExec)
-	fmt.Println("---------------------------------------\n ")
-
 }

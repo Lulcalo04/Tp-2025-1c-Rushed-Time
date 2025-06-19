@@ -21,9 +21,9 @@ const (
 	Exit        Estado = "EXIT"
 )
 
-type EstructuraRafaga struct{
-	TiempoDeRafaga   float64
-	YaCalculado 	     bool
+type EstructuraRafaga struct {
+	TiempoDeRafaga float64
+	YaCalculado    bool
 }
 
 // &-------------------------------------------Structs de PCB para los procesos-------------------------------------------
@@ -31,6 +31,7 @@ type PCB struct {
 	PID                  int                      `json:"pid"`                     // Identificador único del proceso
 	PC                   int                      `json:"pc"`                      // Contador de programa, indica la posición de la instrucción a ejecutar
 	Estado               Estado                   `json:"estado"`                  // Estado actual del proceso
+	PathArchivoPseudo    string                   `json:"path"`                    // Ruta del archivo de pseudocódigo del proceso
 	InicioEstadoActual   time.Time                `json:"inicio_estado_actual"`    // Marca el tiempo en que el proceso entra al estado actual
 	MetricasDeEstados    map[Estado]int           `json:"metricas_de_estados"`     // Contador de veces que el proceso estuvo en cada estado
 	MetricasDeTiempos    map[Estado]time.Duration `json:"metricas_de_tiempos"`     // Contador de tiempo que el proceso estuvo en cada estado
@@ -239,8 +240,6 @@ type IOtoKernelDesconexionRequest struct {
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------
 
 func IniciarConfiguracion(filePath string, config interface{}) {
-	//! NO PUDIMOS CONFIGURAR EL LOG, NO SE PUEDE HACER NADA
-	//! HASTA QUE NO SE CARGUE LA CONFIGURACION
 
 	configFile, err := os.Open(filePath)
 	if err != nil {

@@ -80,7 +80,7 @@ func IniciarKernel() {
 	IniciarPlanificadores()
 }
 
-func InicializarProcesoCero() (string, int) {
+func InicializarProcesoCero() {
 	if len(os.Args) < 3 {
 		Logger.Debug("Error, mal escrito usa: .kernel/kernel.go [archivo_pseudocodigo] [tamanio_proceso]")
 		os.Exit(1)
@@ -96,8 +96,9 @@ func InicializarProcesoCero() (string, int) {
 		os.Exit(1)
 	}
 
-	// !VAMOS A TENER QUE METER EL PROCESO CERO EN LA COLA DE NEW
-	return nombreArchivoPseudocodigo, tamanioProceso
+	
+	InicializarPCB(tamanioProceso, nombreArchivoPseudocodigo)
+	
 }
 
 func BuscarProcesoEnCola(pid int, cola *[]globals.PCB) *globals.PCB {
@@ -109,32 +110,36 @@ func BuscarProcesoEnCola(pid int, cola *[]globals.PCB) *globals.PCB {
 	return nil
 }
 
-func InicializarPCB(tamanioEnMemoria int) {
+func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 
 	ContadorPID++
 
 	pcb := globals.PCB{
-		PID:                  ContadorPID,
-		PC:                   0,
-		Estado:               globals.New,
-		InicioEstadoActual:   time.Now(),
-		MetricasDeEstados:    make(map[globals.Estado]int),
-		MetricasDeTiempos:    make(map[globals.Estado]time.Duration),
-		TamanioEnMemoria:     tamanioEnMemoria,
+		PID:                ContadorPID,
+		PC:                 0,
+		Estado:             globals.New,
+		PathArchivoPseudo:  nombreArchivoPseudo,
+		InicioEstadoActual: time.Now(),
+		MetricasDeEstados:  make(map[globals.Estado]int),
+		MetricasDeTiempos:  make(map[globals.Estado]time.Duration),
+		TamanioEnMemoria:   tamanioEnMemoria,
 		EstimacionDeRafaga: globals.EstructuraRafaga{
-			TiempoDeRafaga: float64 (Config_Kernel.InitialEstimate),
-			YaCalculado: true,
+			TiempoDeRafaga: float64(Config_Kernel.InitialEstimate),
+			YaCalculado:    true,
 		},
 		TiempoDeUltimaRafaga: 0,
 	}
 
 	LogCreacionDeProceso(ContadorPID)
 	MoverProcesoACola(pcb, &ColaNew)
-	PlanificadorLargoPlazo(Config_Kernel.SchedulerAlgorithm)
+	// Al agregar un nuevo proceso a la cola de New, notificamos al planificador de largo plazo
+	LargoNotifier <- struct{}{}
 
 }
 
-func TerminarProceso(proceso globals.PCB) {
+func TerminarProceso(pid int, colaOrigen *[]globals.PCB) {
+
+	proceso := BuscarProcesoEnCola(pid, colaOrigen)
 
 	if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
 		Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
@@ -143,9 +148,9 @@ func TerminarProceso(proceso globals.PCB) {
 
 	respuestaMemoria := LiberarProcesoEnMemoria(proceso.PID)
 	if respuestaMemoria {
-		MoverProcesoACola(proceso, &ColaExit)
+		MoverProcesoACola(*proceso, &ColaExit)
 		hayEspacioEnMemoria = true
-		PlanificadorLargoPlazo(Config_Kernel.SchedulerAlgorithm)
+		LargoNotifier <- struct{}{} // Como se liberó memoria, notificamos al planificador de largo plazo
 	}
 
 	LogFinDeProceso(proceso.PID)
@@ -154,27 +159,28 @@ func TerminarProceso(proceso globals.PCB) {
 func AnalizarDesalojo(pid int, pc int, motivoDesalojo string) {
 
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
+	if pcbDelProceso == nil {
+		Logger.Debug("Proceso no encontrado, PID: ", "pid", pid)
+		return
+	}
 	pcbDelProceso.PC = pc
 
-	if motivoDesalojo == "Planificador" {
-		if pcbDelProceso != nil {
-			MoverProcesoACola(*pcbDelProceso, &ColaReady)
-			LogDesalojoPorSJF_SRT(pid)
-		}
-	} else if motivoDesalojo == "IO" {
-		if pcbDelProceso != nil {
-			Logger.Debug("Desalojo por IO", "pid", pid)
-		}
-	} else if motivoDesalojo == "DUMP_MEMORY" {
-		if pcbDelProceso != nil {
-			Logger.Debug("Desalojo por DUMP_MEMORY", "pid", pid)
-		}
-	} else if motivoDesalojo == "EXIT" {
-		if pcbDelProceso != nil {
-			TerminarProceso(*pcbDelProceso)
-		}
-	} else {
+	MutexCpuLibres.Lock()		
+	CpuLibres = true // Indicamos que hay CPU libres para recibir nuevos procesos
+	MutexCpuLibres.Unlock()
+
+	switch motivoDesalojo {
+	case "Planificador":
+		LogDesalojoPorSJF_SRT(pid)
+	case "IO":
+		Logger.Debug("Desalojo por IO", "pid", pid)
+	case "DUMP_MEMORY":
+		Logger.Debug("Desalojo por DUMP_MEMORY", "pid", pid)
+	case "EXIT":
+		Logger.Debug("Desalojo por EXIT", "pid", pid)
+	default:
 		Logger.Debug("Error, motivo de desalojo no válido", "motivo", motivoDesalojo)
+		return
 	}
 }
 
@@ -450,6 +456,7 @@ func IniciarContadorBlocked(pcb globals.PCB, milisegundos int) {
 			if BuscarProcesoEnCola(pcb.PID, &ColaBlocked) != nil {
 				MoverProcesoACola(pcb, &ColaSuspBlocked)
 				//! PEDIR A MEMORIA QUE HAGA EL SWAP
+				LargoNotifier <- struct{}{}
 			}
 		case <-cancel:
 			timer.Stop()

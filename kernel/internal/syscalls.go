@@ -9,8 +9,8 @@ por lo que el proceso que llamó a esta syscall, inmediatamente volverá a ejecu
 func SyscallInitProc(pid int, nombreArchivo string, tamanioProcesoEnMemoria int) {
 	LogSyscall(pid, "INIT_PROC")
 
-	// ! FALTA IMPLEMENTAR DENTRO DE PCB EL ARCHIVO DE PSEUDOCODIGO
-	InicializarPCB(tamanioProcesoEnMemoria)
+	
+	InicializarPCB(tamanioProcesoEnMemoria, nombreArchivo)
 }
 
 /* EXIT, esta syscall no recibirá parámetros y
@@ -22,6 +22,7 @@ func SyscallExit(pid int) {
 
 	//Desalojo el proceso de la CPU
 	PeticionDesalojo(pid, "EXIT")
+	TerminarProceso(pid, &ColaExec)
 }
 
 /* DUMP_MEMORY, esta syscall le solicita a la memoria, junto al PID que lo solicitó, que haga un Dump del proceso.
@@ -37,7 +38,7 @@ func SyscallDumpMemory(pid int) {
 	PeticionDesalojo(pid, "DUMP_MEMORY")
 
 	//Bloque el proceso
-	MoverProcesoABlocked(pid)
+	MoverProcesoDeExecABlocked(pid)
 
 	//Pido el dump a memoria y espero la respuesta
 	respuestaDelDump := PedirDumpMemory(pid)
@@ -52,15 +53,15 @@ func SyscallDumpMemory(pid int) {
 
 func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso int) {
 	LogSyscall(pid, "IO")
-	
+
 	if VerificarDispositivo(nombreDispositivo) {
 		//& SI EL DISPOSITIVO EXISTE, PERO ESTA EN USO, BLOQUEAR EL PROCESO EN LA COLA DEL DISPOSITIVO
-		
+
 		LogMotivoDeBloqueo(pid, nombreDispositivo)
 
 		PeticionDesalojo(pid, "IO")
 
-		MoverProcesoABlocked(pid)
+		MoverProcesoDeExecABlocked(pid)
 
 		if VerificarInstanciaDeIO(nombreDispositivo) {
 
@@ -69,13 +70,15 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 			MoverProcesoDeBlockedAReady(pid)
 
 		} else {
-			
+
 			//Si no hay instancias de IO disponibles, se bloquea el proceso en la cola del dispositivo
 			BloquearProcesoPorIO(nombreDispositivo, pid, milisegundosDeUso) //* FUNCION A DESARROLLAR
 		}
 	} else {
 		//& NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
-		
-		PeticionDesalojo(pid, "EXIT")
+
+		PeticionDesalojo(pid, "IO")
+		Logger.Debug("El dispositivo no existe, enviando a EXIT", "pid", pid, "dispositivo", nombreDispositivo)
+		TerminarProceso(pid, &ColaExec)
 	}
 }

@@ -214,7 +214,7 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 
 	cpuDelPID := BuscarCPUporPID(pid)
 	if cpuDelPID == nil {
-		Logger.Debug("No se encontró el CPU para el PID", "PID", pid)
+		Logger.Debug("No se encontró el CPU que tenga este PID: ", "PID", pid)
 		return
 	}
 
@@ -243,6 +243,7 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 		return
 	}
 
+	//! HACER ESTO EN UN HANDLER Y NO EN ESPERA ACTIVA
 	// Decodifico la respuesta JSON del server
 	var respuestaDesalojo globals.DesalojoResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respuestaDesalojo); err != nil {
