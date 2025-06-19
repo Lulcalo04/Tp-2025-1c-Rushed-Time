@@ -35,7 +35,7 @@ type InstruccionesResponse struct {
 // FrameID es el índice de un marco físico en memoriaPrincipal (0 .. numFrames-1).
 type FrameID int
 
-// EntradaTabla, es de tipo interface, que almacena cualquier valor de cualquie tipo, puede ser en nuestro caso:
+// EntradaTabla:
 //	– nil  ->  no asignado
 //	– *TablaPags  -> uun puntero a una subtabla de nivel inferior 
 //	– FrameID   -> un frame en memoriaPrincipal
@@ -45,7 +45,6 @@ type EntradaTabla interface{}
 type TablaPags struct {
 	// Entradas tiene siempre longitud = Config_Memoria.EntriesPerTable.
 	Entradas []EntradaTabla
-	
 }
 
 //-------------------------------------------------------------------------

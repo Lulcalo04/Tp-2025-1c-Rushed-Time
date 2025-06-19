@@ -26,8 +26,8 @@ func IniciarServerMemoria(puerto int) {
 	mux.HandleFunc("/ping", PingHandler)
 	mux.HandleFunc("/espacio/pedir", PidenEspacioHandler)
 	mux.HandleFunc("/espacio/liberar", LiberarEspacioHandler)
-	mux.HandleFunc("/cpu/instrucciones", InstruccionesHandler)
-	mux.HandleFunc("/cpu/frame", CalcularFrameHandler)
+	mux.HandleFunc("/cpu/instrucciones", InstruccionesHandler) // 
+	mux.HandleFunc("/cpu/frame", CalcularFrameHandler) // pedido de frame desde CPU para la traduccion de direcciones
 	mux.HandleFunc("/cpu/write", HacerWriteHandler)
 	mux.HandleFunc("/cpu/read", HacerReadHandler)
 	mux.HandleFunc("/cpu/goto", HacerGotoHandler)
@@ -54,6 +54,7 @@ func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 		})
 }
 
+// * Endpoint de handshake = /handshake/cpu
 func HandshakeConCPU(w http.ResponseWriter, r *http.Request) {
 	// Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
 	w.Header().Set("Content-Type", "application/json")
@@ -100,6 +101,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// LOGICA PARA VERIFICAR Y RESERVAR ESPACIO EN MEMORIA
+
 	tamanioSolicitado := pedidoRecibido.ProcesoPCB.TamanioEnMemoria
 
 	//Este calculo es para determinar cuantas paginas  se necesitan para el tamanio solicitado, se suma el PageSize y se resta 1 para redondear hacia arriba
@@ -119,7 +121,6 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		tablaRaiz := MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID]
 	
-
 		//Reservar espacio en memoria
 		for pagina := 0; pagina < framesNecesarios; pagina++ {
 			frameID, err := MemoriaGlobal.obtenerFrameLibre()
@@ -137,7 +138,6 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
  
-
 	if pedidoEnMemoria {
 		// Si el pedido es valido, se hace la concesion de espacio
 		Logger.Debug("Solicitud a Memoria aceptada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
@@ -177,6 +177,8 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Logica para liberar espacio en memoria
+
+
 
 	liberacionDeMemoria := true // Simulacion
 
@@ -247,11 +249,8 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//--------------------------------------------------Crear Proceso---------------------------------------------------------
 
-
-
-// -----------------------------------------------Funcion para instrucciones------------------------------------------------
+// -----------------------------------------------Funcion de instrucciones------------------------------------------------
 
 // * Endpoint de instrucciones = /instrucciones
 func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
@@ -303,7 +302,14 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+//-------------------------------------------------Funcion para darle el frame a CPU ------------------------------------------------
+
+// * Endpoint de frame = /cpu/frame
 func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+        http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+        return
+    }
 
 	var request globals.SolicitudFrameRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -311,16 +317,30 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Simulamos la logica de calculo de frame (checkpoint 2)
-	frame := 2 //! REQUETE HARDCODEADO
+	// Buscar la tabla de páginas raíz del proceso
+    tablaRaiz := MemoriaGlobal.tablas[request.PID]
+    if tablaRaiz == nil {
+        http.Error(w, "Proceso no encontrado en memoria", http.StatusNotFound)
+        return
+    }
+	
+	// Buscar el frame físico recorriendo la tabla multinivel
+	frame, ok := MemoriaGlobal.buscarFramePorEntradas(tablaRaiz, request.EntradasPorNivel)
+	if !ok {
+		http.Error(w, "Página no asignada en memoria", http.StatusNotFound)
+		return
+	}
 
 	response := globals.SolicitudFrameResponse{
-		Frame: frame,
+		Frame: int(frame),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
+
+
 
 func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -340,6 +360,7 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
 
 func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
 	var request globals.CPUReadAMemoriaRequest
