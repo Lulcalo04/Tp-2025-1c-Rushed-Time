@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 	"utils/client"
 	"utils/globals"
@@ -57,7 +58,7 @@ var Config_Kernel *ConfigKernel
 
 var Logger *slog.Logger
 
-var ContadorPID int
+var ContadorPID int = -1
 
 var canceladoresBlocked = make(map[int]chan struct{})
 
@@ -96,9 +97,8 @@ func InicializarProcesoCero() {
 		os.Exit(1)
 	}
 
-	
 	InicializarPCB(tamanioProceso, nombreArchivoPseudocodigo)
-	
+
 }
 
 func BuscarProcesoEnCola(pid int, cola *[]globals.PCB) *globals.PCB {
@@ -137,6 +137,139 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 
 }
 
+func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
+	//& El mutex actualmente lo estamos usando con todas las colas, pero seguramente estamos haciendo mucho overhead
+	//& porque no todas las colas se usan al mismo tiempo. Hay que ver si podemos optimizar eso.
+
+	// Guardar el estado anterior del proceso
+	procesoEstadoAnterior := proceso.Estado
+
+	// Obtener el mutex de la cola de origen
+	var mutexOrigen *sync.Mutex
+	for colaOrigen, estado := range ColaEstados {
+		if proceso.Estado == estado {
+			mutexOrigen = ColaMutexes[colaOrigen]
+			break
+		}
+	}
+
+	// Obtener el mutex de la cola de destino
+	mutexDestino := ColaMutexes[colaDestino]
+
+	// Bloquear ambas colas (origen y destino)
+	if mutexOrigen != nil {
+		mutexOrigen.Lock()         // Bloquear mutexOrigen si no es nil
+		defer mutexOrigen.Unlock() // Defer para desbloquear al final de la función
+	}
+	if mutexDestino != nil {
+		mutexDestino.Lock()         // Bloquear mutexDestino
+		defer mutexDestino.Unlock() // Defer para desbloquear al final de la función
+	}
+
+	// Buscar y eliminar el proceso de su cola actual
+	for cola, estado := range ColaEstados {
+		if proceso.Estado == estado {
+			for i, p := range *cola {
+				if p.PID == proceso.PID {
+					// Eliminar el proceso de la cola actual
+					*cola = append((*cola)[:i], (*cola)[i+1:]...)
+					break
+				}
+			}
+			break
+		}
+	}
+
+	// Agregar el proceso a la cola destino
+	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
+		proceso.Estado = estadoDestino
+		*colaDestino = append(*colaDestino, proceso)
+	}
+
+	if proceso.Estado != procesoEstadoAnterior {
+
+		// Si el proceso estaba en Exec, hay que guardar el tiempo de la última ráfaga
+		if procesoEstadoAnterior == globals.Exec {
+			proceso.TiempoDeUltimaRafaga = time.Since(proceso.InicioEstadoActual) // Toma el tiempo transcurrido desde que el proceso entró al estado Exec
+		}
+
+		// Actualizar la métrica de tiempo por estado del proceso
+		duracion := time.Since(proceso.InicioEstadoActual)           // Toma el tiempo transcurrido desde que el proceso entró al estado origen
+		proceso.MetricasDeTiempos[procesoEstadoAnterior] += duracion // Actualiza el tiempo acumulado en el estado anterior
+
+		// Actualizar la métrica de estado del proceso
+		proceso.MetricasDeEstados[proceso.Estado]++
+
+		// Reiniciar el contador de tiempo para el nuevo estado
+		proceso.InicioEstadoActual = time.Now()
+
+		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
+	}
+
+}
+
+func MoverProcesoDeExecABlocked(pid int) {
+
+	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
+
+	MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
+
+	IniciarContadorBlocked(*pcbDelProceso, Config_Kernel.SuspensionTime)
+
+}
+
+func MoverProcesoDeBlockedAExit(pid int) {
+
+	CancelarContadorBlocked(pid)
+
+	//Busco el PCB del proceso actualizado en la cola de blocked
+	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
+
+	// Si no se encuentra el PCB del proceso en la cola de blocked, xq el plani de mediano plazo lo movió a SuspBlocked
+	if pcbDelProceso == nil {
+		Logger.Debug("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
+
+		// Busco el PCB del proceso en la cola de SuspBlocked
+		//pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+
+		//! BORRAR EL PROCESO DE SWAP Y LIBERAR LA MEMORIA
+
+		//Lo muevo a la cola exit y lo termino
+		TerminarProceso(pid, &ColaSuspBlocked)
+	} else {
+		// Como lo encontré en la cola de blocked, lo muevo a la cola exit y lo termino
+		TerminarProceso(pid, &ColaBlocked)
+	}
+
+}
+
+func MoverProcesoDeBlockedAReady(pid int) {
+
+	CancelarContadorBlocked(pid)
+
+	//Busco el PCB del proceso actualizado en la cola de blocked
+	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
+
+	// Si no se encuentra el PCB del proceso en la cola de blocked, xq el plani de mediano plazo lo movió a SuspBlocked
+	if pcbDelProceso == nil {
+		Logger.Debug("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
+
+		// Busco el PCB del proceso en la cola de SuspBlocked
+		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+
+		//! SACAR EL PROCESO DE SWAP
+
+		//Lo muevo a la cola destino
+		MoverProcesoACola(*pcbDelProceso, &ColaSuspReady)
+		LargoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
+	} else {
+		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
+		MoverProcesoACola(*pcbDelProceso, &ColaReady)
+		CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
+	}
+
+}
+
 func TerminarProceso(pid int, colaOrigen *[]globals.PCB) {
 
 	proceso := BuscarProcesoEnCola(pid, colaOrigen)
@@ -165,7 +298,7 @@ func AnalizarDesalojo(pid int, pc int, motivoDesalojo string) {
 	}
 	pcbDelProceso.PC = pc
 
-	MutexCpuLibres.Lock()		
+	MutexCpuLibres.Lock()
 	CpuLibres = true // Indicamos que hay CPU libres para recibir nuevos procesos
 	MutexCpuLibres.Unlock()
 

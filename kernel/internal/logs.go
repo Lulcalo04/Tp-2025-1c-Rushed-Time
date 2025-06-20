@@ -2,6 +2,7 @@ package kernel_internal
 
 import (
 	"fmt"
+	"utils/globals"
 )
 
 /*
@@ -43,10 +44,16 @@ func LogFinDeProceso(pid int) {
 	Logger.Info(fmt.Sprintf("## (%d) - Finaliza el proceso", pid))
 }
 
-func LogMetricasDeEstado(pid int, metrics map[string][2]int) {
-	logMessage := fmt.Sprintf("## (%d) - Métricas de estado:", pid)
-	for state, values := range metrics {
-		logMessage += fmt.Sprintf(" %s (%d) (%d),", state, values[0], values[1])
-	}
-	Logger.Info(logMessage[:len(logMessage)-1]) // Elimina la coma final
+func LogMetricasDeEstado(pcb globals.PCB) {
+	Logger.Info(fmt.Sprintf(
+		"## (%d) - Métricas de estado: NEW (%d) (%d), READY (%d) (%d), EXEC (%d) (%d), BLOCKED (%d) (%d), SUSP_BLOCKED (%d) (%d), SUSP_READY (%d) (%d), EXIT (%d) (%d)",
+		pcb.PID,
+		pcb.MetricasDeEstados[globals.New], pcb.MetricasDeTiempos[globals.New],
+		pcb.MetricasDeEstados[globals.Ready], pcb.MetricasDeTiempos[globals.Ready],
+		pcb.MetricasDeEstados[globals.Exec], pcb.MetricasDeTiempos[globals.Exec],
+		pcb.MetricasDeEstados[globals.Blocked], pcb.MetricasDeTiempos[globals.Blocked],
+		pcb.MetricasDeEstados[globals.SuspBlocked], pcb.MetricasDeTiempos[globals.SuspBlocked],
+		pcb.MetricasDeEstados[globals.SuspReady], pcb.MetricasDeTiempos[globals.SuspReady],
+		pcb.MetricasDeEstados[globals.Exit], pcb.MetricasDeTiempos[globals.Exit],
+	))
 }

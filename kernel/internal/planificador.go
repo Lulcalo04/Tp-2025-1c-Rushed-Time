@@ -75,7 +75,7 @@ func PlanificadorLargoPlazo() {
 				// Si memoria responde...
 				if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
 					Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
-					return
+					break // Salimos del for para esperar un nuevo proceso en New
 				}
 
 				//! Estaria piola hacer una funcion que resuma todo esto, pero por ahora lo dejo asi
@@ -88,7 +88,7 @@ func PlanificadorLargoPlazo() {
 					// Si memoria responde que no hay espacio..
 					if !respuestaMemoria {
 						hayEspacioEnMemoria = false // Seteo la variable del for a false
-						return                      // Salgo del for
+						break                       // Salimos del for para esperar un nuevo proceso en New
 					}
 
 					MoverProcesoACola(ColaSuspReady[0], &ColaReady)
@@ -101,7 +101,7 @@ func PlanificadorLargoPlazo() {
 					// Si memoria responde que no hay espacio...
 					if !respuestaMemoria {
 						hayEspacioEnMemoria = false // Seteo la variable del for a false
-						return                      // Salgo del for
+						break                       // Salimos del for para esperar un nuevo proceso en New
 					}
 
 					MoverProcesoACola(ColaNew[0], &ColaReady)
@@ -114,7 +114,7 @@ func PlanificadorLargoPlazo() {
 				// Si memoria responde...
 				if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
 					Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
-					return
+					break // Salimos del for para esperar un nuevo proceso en New
 				}
 
 				//Verifico si hay procesos en la cola SuspReady
@@ -125,7 +125,7 @@ func PlanificadorLargoPlazo() {
 					// Si memoria responde que no hay espacio...
 					if !respuestaMemoria {
 						hayEspacioEnMemoria = false // Seteo la variable del for a false
-						return                      // Salgo del for
+						break                       // Salimos del for para esperar un nuevo proceso en New
 					}
 
 					MoverProcesoACola(ColaSuspReady[pcbMasChico()], &ColaReady)
@@ -137,7 +137,7 @@ func PlanificadorLargoPlazo() {
 					// Si memoria responde que no hay espacio...
 					if !respuestaMemoria {
 						hayEspacioEnMemoria = false // Seteo la variable del for a false
-						return                      // Salgo del for
+						break                       // Salimos del for para esperar un nuevo proceso en New
 					}
 
 					MoverProcesoACola(ColaNew[pcbMasChico()], &ColaReady)
@@ -162,30 +162,30 @@ func PlanificadorCortoPlazo() {
 
 		for len(ColaReady) != 0 {
 			if algoritmo == "FIFO" && CpuLibres {
-				// Seleccionamos el primer proceso de la cola Ready y lo enviamos a Exec
-				MoverProcesoACola(ColaReady[0], &ColaExec)
 
 				// Sabemos que el proceso que acabamos de mover a Exec es el último de la cola
-				ultimo := ColaExec[len(ColaExec)-1]
+				ultimoProcesoEnReady := &ColaExec[len(ColaExec)-1]
 
 				// Intentamos enviar el proceso a la CPU
-				if !ElegirCpuYMandarProceso(ultimo) {
+				if ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
 					// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
-					MoverProcesoACola(ultimo, &ColaReady)
+					MoverProcesoACola(*ultimoProcesoEnReady, &ColaExec)
+					break // Salimos del for para esperar un nuevo proceso en Ready
+				} else {
 					MutexCpuLibres.Lock()
 					CpuLibres = false // Indicamos que la CPU no está libre
 					MutexCpuLibres.Unlock()
-					return
 				}
 			}
 			if algoritmo == "SJF" && CpuLibres {
 				// Recorremos la cola de Ready
-				for _, proceso := range ColaReady {
+				for i := range ColaReady {
 					// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
-					if proceso.MetricasDeEstados[globals.Exec] != 0 && !proceso.EstimacionDeRafaga.YaCalculado {
+					if ColaReady[i].MetricasDeEstados[globals.Exec] != 0 && !ColaReady[i].EstimacionDeRafaga.YaCalculado {
 						//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
-						proceso.EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * float64(proceso.TiempoDeUltimaRafaga.Milliseconds())) + (1-Config_Kernel.Alpha)*proceso.EstimacionDeRafaga.TiempoDeRafaga
-						proceso.EstimacionDeRafaga.YaCalculado = true
+						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * float64(ColaReady[i].TiempoDeUltimaRafaga.Milliseconds())) +
+							(1-Config_Kernel.Alpha)*ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga
+						ColaReady[i].EstimacionDeRafaga.YaCalculado = true
 					}
 				}
 
@@ -195,208 +195,78 @@ func PlanificadorCortoPlazo() {
 				// Cambiamos el boolean de YaCalculado a false para que se vuelva a calcular en la próxima iteración
 				pcbElegido.EstimacionDeRafaga.YaCalculado = false
 
-				// Movemos el proceso elegido a la cola Exec
-
-				MoverProcesoACola(pcbElegido, &ColaExec)
-
-				ultimo := ColaExec[len(ColaExec)-1]
-				if !ElegirCpuYMandarProceso(ultimo) {
-					// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
-					MoverProcesoACola(ultimo, &ColaReady)
+				if ElegirCpuYMandarProceso(*pcbElegido) {
+					// Movemos el proceso elegido a la cola Exec
+					MoverProcesoACola(*pcbElegido, &ColaExec)
+					break // Salimos del for para esperar un nuevo proceso en Ready
+				} else {
+					// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
+					MutexCpuLibres.Lock()
 					CpuLibres = false // Indicamos que la CPU no está libre
-					return
+					MutexCpuLibres.Unlock()
 				}
 			}
 			if algoritmo == "SRT" {
-				//* Lógica para SJF con desalojo /SRT
 				// Recorremos la cola de Ready
-				if CpuLibres {
-					for _, proceso := range ColaReady {
-						// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
-						if proceso.MetricasDeEstados[globals.Exec] != 0 && !proceso.EstimacionDeRafaga.YaCalculado {
-							//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
-							proceso.EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * float64(proceso.TiempoDeUltimaRafaga.Milliseconds())) + (1-Config_Kernel.Alpha)*proceso.EstimacionDeRafaga.TiempoDeRafaga
-							proceso.EstimacionDeRafaga.YaCalculado = true
-						}
+				for i := range ColaReady {
+					// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
+					if ColaReady[i].MetricasDeEstados[globals.Exec] != 0 && !ColaReady[i].EstimacionDeRafaga.YaCalculado {
+						//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
+						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * float64(ColaReady[i].TiempoDeUltimaRafaga.Milliseconds())) +
+							(1-Config_Kernel.Alpha)*ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga
+						ColaReady[i].EstimacionDeRafaga.YaCalculado = true
 					}
+				}
 
-					// Una vez que calculamos las estimaciones de ráfaga, elegimos el proceso con la estimación más pequeña
-					pcbElegido := elegirPcbConEstimacionMasChica()
+				// Una vez que calculamos las estimaciones de ráfaga, elegimos el proceso con la estimación más pequeña
+				pcbElegido := elegirPcbConEstimacionMasChica()
 
-					// Cambiamos el boolean de YaCalculado a false para que se vuelva a calcular en la próxima iteración
-					pcbElegido.EstimacionDeRafaga.YaCalculado = false
+				// Cambiamos el boolean de YaCalculado a false para que se vuelva a calcular en la próxima iteración
+				pcbElegido.EstimacionDeRafaga.YaCalculado = false
 
+				if ElegirCpuYMandarProceso(*pcbElegido) {
 					// Movemos el proceso elegido a la cola Exec
+					MoverProcesoACola(*pcbElegido, &ColaExec)
+					break // Salimos del for para esperar un nuevo proceso en Ready
+				} else {
+					// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
+					MutexCpuLibres.Lock()
+					CpuLibres = false // Indicamos que la CPU no está libre
+					MutexCpuLibres.Unlock()
+				}
+			} else {
+				// Si no hay cpu libres, elegir a victima de SRT, el que tenga mayor tiempo restante en la CPU
+				pcbVictima := buscarTiempoRestanteEnCpuMasAlto()
+				// Agarro el proceso que generó la comparación
+				ultimoProcesoEnReady := &ColaReady[len(ColaReady)-1]
 
-					MoverProcesoACola(pcbElegido, &ColaExec)
+				if ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga < tiempoRestanteEnCpu(*pcbVictima) {
+					// Pido el desalojo a la CPU del proceso víctima
+					PeticionDesalojo(pcbVictima.PID, "Planificador")
 
-					ultimo := ColaExec[len(ColaExec)-1]
-					if !ElegirCpuYMandarProceso(ultimo) {
-						// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
-						MoverProcesoACola(ultimo, &ColaReady)
+					// Muevo el proceso víctima a la cola Ready
+					MoverProcesoACola(*pcbVictima, &ColaReady)
+
+					// Intentamos enviar el proceso a la CPU
+					if ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
+
+						// Muevo el proceso que llegó de Ready a la cola Exec
+						MoverProcesoACola(*ultimoProcesoEnReady, &ColaExec)
+
+						break // Salimos del for para esperar un nuevo proceso en Ready
+
+					} else {
+						// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
 						MutexCpuLibres.Lock()
 						CpuLibres = false // Indicamos que la CPU no está libre
 						MutexCpuLibres.Unlock()
-						return
 					}
-				} else {
-					// Si no hay cpu libres, elegir a victima de SRT
-					//! ANALIZAR TIEMPO RESTANTE DE CADA CPU
-					// Si el proceso nuevo de ready (el ultimo) tiene una estimacion menor a los de exec
-					// Desalojar al que mas tiempo le quede
+
 				}
 			}
 		}
 		planificadorCortoMutex.Unlock()
 	}
-}
-
-func elegirPcbConEstimacionMasChica() globals.PCB {
-	var maxIndex float64
-	var pcb globals.PCB
-	for i, num := range ColaReady {
-		if i == 0 {
-			maxIndex = num.EstimacionDeRafaga.TiempoDeRafaga
-			pcb = num
-		} else if num.EstimacionDeRafaga.TiempoDeRafaga < maxIndex {
-			maxIndex = num.EstimacionDeRafaga.TiempoDeRafaga
-			pcb = num
-		}
-	}
-	return pcb
-}
-
-func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
-	//& El mutex actualmente lo estamos usando con todas las colas, pero seguramente estamos haciendo mucho overhead
-	//& porque no todas las colas se usan al mismo tiempo. Hay que ver si podemos optimizar eso.
-
-	// Guardar el estado anterior del proceso
-	procesoEstadoAnterior := proceso.Estado
-
-	// Obtener el mutex de la cola de origen
-	var mutexOrigen *sync.Mutex
-	for colaOrigen, estado := range ColaEstados {
-		if proceso.Estado == estado {
-			mutexOrigen = ColaMutexes[colaOrigen]
-			break
-		}
-	}
-
-	// Obtener el mutex de la cola de destino
-	mutexDestino := ColaMutexes[colaDestino]
-
-	// Bloquear ambas colas (origen y destino)
-	if mutexOrigen != nil {
-		mutexOrigen.Lock()         // Bloquear mutexOrigen si no es nil
-		defer mutexOrigen.Unlock() // Defer para desbloquear al final de la función
-	}
-	if mutexDestino != nil {
-		mutexDestino.Lock()         // Bloquear mutexDestino
-		defer mutexDestino.Unlock() // Defer para desbloquear al final de la función
-	}
-
-	// Buscar y eliminar el proceso de su cola actual
-	for cola, estado := range ColaEstados {
-		if proceso.Estado == estado {
-			for i, p := range *cola {
-				if p.PID == proceso.PID {
-					// Eliminar el proceso de la cola actual
-					*cola = append((*cola)[:i], (*cola)[i+1:]...)
-					break
-				}
-			}
-			break
-		}
-	}
-
-	// Agregar el proceso a la cola destino
-	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
-		proceso.Estado = estadoDestino
-		*colaDestino = append(*colaDestino, proceso)
-	}
-
-	if proceso.Estado != procesoEstadoAnterior {
-
-		// Si el proceso estaba en Exec, hay que guardar el tiempo de la última ráfaga
-		if procesoEstadoAnterior == globals.Exec {
-			proceso.TiempoDeUltimaRafaga = time.Since(proceso.InicioEstadoActual) // Toma el tiempo transcurrido desde que el proceso entró al estado Exec
-		}
-
-		// Actualizar la métrica de tiempo por estado del proceso
-		duracion := time.Since(proceso.InicioEstadoActual)           // Toma el tiempo transcurrido desde que el proceso entró al estado origen
-		proceso.MetricasDeTiempos[procesoEstadoAnterior] += duracion // Actualiza el tiempo acumulado en el estado anterior
-
-		// Actualizar la métrica de estado del proceso
-		proceso.MetricasDeEstados[proceso.Estado]++
-
-		// Reiniciar el contador de tiempo para el nuevo estado
-		proceso.InicioEstadoActual = time.Now()
-
-		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
-	}
-
-}
-
-func MoverProcesoDeExecABlocked(pid int) {
-
-	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
-
-	MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
-
-	IniciarContadorBlocked(*pcbDelProceso, Config_Kernel.SuspensionTime)
-
-}
-
-func MoverProcesoDeBlockedAExit(pid int) {
-
-	CancelarContadorBlocked(pid)
-
-	//Busco el PCB del proceso actualizado en la cola de blocked
-	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
-
-	// Si no se encuentra el PCB del proceso en la cola de blocked, xq el plani de mediano plazo lo movió a SuspBlocked
-	if pcbDelProceso == nil {
-		Logger.Debug("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
-
-		// Busco el PCB del proceso en la cola de SuspBlocked
-		//pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
-
-		//! BORRAR EL PROCESO DE SWAP Y LIBERAR LA MEMORIA
-
-		//Lo muevo a la cola exit y lo termino
-		TerminarProceso(pid, &ColaSuspBlocked)
-	} else {
-		// Como lo encontré en la cola de blocked, lo muevo a la cola exit y lo termino
-		TerminarProceso(pid, &ColaBlocked)
-	}
-
-}
-
-func MoverProcesoDeBlockedAReady(pid int) {
-
-	CancelarContadorBlocked(pid)
-
-	//Busco el PCB del proceso actualizado en la cola de blocked
-	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
-
-	// Si no se encuentra el PCB del proceso en la cola de blocked, xq el plani de mediano plazo lo movió a SuspBlocked
-	if pcbDelProceso == nil {
-		Logger.Debug("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
-
-		// Busco el PCB del proceso en la cola de SuspBlocked
-		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
-
-		//! SACAR EL PROCESO DE SWAP
-
-		//Lo muevo a la cola destino
-		MoverProcesoACola(*pcbDelProceso, &ColaSuspReady)
-		LargoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
-	} else {
-		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
-		MoverProcesoACola(*pcbDelProceso, &ColaReady)
-		CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
-	}
-
 }
 
 func pcbMasChico() int {
@@ -411,4 +281,39 @@ func pcbMasChico() int {
 		}
 	}
 	return minIndex
+}
+
+func elegirPcbConEstimacionMasChica() *globals.PCB {
+
+	if len(ColaReady) == 0 {
+		return nil
+	}
+	minIdx := 0
+	for i := 1; i < len(ColaReady); i++ {
+		if ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga < ColaReady[minIdx].EstimacionDeRafaga.TiempoDeRafaga {
+			minIdx = i
+		}
+	}
+	return &ColaReady[minIdx]
+
+}
+
+func buscarTiempoRestanteEnCpuMasAlto() *globals.PCB {
+	if len(ColaExec) == 0 {
+		return nil
+	}
+	maxIdx := 0
+	for i := 1; i < len(ColaExec); i++ {
+		if tiempoRestanteEnCpu(ColaExec[i]) > tiempoRestanteEnCpu(ColaExec[maxIdx]) {
+			maxIdx = i
+		}
+	}
+	return &ColaExec[maxIdx]
+}
+
+func tiempoRestanteEnCpu(pcb globals.PCB) float64 {
+	//& Esta función calcula el tiempo restante en la CPU para un PCB dado.
+
+	return pcb.EstimacionDeRafaga.TiempoDeRafaga - float64(time.Since(pcb.InicioEstadoActual).Milliseconds())
+
 }
