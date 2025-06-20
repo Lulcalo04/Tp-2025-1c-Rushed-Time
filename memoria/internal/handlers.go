@@ -416,7 +416,7 @@ func HacerGotoHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
 		return
 	}
-
+	
 	// Simulamos la logica de salto en memoria (checkpoint 2)
 	respuestaGoto := true //! Simulacion
 

@@ -191,7 +191,7 @@ type SolicitudFrameResponse struct {
 
 type CPUWriteAMemoriaRequest struct {
 	PID             int    `json:"pid"`
-	Instruccion     string `json:"instruccion"`
+	Instruccion     string `json:"instruccion"`// creo que no es necesario mandarlo a Memoria
 	DireccionFisica int    `json:"direccion_fisica"`
 	Data            string `json:"data"`
 }
