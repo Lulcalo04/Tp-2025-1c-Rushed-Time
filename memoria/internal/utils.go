@@ -16,9 +16,13 @@ type ConfigMemoria struct {
 	SciptsPath     string `json:"scripts_path"`
 }
 
+var MemoriaGlobal *Memoria
+
 var Config_Memoria *ConfigMemoria
 
 var Logger *slog.Logger
+
+
 
 type InstruccionesRequest struct {
 	PID int `json:"pid"`
@@ -29,4 +33,20 @@ type InstruccionesResponse struct {
 	Instrucciones []string `json:"instrucciones"`
 }
 
+// FrameID es el índice de un marco físico en memoriaPrincipal (0 .. numFrames-1).
+type FrameID int
+
+// EntradaTabla:
+//	– nil  ->  no asignado
+//	– *TablaPags  -> uun puntero a una subtabla de nivel inferior 
+//	– FrameID   -> un frame en memoriaPrincipal
+type EntradaTabla interface{}
+
+// TablaPags representa una tabla de páginas en un nivel concreto.
+type TablaPags struct {
+	// Entradas tiene siempre longitud = Config_Memoria.EntriesPerTable.
+	Entradas []EntradaTabla
+}
+
 //-------------------------------------------------------------------------
+
