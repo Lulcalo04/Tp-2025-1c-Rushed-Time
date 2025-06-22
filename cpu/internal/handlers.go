@@ -3,8 +3,8 @@ package cpu_internal
 import (
 	"encoding/json"
 	"fmt"
+	"globals"
 	"net/http"
-	"utils/globals"
 )
 
 func IniciarServerCPU(puerto int) {
@@ -38,6 +38,8 @@ func DispatchHandler(w http.ResponseWriter, r *http.Request) {
 	ProcesoEjecutando.PID = ProcesoRequest.PID
 	ProcesoEjecutando.PC = ProcesoRequest.PC
 	ProcesoEjecutando.Interrupt = false
+
+	go CicloDeInstruccion()
 
 }
 

@@ -3,9 +3,8 @@ package kernel_internal
 import (
 	"encoding/json"
 	"fmt"
+	"globals"
 	"net/http"
-	"utils/client"
-	"utils/globals"
 )
 
 // &-------------------------------------------Funcion para iniciar Server de Kernel-------------------------------------------------------------
@@ -95,7 +94,7 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	//Se utiliza el encoder para enviar la respuesta en formato JSON
-	var respuestaPing = client.PingResponse{
+	var respuestaPing = globals.PingResponse{
 		Modulo:  "Kernel",
 		Mensaje: "Pong",
 	}

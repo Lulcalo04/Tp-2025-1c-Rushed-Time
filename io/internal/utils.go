@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"globals"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-	"utils/globals"
-	
 )
 
 type ConfigIO struct {
@@ -21,7 +20,6 @@ type ConfigIO struct {
 	IPIo       string `json:"ip_io"`
 	LogLevel   string `json:"log_level"`
 }
-
 
 var Config_IO *ConfigIO
 
@@ -139,12 +137,12 @@ func NotificarFinalizacionIO(pid int, nombreDispositivo string) {
 	Logger.Debug("Respuesta del servidor", "status", resp.Status)
 }
 
-func NotificarDesconexionDispositivo(nombreDispositivo string, ipInstancia string, puertoInstancia int){
-	
+func NotificarDesconexionDispositivo(nombreDispositivo string, ipInstancia string, puertoInstancia int) {
+
 	RequestIO := globals.IOtoKernelDesconexionRequest{
 		NombreDispositivo: nombreDispositivo,
-		IpInstancia: ipInstancia,
-		PuertoInstancia: puertoInstancia,
+		IpInstancia:       ipInstancia,
+		PuertoInstancia:   puertoInstancia,
 	}
 
 	body, err := json.Marshal(RequestIO)
@@ -165,12 +163,12 @@ func NotificarDesconexionDispositivo(nombreDispositivo string, ipInstancia strin
 }
 
 func EscucharSeñalDesconexion(nombreDispositivo string) {
-	canalDeEscucha := make(chan os.Signal, 1) // Creamos un canal para escuchar señales
+	canalDeEscucha := make(chan os.Signal, 1)                    // Creamos un canal para escuchar señales
 	signal.Notify(canalDeEscucha, os.Interrupt, syscall.SIGTERM) // Escucha señales de interrupción
-	<-canalDeEscucha // Espera a recibir una señal de interrupción (Ctrl+C o SIGTERM)
+	<-canalDeEscucha                                             // Espera a recibir una señal de interrupción (Ctrl+C o SIGTERM)
 
 	// Antes de salir, notificamos al kernel de la desconexión
-	
+
 	NotificarDesconexionDispositivo(nombreDispositivo, Config_IO.IPIo, Config_IO.PortIO)
 
 	Logger.Debug("Recibido Ctrl+C, desconectando del kernel...")

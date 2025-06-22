@@ -1,13 +1,12 @@
 package kernel_internal
 
 import (
+	"globals"
 	"log/slog"
 	"os"
 	"strconv"
 	"sync"
 	"time"
-	"utils/client"
-	"utils/globals"
 )
 
 // &-------------------------------------------Config de Kernel-------------------------------------------------------------
@@ -75,7 +74,13 @@ func IniciarKernel() {
 	go IniciarServerKernel(Config_Kernel.PortKernel)
 
 	//Realiza el handshake con memoria
-	//client.HandshakeCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger)
+	HandshakeConMemoria(Config_Kernel.IPMemory, Config_Kernel.PortMemory)
+
+	//Realizar el handshake con Memoria
+	/* if !HandshakeCon(CpuId) {
+		Logger.Debug("Error, no se pudo realizar el handshake con el Memoria")
+		return
+	} */
 
 	//Inicia los planificadores
 	IniciarPlanificadores()
@@ -274,7 +279,7 @@ func TerminarProceso(pid int, colaOrigen *[]globals.PCB) {
 
 	proceso := BuscarProcesoEnCola(pid, colaOrigen)
 
-	if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
+	if !PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
 		Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
 		return
 	}
@@ -422,6 +427,27 @@ func UsarDispositivoDeIO(nombreDispositivo string, pid int, milisegundosDeUso in
 	Logger.Debug("Instancias de IO", "nombre", nombreDispositivo, "instancias", len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
 }
 
+func ProcesarFinIO(pid int, nombreDispositivo string) {
+
+	// Buscamos en Blocked / SuspBlocked el proceso que terminó su IO y lo mandamos a Ready
+	MoverProcesoDeBlockedAReady(pid)
+
+	// Buscamos la instancia de IO que estaba ocupada por el PID
+	instanciaDeIO := BuscarInstanciaDeIOporPID(nombreDispositivo, pid)
+
+	// Liberamos la instancia de IO que estaba ocupada por el PID
+	LiberarInstanciaDeIO(nombreDispositivo, *instanciaDeIO)
+
+	if len(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos) != 0 {
+		// Si hay procesos esperando en la cola de espera del dispositivo, ocupamos la instancia recientemente liberada
+		OcuparInstanciaDeIO(nombreDispositivo, *instanciaDeIO, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Proceso.PID)
+		UsarDispositivoDeIO(nombreDispositivo, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Proceso.PID, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Tiempo)
+	}
+
+	LogFinDeIO(pid)
+
+}
+
 func OcuparInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO, pid int) {
 
 	for i, instanciaIO := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
@@ -481,27 +507,6 @@ func BuscarInstanciaDeIOporPID(nombreDispositivo string, pid int) *InstanciaIO {
 	}
 	Logger.Debug("No se encontró la instancia de IO para el PID", "nombre", nombreDispositivo, "pid", pid)
 	return nil
-}
-
-func ProcesarFinIO(pid int, nombreDispositivo string) {
-
-	// Buscamos en Blocked / SuspBlocked el proceso que terminó su IO y lo mandamos a Ready
-	MoverProcesoDeBlockedAReady(pid)
-
-	// Buscamos la instancia de IO que estaba ocupada por el PID
-	instanciaDeIO := BuscarInstanciaDeIOporPID(nombreDispositivo, pid)
-
-	// Liberamos la instancia de IO que estaba ocupada por el PID
-	LiberarInstanciaDeIO(nombreDispositivo, *instanciaDeIO)
-
-	if len(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos) != 0 {
-		// Si hay procesos esperando en la cola de espera del dispositivo, ocupamos la instancia recientemente liberada
-		OcuparInstanciaDeIO(nombreDispositivo, *instanciaDeIO, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Proceso.PID)
-		UsarDispositivoDeIO(nombreDispositivo, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Proceso.PID, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Tiempo)
-	}
-
-	LogFinDeIO(pid)
-
 }
 
 // &-------------------------------------------Funciones de CPU-------------------------------------------------------------

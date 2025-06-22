@@ -2,7 +2,7 @@ package kernel_internal
 
 import (
 	"fmt"
-	"utils/globals"
+	"globals"
 )
 
 /*

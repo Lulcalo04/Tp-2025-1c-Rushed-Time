@@ -1,8 +1,8 @@
 package main
 
 import (
+	"globals"
 	io_internal "inputoutput/internal"
-	"utils/globals"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 
 	// Hacemos handshake con el kernel
 	io_internal.HandshakeKernel(io_internal.Config_IO.IPKernel, io_internal.Config_IO.PortKernel, ioName)
-	
+
 	go io_internal.EscucharSeñalDesconexion(ioName)
 
 	select {}

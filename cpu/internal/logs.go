@@ -2,9 +2,9 @@ package cpu_internal
 
 import (
 	"fmt"
+	"globals"
 	"log/slog"
 	"os"
-	"utils/globals"
 )
 
 /*

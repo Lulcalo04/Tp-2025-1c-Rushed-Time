@@ -4,11 +4,67 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"globals"
 	"net/http"
-	"utils/globals"
+	"os"
 )
 
 // &--------------------------------------------Funciones de Cliente-------------------------------------------------------------
+
+func HandshakeConMemoria(ip string, puerto int) {
+	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/handshake", ip, puerto)
+
+	// Hacemos la petición GET al server
+	resp, err := http.Get(url)
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	// Decodifico la respuesta JSON del server
+	var respuesta globals.HandshakeRequest
+	if err := json.NewDecoder(resp.Body).Decode(&respuesta); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		os.Exit(1)
+	}
+
+	Logger.Debug("Handshake exitoso",
+		"nombre", "Memoria",
+		"modulo", respuesta.Modulo)
+}
+
+func PingCon(nombre string, ip string, puerto int) (respuestaPing bool) {
+	// Variable para guardar la respuesta del ping
+	respuestaPing = false
+
+	// Declaro la URL a la que me voy a conectar (handler de ping con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/ping", ip, puerto)
+
+	// Hacemos la petición GET al server
+	resp, err := http.Get(url)
+	if err != nil {
+		Logger.Debug("Error conectando con %s: %v", nombre, err)
+		return respuestaPing // Devuelve false si hay un error de conexión
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	// Decodifico la respuesta JSON del server
+	var respuesta globals.PingResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuesta); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return respuestaPing // Devuelve false si hay un error al decodificar
+	}
+
+	Logger.Debug("Conexión exitosa",
+		"nombre", nombre,
+		"status", resp.Status,
+		"mensaje", respuesta.Mensaje)
+
+	respuestaPing = true
+	return respuestaPing
+}
 
 func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
 

@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"utils/client"
-	"utils/globals"
+	"globals"
 )
 
 // -------------------------------------------Funcion para iniciar Server de Memoria-------------------------------------------------------------
@@ -82,7 +81,7 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	//Se utiliza el encoder para enviar la respuesta en formato JSON
-	var respuestaPing = client.PingResponse{
+	var respuestaPing = globals.PingResponse{
 		Modulo:  "Memoria",
 		Mensaje: "Pong",
 	}

@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"globals"
 	"net/http"
 	"strconv"
-	"utils/globals"
 )
 
 func HandshakeConKernel(cpuid string) bool {
@@ -202,8 +202,6 @@ func PeticionWriteAMemoria(direccionFisica int, instruccion string, data string,
 		Logger.Debug("Error al escribir en memoria", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica, "data", data)
 	}
 
-	return
-
 }
 
 func PeticionReadAMemoria(direccionFisica int, instruccion string, data string, pid int) {
@@ -245,7 +243,6 @@ func PeticionReadAMemoria(direccionFisica int, instruccion string, data string, 
 		Logger.Debug("Error al leer de memoria", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica, "data", data)
 	}
 
-	return
 }
 
 func PeticionGotoAMemoria(direccionFisica int, instruccion string, pid int) {
@@ -287,7 +284,6 @@ func PeticionGotoAMemoria(direccionFisica int, instruccion string, pid int) {
 		Logger.Debug("Error Goto", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica)
 	}
 
-	return
 }
 
 func PeticionIOKernel(pid int, nombreDispositivo string, tiempo string) {
@@ -335,7 +331,6 @@ func PeticionIOKernel(pid int, nombreDispositivo string, tiempo string) {
 		Logger.Debug("Error en la petición IO", "pid", pid, "nombreDispositivo", nombreDispositivo, "tiempo", tiempo)
 	}
 
-	return
 }
 
 func PeticionInitProcKernel(pid int, nombreArchivo string, tamanio string) {
@@ -383,7 +378,6 @@ func PeticionInitProcKernel(pid int, nombreArchivo string, tamanio string) {
 		Logger.Debug("Error en la petición InitProc", "pid", pid, "nombre", nombreArchivo, "tamanio", tamanio)
 	}
 
-	return
 }
 
 func PeticionDumpMemoryKernel(pid int) {
@@ -423,7 +417,6 @@ func PeticionDumpMemoryKernel(pid int) {
 		Logger.Debug("Error en la petición DumpMemory", "pid", pid)
 	}
 
-	return
 }
 
 func PeticionExitKernel(pid int) {
@@ -462,5 +455,4 @@ func PeticionExitKernel(pid int) {
 		Logger.Debug("Error en la petición Exit", "pid", pid)
 	}
 
-	return
 }

@@ -2,11 +2,11 @@ package cpu_internal
 
 import (
 	"fmt"
+	"globals"
 	"log/slog"
 	"os"
 	"strconv"
 	"strings"
-	"utils/globals"
 )
 
 type ConfigCPU struct {
@@ -59,6 +59,8 @@ func IniciarCPU() {
 	//Crea el archivo donde se logea cpu con su id
 	Logger = ConfigurarLoggerCPU(CpuId, Config_CPU.LogLevel)
 
+	go IniciarServerCPU(Config_CPU.PortCPU)
+
 	//Realizar el handshake con Memoria
 	if !HandshakeConMemoria(CpuId) {
 		Logger.Debug("Error, no se pudo realizar el handshake con el Memoria")
@@ -66,9 +68,7 @@ func IniciarCPU() {
 	}
 
 	//Realiza el handshake con el kernel
-	if HandshakeConKernel(CpuId) {
-		CicloDeInstruccion()
-	} else {
+	if !HandshakeConKernel(CpuId) {
 		Logger.Debug("Error, no se pudo realizar el handshake con el kernel")
 		return
 	}
@@ -126,11 +126,9 @@ func Execute() {
 		case "WRITE":
 			// Si la instruccion es WRITE, se escribe en la direccion fisica
 			PeticionWriteAMemoria(DireccionFisica, argumentoInstrucciones[0], argumentoInstrucciones[2], ProcesoEjecutando.PID)
-			break
 		case "READ":
 			// Si la instruccion es READ, se lee de la direccion fisica
 			PeticionReadAMemoria(DireccionFisica, argumentoInstrucciones[0], argumentoInstrucciones[2], ProcesoEjecutando.PID)
-			break
 		case "GOTO":
 			// Si la instruccion es GOTO, se cambia el PC al valor de la direccion logica
 			PeticionGotoAMemoria(DireccionFisica, argumentoInstrucciones[0], ProcesoEjecutando.PID)
@@ -143,23 +141,18 @@ func Execute() {
 	case "IO":
 		// Si la instruccion es IO, se realiza una peticion al kernel para que maneje la syscall
 		PeticionIOKernel(ProcesoEjecutando.PID, argumentoInstrucciones[1], argumentoInstrucciones[2])
-		break
 	case "INIT_PROC":
 		// Si la instruccion es INIT_PROC, se realiza una peticion al kernel para que maneje la syscall
 		PeticionInitProcKernel(ProcesoEjecutando.PID, argumentoInstrucciones[1], argumentoInstrucciones[2])
-		break
 	case "DUMP_MEMORY":
 		// Si la instruccion es DUMP_MEMORY, se realiza una peticion al kernel para que maneje la syscall
 		PeticionDumpMemoryKernel(ProcesoEjecutando.PID)
-		break
 	case "EXIT":
 		// Si la instruccion es EXIT, se realiza una peticion al kernel para que maneje la syscall
 		PeticionExitKernel(ProcesoEjecutando.PID)
-		break
 	}
 
 	ProcesoEjecutando.PC++ // Incrementa el PC para la siguiente instruccion
-	return
 }
 
 func CheckInterrupt() bool {

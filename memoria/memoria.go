@@ -1,8 +1,8 @@
 package main
 
 import (
+	"globals"
 	memoria_internal "memoria/internal"
-	"utils/globals"
 )
 
 func main() {

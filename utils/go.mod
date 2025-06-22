@@ -1,3 +1,3 @@
-module utils
+module globals
 
 go 1.24

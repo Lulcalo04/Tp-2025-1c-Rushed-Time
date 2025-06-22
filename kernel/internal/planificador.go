@@ -2,11 +2,10 @@ package kernel_internal
 
 import (
 	"bufio"
+	"globals"
 	"os"
 	"sync"
 	"time"
-	"utils/client"
-	"utils/globals"
 )
 
 var ColaNew []globals.PCB
@@ -73,7 +72,7 @@ func PlanificadorLargoPlazo() {
 		for hayEspacioEnMemoria && (len(ColaNew) != 0 || len(ColaSuspReady) != 0) {
 			if algoritmo == "FIFO" {
 				// Si memoria responde...
-				if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
+				if !PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
 					Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
 					break // Salimos del for para esperar un nuevo proceso en New
 				}
@@ -112,7 +111,7 @@ func PlanificadorLargoPlazo() {
 
 			if algoritmo == "PMCP" {
 				// Si memoria responde...
-				if !client.PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory, Logger) {
+				if !PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
 					Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
 					break // Salimos del for para esperar un nuevo proceso en New
 				}
