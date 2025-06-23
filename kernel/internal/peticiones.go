@@ -277,8 +277,9 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 	url := fmt.Sprintf("http://%s:%d/desalojo", cpuDelPID.Ip, cpuDelPID.Puerto)
 
 	// Declaro el body de la petición
-	pedidoBody := globals.DesalojoRequest{
-		PID: pid,
+	pedidoBody := globals.KerneltoCPUDesalojoRequest{
+		PID:    pid,
+		Motivo: motivoDesalojo,
 	}
 
 	// Serializo el body a JSON
@@ -301,13 +302,16 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 
 	//! HACER ESTO EN UN HANDLER Y NO EN ESPERA ACTIVA
 	// Decodifico la respuesta JSON del server
-	var respuestaDesalojo globals.DesalojoResponse
+	var respuestaDesalojo globals.KerneltoCPUDesalojoResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respuestaDesalojo); err != nil {
 		Logger.Debug("Error decodificando respuesta JSON", "error", err)
 		return
 	}
 
-	// Verifica si se desaloja por: Planificador (SJF CD), IO, o por fin de proceso
-	// Dependiendo el motivo, se enviará el proceso a la cola correspondiente
-	AnalizarDesalojo(respuestaDesalojo.PID, respuestaDesalojo.PC, motivoDesalojo)
+	if respuestaDesalojo.Respuesta {
+		Logger.Debug("Desalojo exitoso")
+	} else {
+		Logger.Debug("Desalojo fallido")
+	}
+
 }

@@ -54,13 +54,13 @@ type InstruccionesResponse struct {
 	Instrucciones []string `json:"instrucciones"`
 }
 
-type DesalojoRequest struct {
-	PID int `json:"pid"`
+type KerneltoCPUDesalojoRequest struct {
+	PID    int    `json:"pid"`
+	Motivo string `json:"motivo"`
 }
 
-type DesalojoResponse struct {
-	PID int `json:"pid"`
-	PC  int `json:"pc"`
+type KerneltoCPUDesalojoResponse struct {
+	Respuesta bool `json:"respuesta"`
 }
 
 type InitProcSyscallRequest struct {
@@ -171,7 +171,7 @@ type SolicitudFrameResponse struct {
 
 type CPUWriteAMemoriaRequest struct {
 	PID             int    `json:"pid"`
-	Instruccion     string `json:"instruccion"`// creo que no es necesario mandarlo a Memoria
+	Instruccion     string `json:"instruccion"` // creo que no es necesario mandarlo a Memoria
 	DireccionFisica int    `json:"direccion_fisica"`
 	Data            string `json:"data"`
 }
@@ -189,7 +189,7 @@ type CPUReadAMemoriaRequest struct {
 
 type CPUReadAMemoriaResponse struct {
 	Respuesta bool `json:"respuesta"`
-	Data      int `json:"data"` // Datos leídos de la memoria
+	Data      int  `json:"data"` // Datos leídos de la memoria
 
 }
 
@@ -207,4 +207,14 @@ type IOtoKernelDesconexionRequest struct {
 	NombreDispositivo string `json:"nombre_dispositivo"`
 	IpInstancia       string `json:"ip_instancia"`
 	PuertoInstancia   int    `json:"puerto_instancia"`
+}
+
+type CPUtoKernelDesalojoRequest struct {
+	PID    int    `json:"pid"`
+	PC     int    `json:"pc"`
+	Motivo string `json:"motivo"`
+}
+
+type CPUtoKernelDesalojoResponse struct {
+	Respuesta bool `json:"response"`
 }

@@ -35,10 +35,15 @@ func DispatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Guardo el PID y PC del proceso que se va a ejecutar y reseteo iterrupt
+	mutexProcesoEjecutando.Lock()
 	ProcesoEjecutando.PID = ProcesoRequest.PID
 	ProcesoEjecutando.PC = ProcesoRequest.PC
 	ProcesoEjecutando.Interrupt = false
+	ProcesoEjecutando.MotivoDesalojo = ""
+	mutexProcesoEjecutando.Unlock()
 
+	// Levanto ciclo de instruccion
 	go CicloDeInstruccion()
 
 }
@@ -47,26 +52,23 @@ func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	var ProcesoRequest globals.DesalojoRequest
+	var ProcesoRequest globals.KerneltoCPUDesalojoRequest
 	if err := json.NewDecoder(r.Body).Decode(&ProcesoRequest); err != nil {
 		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
 
+	// Si el PID es el correcto, se marca que hay q interrumpir el ciclo
 	if ProcesoRequest.PID == ProcesoEjecutando.PID {
+		mutexProcesoEjecutando.Lock()
 		ProcesoEjecutando.Interrupt = true
+		ProcesoEjecutando.MotivoDesalojo = ProcesoRequest.Motivo
+		mutexProcesoEjecutando.Unlock()
+		LogInterrupcionRecibida()
 	}
 
-	for ProcesoEjecutando.Interrupt {
-		if InterrupcionAtendida {
-			InterrupcionAtendida = false
-			break
-		}
-	}
-
-	var respuestaDesalojo = globals.DesalojoResponse{
-		PID: ProcesoEjecutando.PID,
-		PC:  ProcesoEjecutando.PC,
+	var respuestaDesalojo = globals.KerneltoCPUDesalojoResponse{
+		Respuesta: true,
 	}
 	json.NewEncoder(w).Encode(respuestaDesalojo)
 

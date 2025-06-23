@@ -238,7 +238,9 @@ func PeticionReadAMemoria(direccionFisica int, instruccion string, data string, 
 	}
 
 	if respuestaMemoria.Respuesta {
+		//Logeo e imprimo lo leido de memoria
 		LogLecturaEscrituraMemoria(pid, instruccion, direccionFisica, data)
+		fmt.Printf("PID: %d - Acción: %s - Dirección Física: %d - Valor: %s", pid, instruccion, direccionFisica, data)
 	} else {
 		Logger.Debug("Error al leer de memoria", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica, "data", data)
 	}
@@ -455,4 +457,44 @@ func PeticionExitKernel(pid int) {
 		Logger.Debug("Error en la petición Exit", "pid", pid)
 	}
 
+}
+
+func PeticionDesalojoKernel() {
+
+	// Declaro la URL a la que me voy a conectar (handler de IO con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/cpu/desalojo", Config_CPU.IPKernel, Config_CPU.PortKernel)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.CPUtoKernelDesalojoRequest{
+		PID:    ProcesoEjecutando.PID,
+		PC:     ProcesoEjecutando.PC,
+		Motivo: ProcesoEjecutando.MotivoDesalojo,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Kernel", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaKernel globals.CPUtoKernelDesalojoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaKernel); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaKernel.Respuesta {
+		Logger.Debug("Kernel aceptó el desalojo", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC)
+	} else {
+		Logger.Debug("No se pudo desalojar el proceso", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC)
+	}
 }

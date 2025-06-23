@@ -35,6 +35,9 @@ func IniciarServerKernel(puerto int) {
 	mux.HandleFunc("/io/fin", FinIOHandler)
 	mux.HandleFunc("/io/desconexion", DesconexionIOHandler)
 
+	//^ Handlers para CPU
+	mux.HandleFunc("/cpu/desalojo", DesalojoHandler)
+
 	//Escucha el puerto y espera conexiones
 	err := http.ListenAndServe(stringPuerto, mux)
 	if err != nil {
@@ -204,4 +207,27 @@ func DesconexionIOHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Procesar la desconexión de IO
 	DesconectarInstanciaIO(pedidoIO.NombreDispositivo, pedidoIO.IpInstancia, pedidoIO.PuertoInstancia)
+}
+
+// & -------------------------------------------Handlers para CPU-------------------------------------------------------------
+
+func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Decodificar el body
+	var respuestaDesalojo globals.CPUtoKernelDesalojoRequest
+	if err := json.NewDecoder(r.Body).Decode(&respuestaDesalojo); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Respondo a CPU que ser recibió el mensaje correctamente
+	var respuesta = globals.CPUtoKernelDesalojoResponse{
+		Respuesta: true,
+	}
+	json.NewEncoder(w).Encode(respuesta)
+
+	// Verifica si se desaloja por: Planificador (SJF CD), IO, o por fin de proceso
+	// Dependiendo el motivo, se enviará el proceso a la cola correspondiente
+	AnalizarDesalojo(respuestaDesalojo.PID, respuestaDesalojo.PC, respuestaDesalojo.Motivo)
 }

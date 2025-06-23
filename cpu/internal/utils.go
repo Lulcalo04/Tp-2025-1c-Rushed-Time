@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type ConfigCPU struct {
@@ -40,13 +41,15 @@ type PCBdeCPU struct {
 	PC                int
 	InstruccionActual string
 	Interrupt         bool
+	MotivoDesalojo    string
 }
 
 var EstructuraMemoriaDeCPU EstructuraMemoria
 var ProcesoEjecutando PCBdeCPU
-var InterrupcionAtendida bool = false
 var HayQueTraducir bool = false
 var argumentoInstrucciones []string
+
+var mutexProcesoEjecutando sync.Mutex
 
 func IniciarCPU() {
 
@@ -101,6 +104,7 @@ func CicloDeInstruccion() {
 
 func Fetch() {
 	SolicitarSiguienteInstruccionMemoria(ProcesoEjecutando.PID, ProcesoEjecutando.PC)
+	LogFetchInstruccion(ProcesoEjecutando.PID, ProcesoEjecutando.PC)
 }
 
 func Decode() {
@@ -117,7 +121,7 @@ func Decode() {
 
 func Execute() {
 
-	LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1]) //! PREGUNTAR QUE ES PARAMETROS
+	LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1]+" "+argumentoInstrucciones[1]) //! PREGUNTAR QUE ES PARAMETROS
 	//Si decode me dijo q tengo q traducir llamo a MMU
 
 	if HayQueTraducir {
@@ -157,13 +161,22 @@ func Execute() {
 
 func CheckInterrupt() bool {
 
+	//Si hay interrupcion por atender..
 	if ProcesoEjecutando.Interrupt {
-		//Cortar bucle de ciclo de instruccion
-		InterrupcionAtendida = true
+		//Mutex para evitar condiciones de carrera
+		//Marcamos que la interrupcion fue atendida
+		mutexProcesoEjecutando.Lock()
 		ProcesoEjecutando.Interrupt = false
+		mutexProcesoEjecutando.Unlock()
+
+		//Le avisamos a kernel que desalojamos
+		PeticionDesalojoKernel()
+
+		//Cortamos bucle de ciclo de instruccion
 		return true
 	}
 
+	//Si no hay interrupcion, seguimos el ciclo de instruccion
 	return false
 }
 
@@ -195,6 +208,7 @@ func MMU(direccionLogica string) int {
 	desplazamiento := direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina
 
 	frame := PeticionFrameAMemoria(entradasPorNivel, ProcesoEjecutando.PID)
+	LogObtenerMarco(ProcesoEjecutando.PID, nroPagina, frame)
 
 	direccionFisica := frame*EstructuraMemoriaDeCPU.TamanioPagina + desplazamiento
 
