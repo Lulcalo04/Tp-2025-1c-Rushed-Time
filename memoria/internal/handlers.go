@@ -122,6 +122,9 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		if MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID] == nil {
 			MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID] = NuevaTablaPags()
 		}
+		//guardo el tamanio del proceso
+		TamaniosProcesos[pedidoRecibido.ProcesoPCB.PID] = pedidoRecibido.ProcesoPCB.TamanioEnMemoria
+
 		tablaRaiz := MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID]
 	
 		//Reservar espacio en memoria
@@ -216,21 +219,43 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
-	var pedidoRecibido globals.DumpMemoryRequest
 
+	var pedidoRecibido globals.DumpMemoryRequest
+	var numPaginas int
 	if err := json.NewDecoder(r.Body).Decode(&pedidoRecibido); err != nil {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
 		return
 	}
 
-	// Logica para hacer el dump de memoria
+	// Logica para hacer el dump de memoria:
+
 	// verificacion de existencia del proceso en memoria
 	tablaRaiz := MemoriaGlobal.tablas[pedidoRecibido.PID]
 	if tablaRaiz == nil {
 		http.Error(w, "Proceso no encontrado en memoria", http.StatusNotFound)
 		return
 	}
-	
+
+	//calculo del tamanio de paginas del proceso: 
+
+	tamanioPaginas := Config_Memoria.PageSize
+	numPaginas = (TamaniosProcesos[pedidoRecibido.PID] + tamanioPaginas - 1) / tamanioPaginas	
+
+	//Creo el buffer para el dump 
+
+	dump:= make([]byte, numPaginas * tamanioPaginas)
+
+	for pagina:= 0; pagina < numPaginas; pagina ++ {
+
+		entradas:= calcularEntradasPorNivel(pagina, Config_Memoria.EntriesPerPage, Config_Memoria.NumberOfLevels	)
+		frameID, ok := MemoriaGlobal.buscarFramePorEntradas(tablaRaiz, entradas)
+
+		if ok {
+			offset:= int(frameID) * tamanioPaginas
+			copy(dump[offset:], MemoriaGlobal.datos[offset:offset+tamanioPaginas])
+		}
+		//nota, no ponemos que si no esta en memoria principal, sus valores se pongan en cero, porque ya vienen inicializados en cero. 
+	}
 
 
 	dumpMemoria := true 
@@ -438,4 +463,16 @@ func HacerGotoHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// ------------------------------Funciones Auxiliares -----------------------------
+
+// La usamos para el dump memory
+func calcularEntradasPorNivel(numPagina int, niveles int, entradasPorNivel int) []int {
+    entradas := make([]int, niveles)
+    for i := niveles - 1; i >= 0; i-- {
+        entradas[i] = numPagina % entradasPorNivel
+        numPagina /= entradasPorNivel
+    }
+    return entradas
 }

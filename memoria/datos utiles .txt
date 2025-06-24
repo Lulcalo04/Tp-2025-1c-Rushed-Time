@@ -80,14 +80,14 @@ else {
 ----------------------------------- SWAP -------------------------------------------------
 
 ------------------------------------Checkpoint 3 -----------------------------------------
-
-Leer config (memory_size, page_size, etc.)	               (listo)
+ 
+Leer config (memory_size, page_size, etc.)	                   (listo)
 Iniciar memoria principal ([]byte)	                           (listo)
 Crear y gestionar bitmap de frames	                           (listo)
 Crear tablas multinivel por proceso	                           (listo)
 Traducir dirección lógica → física	                           (listo, creo, hay que preguntar bien en soporte)
-Atender INIT_PROC, SUSPEND, EXIT del Kernel	               (falta)
-Atender LEER y ESCRIBIR de CPU	                           (listo)
+Atender INIT_PROC, SUSPEND, EXIT del Kernel	                   (falta)
+Atender LEER y ESCRIBIR de CPU	                               (listo)
 Exponer endpoints HTTP para todas las funciones	               (listo)
 Logs obligatorios                                              (listo)           
 Simulación básica de swap (puede ser memoria o archivo)        (falta)
@@ -131,3 +131,17 @@ bytes 0-4: "Hola"
 bytes 5-9: 0000
 bytes 10-14: "Mundo"
 
+
+
+-------------------------------------------------------------------------------------------
+//espacio para Juanjo-Eli, comentarios sobre cosas que modificamos individualmente
+
+----------------------- Comentarios de Juanjo --------------------------------
+
+----------------------- Comentarios de Eli --------------------------------
+
+** Tuve que crear una variable global llamada TamanioProceso, que es la cantidad de paginas que tiene el proceso, no estoy segura 
+si es necesario, pero me estaba complicando con el dump memory, entonces crearla me resolvia el problema. 
+Chequeamos despues si es necesaria o si en algun lugar la habiamos calculado o algo por el estilo.
+La funcion esta creada en globals.go, despues tuve que guardar el tamanio de paginas del proceso cuando lo creaba en la funcion PidenEspacioHandler (a chequear si esto esta bien, lo dudo)
+y recien ahi despues usarla en la funcion DumpMemoryHandler.

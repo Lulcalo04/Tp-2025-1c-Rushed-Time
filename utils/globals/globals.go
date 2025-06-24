@@ -303,3 +303,5 @@ func PasarStringALogLevel(nivel string) slog.Level {
 
 	return logLevel
 }
+
+
