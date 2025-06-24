@@ -91,7 +91,7 @@ Atender LEER y ESCRIBIR de CPU	                               (listo)
 Exponer endpoints HTTP para todas las funciones	               (listo)
 Logs obligatorios                                              (listo)           
 Simulación básica de swap (puede ser memoria o archivo)        (falta)
-memoria_dump (pedido desde Kernel)                             (en proceso)    
+memoria_dump (pedido desde Kernel)                             (listo)    
 
 ----------------------------------------Leer en memoria ----------------------------------------
 
