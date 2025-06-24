@@ -65,12 +65,12 @@ type LiberacionMemoriaResponse struct {
 }
 
 type DumpMemoryRequest struct {
-	Modulo string `json:"modulo"`
+	Modulo string `json:"modulo"` // Suponemos que el dump solo lo pide Kernel
 	PID    int    `json:"pid"`
 }
 
 type DumpMemoryResponse struct {
-	Modulo    string `json:"modulo"`
+	Modulo    string `json:"modulo"` // idem con el request
 	Respuesta bool   `json:"respuesta"`
 	Mensaje   string `json:"mensaje"`
 }

@@ -10,6 +10,9 @@ import (
 	"utils/globals"
 )
 
+// * hechos 
+// ^ en proceso 
+// ! por hacer 
 // -------------------------------------------Funcion para iniciar Server de Memoria-------------------------------------------------------------
 
 func IniciarServerMemoria(puerto int) {
@@ -163,7 +166,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ^Endpoint de liberacion de espacio = /espacio/liberar
+// !Endpoint de liberacion de espacio = /espacio/liberar
 func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
@@ -210,18 +213,27 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ^Endpoint de pedido de espacio = /dump
+
+
 func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 	var pedidoRecibido globals.DumpMemoryRequest
+
 	if err := json.NewDecoder(r.Body).Decode(&pedidoRecibido); err != nil {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
 		return
 	}
 
-	// Logica para verificar espacio y reservarlo
+	// Logica para hacer el dump de memoria
+	// verificacion de existencia del proceso en memoria
+	tablaRaiz := MemoriaGlobal.tablas[pedidoRecibido.PID]
+	if tablaRaiz == nil {
+		http.Error(w, "Proceso no encontrado en memoria", http.StatusNotFound)
+		return
+	}
+	
 
-	//! HAY QUE DESARROLLAR LA LOGICA DE DUMPEO DEL PROECESO
 
-	dumpMemoria := true //! Simulamos que dumpea (checkpoint 2)
+	dumpMemoria := true 
 
 	if dumpMemoria {
 		// Si el pedido es valido, se hace la concesion de espacio
