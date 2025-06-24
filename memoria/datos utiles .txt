@@ -133,6 +133,8 @@ bytes 10-14: "Mundo"
 
 
 
+Los chicos dijeron que nos van a mandar direcciones fisicas, hacen referencia al inicio del frame 
+
 -------------------------------------------------------------------------------------------
 //espacio para Juanjo-Eli, comentarios sobre cosas que modificamos individualmente
 

@@ -259,7 +259,7 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 
 	//timestamp guarda el dia y hora donde se hace el dump, en formato YYYYMMDD_HHMMSS
 	// TODO  nota sobre Unix: creo que devuelve el tiempo  desde el 1 de enero de 1970
-	 timestamp := time.Now().Unix() 
+	 timestamp := time.Now().Unix() //! arreglar esto
 	 nombreArchivo := fmt.Sprintf("<%d><%d>.dpm", pedidoRecibido.PID, timestamp)
 	 dumpPath := filepath.Join(Config_Memoria.DumpPath, nombreArchivo)
 
@@ -414,6 +414,7 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+//! borrar esta funcion
 // ^ Endpoint de read = /cpu/read 
 func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
 	var request globals.CPUReadAMemoriaRequest
@@ -445,7 +446,7 @@ func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
-
+//! borrar esta funcion 
 // ^Endpoint de GoTo = /cpu/goto 
 func HacerGotoHandler(w http.ResponseWriter, r *http.Request) {
 	var request globals.CPUGotoAMemoriaRequest
