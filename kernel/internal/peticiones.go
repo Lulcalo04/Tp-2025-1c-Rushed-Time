@@ -300,7 +300,6 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 		return
 	}
 
-	//! HACER ESTO EN UN HANDLER Y NO EN ESPERA ACTIVA
 	// Decodifico la respuesta JSON del server
 	var respuestaDesalojo globals.KerneltoCPUDesalojoResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respuestaDesalojo); err != nil {

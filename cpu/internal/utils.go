@@ -46,7 +46,7 @@ type PCBdeCPU struct {
 
 var EstructuraMemoriaDeCPU EstructuraMemoria
 var ProcesoEjecutando PCBdeCPU
-var HayQueTraducir bool = false
+var SeUsaMemoria bool = false
 var argumentoInstrucciones []string
 
 var mutexProcesoEjecutando sync.Mutex
@@ -58,6 +58,12 @@ func IniciarCPU() {
 
 	//Inicializa la config de cpu
 	globals.IniciarConfiguracion("cpu/config.json", &Config_CPU)
+
+	//Declaro algoritmo de reemplazo de TLB y cantidad de entradas
+	InicializarTLB()
+
+	//Declaro algoritmo de reemplazo de Cache y cantidad de entradas
+	InicializarCache()
 
 	//Crea el archivo donde se logea cpu con su id
 	Logger = ConfigurarLoggerCPU(CpuId, Config_CPU.LogLevel)
@@ -114,18 +120,19 @@ func Decode() {
 
 	if (argumentoInstrucciones[0] == "WRITE") || (argumentoInstrucciones[0] == "READ") || (argumentoInstrucciones[0] == "GOTO") {
 		// Si la instruccion es WRITE READ O GOTO, Se tiene que utilizar la MMU para traducir la direccion logica a fisica
-		HayQueTraducir = true
+		SeUsaMemoria = true
 	}
 
 }
 
-func Execute() {
+/* func Execute() {
 
 	LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1]+" "+argumentoInstrucciones[1]) //! PREGUNTAR QUE ES PARAMETROS
 	//Si decode me dijo q tengo q traducir llamo a MMU
 
 	if HayQueTraducir {
-		DireccionFisica := MMU(argumentoInstrucciones[1])
+		DireccionFisica := ObtenerDireccionFisica(argumentoInstrucciones[1])
+
 		switch argumentoInstrucciones[0] {
 		case "WRITE":
 			// Si la instruccion es WRITE, se escribe en la direccion fisica
@@ -157,6 +164,55 @@ func Execute() {
 	}
 
 	ProcesoEjecutando.PC++ // Incrementa el PC para la siguiente instruccion
+} */
+
+func Execute() {
+
+	LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1]+" "+argumentoInstrucciones[1]) //! PREGUNTAR QUE ES PARAMETROS
+
+	if SeUsaMemoria {
+
+		//Averiguar la pagina de esa Direccion Logica para saber si la tiene cache
+		numeroDePagina, direccionLogicaInt := CalculoPagina(argumentoInstrucciones[1])
+		var desplazamiento int = direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina
+		var contenidoPagina []byte
+		if CacheHabilitada {
+			contenidoPagina = BuscarPaginaEnCache(numeroDePagina)
+		}
+
+		switch argumentoInstrucciones[0] {
+		case "WRITE":
+			// Si la instruccion es WRITE, se escribe en el byte correspondiente
+			EscribirEnPagina(contenidoPagina, desplazamiento, argumentoInstrucciones[2])
+		case "READ":
+			// Si la instruccion es READ, se lee del byte correspondiente
+			//LeerDePagina(contenidoPagina, desplazamiento, argumentoInstrucciones[2])
+		}
+
+	}
+
+	switch argumentoInstrucciones[0] {
+	case "GOTO":
+		//Actualiza el PC al valor de la instruccion
+		ActualizarPC(argumentoInstrucciones[1])
+		return // No se incrementa el PC
+	case "IO":
+		// Si la instruccion es IO, se realiza una peticion al kernel para que maneje la syscall
+		PeticionIOKernel(ProcesoEjecutando.PID, argumentoInstrucciones[1], argumentoInstrucciones[2])
+	case "INIT_PROC":
+		// Si la instruccion es INIT_PROC, se realiza una peticion al kernel para que maneje la syscall
+		PeticionInitProcKernel(ProcesoEjecutando.PID, argumentoInstrucciones[1], argumentoInstrucciones[2])
+	case "DUMP_MEMORY":
+		// Si la instruccion es DUMP_MEMORY, se realiza una peticion al kernel para que maneje la syscall
+		PeticionDumpMemoryKernel(ProcesoEjecutando.PID)
+	case "EXIT":
+		// Si la instruccion es EXIT, se realiza una peticion al kernel para que maneje la syscall
+		PeticionExitKernel(ProcesoEjecutando.PID)
+	}
+
+	mutexProcesoEjecutando.Lock()
+	ProcesoEjecutando.PC++ // Incrementa el PC para la siguiente instruccion
+	mutexProcesoEjecutando.Unlock()
 }
 
 func CheckInterrupt() bool {
@@ -180,15 +236,33 @@ func CheckInterrupt() bool {
 	return false
 }
 
-func MMU(direccionLogica string) int {
+func ObtenerDireccionFisica(direccionLogica string) int {
 
-	direccionLogicaInt, err := strconv.Atoi(direccionLogica)
-	if err != nil {
-		Logger.Error("Error al convertir direccionLogica a int", "error", err)
-		return -1
+	nroPagina, direccionLogicaInt := CalculoPagina(direccionLogica)
+	var frame int
+	var direccionFisica int
+	var desplazamiento int = direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina
+
+	//if CacheHabilitada
+	//ver si no esta cargada en cache ?
+
+	//if TLBHabilitada
+	//primero llame TLB
+	if TLBHabilitada {
+		frame = BuscarFrameEnTLB(nroPagina)
+	}
+	//tlb me pasa el inicio del frame correspondiente y a eso le tengo que sumar el desplazamiento
+	//if TLBmiss, frame = -1 y llamo a MMU
+	if frame == -1 {
+		direccionFisica = MMU(direccionLogicaInt, nroPagina, desplazamiento)
+	} else { // Si el frame fue encontrado en la TLB, calculo la direccion fisica directamente
+		direccionFisica = frame*EstructuraMemoriaDeCPU.TamanioPagina + desplazamiento
 	}
 
-	nroPagina := direccionLogicaInt / EstructuraMemoriaDeCPU.TamanioPagina
+	return direccionFisica
+}
+
+func MMU(direccionLogicaInt int, nroPagina int, desplazamiento int) int {
 
 	N := EstructuraMemoriaDeCPU.NivelesDeTabla
 	cantEntradas := EstructuraMemoriaDeCPU.EntradasPorTabla
@@ -205,12 +279,41 @@ func MMU(direccionLogica string) int {
 		entradasPorNivel[x-1] = entradaNivelX
 	}
 
-	desplazamiento := direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina
-
 	frame := PeticionFrameAMemoria(entradasPorNivel, ProcesoEjecutando.PID)
 	LogObtenerMarco(ProcesoEjecutando.PID, nroPagina, frame)
+
+	if TLBHabilitada {
+		AgregarEntradaTLB(nroPagina, frame)
+		Logger.Debug("Agregando entrada a TLB", "pagina", nroPagina, "marco", frame)
+	}
 
 	direccionFisica := frame*EstructuraMemoriaDeCPU.TamanioPagina + desplazamiento
 
 	return direccionFisica
+}
+
+func CalculoPagina(direccionLogica string) (nroPag int, dlInt int) {
+
+	direccionLogicaInt, err := strconv.Atoi(direccionLogica)
+	if err != nil {
+		Logger.Error("Error al convertir direccionLogica a int", "error", err)
+		return -1, -1
+	}
+
+	nroPagina := direccionLogicaInt / EstructuraMemoriaDeCPU.TamanioPagina
+
+	return nroPagina, direccionLogicaInt
+}
+
+func ActualizarPC(nuevoPC string) {
+
+	nuevoPCInt, err := strconv.Atoi(nuevoPC)
+	if err != nil {
+		Logger.Error("Error al convertir nuevoPC a int", "error", err)
+		return
+	}
+	mutexProcesoEjecutando.Lock()
+	ProcesoEjecutando.PC = nuevoPCInt
+	mutexProcesoEjecutando.Unlock()
+
 }
