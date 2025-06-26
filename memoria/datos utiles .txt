@@ -93,27 +93,28 @@ Logs obligatorios                                              (listo)
 Simulación básica de swap (puede ser memoria o archivo)        (falta)
 memoria_dump (pedido desde Kernel)                             (listo)    
 
-----------------------------------------Leer en memoria ----------------------------------------
+----------------------------------------Leer en memoria ( modificar, porque ahora trabajamos con paginas completas, no con frames ) ----------------------------------------
 
 1. Validar que el proceso y la dirección existen.
 2. Leer el valor almacenado en la memoria 
 
 
----------------------------------------- Dump Memory --------------------------------------------
+----------------------------------------  Memory Dump --------------------------------------------
 
 Entiendo por dump memory el tener que poner en disco todo el estado completo de un proceso, esto va pasar cuando Kernel 
-nos diga que hagamos un dump memory del proceso con PID XXX, 
+nos diga que hagamos un dump memory del proceso con PID XXX. 
+
 * debemos devolver a Kernel la confirmacion de la finalizacion del dump memory
 
 Lo que entiendo que tiene que hacer la funcion: 
 
 1. recibe la peticion de dump desde Kernel con el PID del proceso a hacer dump
-2. Verifico que el PID existe y que el proceso esta en estado READY o BLOCKED
+2. Verifico que el PID existe 
 3. Creo un archivo con el nombre del PID (ej: 0001-1500.dmp)
- ** nota sobre 0001-1500.dmp, 0001 corresponde al PID y 1500 corresponde al timestamp de cuando se hizo el dump, suponemos que es el memory_delay
+ ** nota sobre 0001-YYYMMDD.dmp, 0001 corresponde al PID y YYYYMMDD corresponde al timestamp de cuando se hizo el dump, suponemos que es el memory_delay
 4. Debo poner el archivo en la carpeta "/home/utnso/dump_files/"
 5. cierro el archivo y le mando el OK a Kernel 
-
+ nombre del archivo: <PID><TIMESTAMP>.dmp
 Nota importante: 
 En el archivvo que mando a dump, debo tener: 
 - todo lo que el proceso tiene en memoria PRINCIPAL, no lo que tiene en SWAP, todo tiene que estar escrito asi como esta, en binario. 
@@ -122,16 +123,29 @@ Por ejemplo. si el proceso tiene en memoria principal:
 
 pagina                                     Contenido 
   0    -> En memoria        marco 2          "Hola"
-  1    -> En SWAP 
+  1    -> En SWAP                            "pepe" 
   2    -> En memoria        marco 7          "Mundo"
 
 y su page_size es de 5, entonces el archivo que genero tiene que tener:
-0001-1500.dmp 
-bytes 0-4: "Hola"
-bytes 5-9: 0000
+<0001><2025-06-25-15:17:35>.dmp 
+bytes 0-4: "Hola" 
+bytes 5-9: 0000 
 bytes 10-14: "Mundo"
 
+  Pagina 25
+         Nivel 1     
+	0000| 
+	0001| 1110
+	0010| 
+	0011|
 
+	Nivel 2 : 0110 
+	Nivel 1 : 1111
+	Nivel 0 : 1110
+
+	Nivel 2 (más profundo): 25 % 4 = 1, numPagina = 25/4 = 6
+	Nivel 1 (medio):        6 % 4 = 2,  numPagina = 6/4 = 1  
+	Nivel 0 (raíz):         1 % 4 = 1,  numPagina = 1/4 = 0
 
 Los chicos dijeron que nos van a mandar direcciones fisicas, hacen referencia al inicio del frame 
 

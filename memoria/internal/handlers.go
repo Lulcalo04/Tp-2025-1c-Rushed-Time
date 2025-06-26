@@ -238,7 +238,6 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 
 	tamanioPaginas := Config_Memoria.PageSize
 	numPaginas = (TamaniosProcesos[pedidoRecibido.PID] + tamanioPaginas - 1) / tamanioPaginas	
-
 	//Creo el buffer para el dump 
 
 	dump:= make([]byte, numPaginas * tamanioPaginas)
@@ -254,7 +253,7 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 			destino:= pagina * tamanioPaginas
 			copy(dump[destino:destino+tamanioPaginas], MemoriaGlobal.datos[origen: origen+tamanioPaginas])
 		}
-		//TODO nota: no ponemos que si no esta en memoria principal, sus valores se pongan en cero, porque ya vienen inicializados en cero. 
+		//TODO -- nota: no ponemos que si no esta en memoria principal, sus valores se pongan en cero, porque ya vienen inicializados en cero. 
 	}
 
 	//timestamp guarda el dia y hora donde se hace el dump, en formato YYYYMMDD_HHMMSS
@@ -322,7 +321,7 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	// string(content) convierte el proceso (que es un slice de bytes) a string
 	// strings.TrimSpace elimina los espacios en blanco al principio y al final de la cadena para evitar saltos de linea
 	// strings.Split divide la cadena en un slice de strings
-	// TODO lineas me devolvera, por ejemplo : []string{"Instruccion 1", "Instruccion 2", "Instruccion 3"}
+	// TODO -- nota:  lineas me devolvera, por ejemplo : []string{"Instruccion 1", "Instruccion 2", "Instruccion 3"}
 
 	lineas := strings.Split(strings.TrimSpace(string(content)), "\n")
 
@@ -376,6 +375,7 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+//! borrar esta funcion
 // ^ Endpoint de write = /cpu/write 
 func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -469,11 +469,11 @@ func HacerGotoHandler(w http.ResponseWriter, r *http.Request) {
 // ------------------------------Funciones Auxiliares -----------------------------
 
 // La usamos para el dump memory
-func calcularEntradasPorNivel(numPagina int, niveles int, entradasPorNivel int) []int {
-    entradas := make([]int, niveles)
-    for i := niveles - 1; i >= 0; i-- {
-        entradas[i] = numPagina % entradasPorNivel
-        numPagina /= entradasPorNivel
-    }
-    return entradas
+func calcularEntradasPorNivel(numPagina int, niveles int, IndicePorNivel int) []int {
+	entradas := make([]int, niveles)
+	for i := niveles - 1; i >= 0; i-- {
+		entradas[i] = numPagina % IndicePorNivel
+		numPagina /= IndicePorNivel
+	}
+	return entradas
 }
