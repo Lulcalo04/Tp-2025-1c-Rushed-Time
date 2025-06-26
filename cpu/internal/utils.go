@@ -175,18 +175,22 @@ func Execute() {
 		//Averiguar la pagina de esa Direccion Logica para saber si la tiene cache
 		numeroDePagina, direccionLogicaInt := CalculoPagina(argumentoInstrucciones[1])
 		var desplazamiento int = direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina
-		var contenidoPagina []byte
+		var paginaCache *EntradaCache
 		if CacheHabilitada {
-			contenidoPagina = BuscarPaginaEnCache(numeroDePagina)
-		}
+			paginaCache = BuscarPaginaEnCache(numeroDePagina)
+			if paginaCache == nil {
+				//Cache Miss, tengo que pedir a memoria (TLB o MMU)
+			}
+			switch argumentoInstrucciones[0] {
+			case "WRITE":
+				// Si la instruccion es WRITE, se escribe en el byte correspondiente
+				EscribirEnPagina(paginaCache, desplazamiento, argumentoInstrucciones[2])
+			case "READ":
+				// Si la instruccion es READ, se lee del byte correspondiente
+				LeerDePagina(paginaCache, desplazamiento, argumentoInstrucciones[2])
+			}
+		} else { //Cache desabilitada, peticiones a memoria con los recursos directamente
 
-		switch argumentoInstrucciones[0] {
-		case "WRITE":
-			// Si la instruccion es WRITE, se escribe en el byte correspondiente
-			EscribirEnPagina(contenidoPagina, desplazamiento, argumentoInstrucciones[2])
-		case "READ":
-			// Si la instruccion es READ, se lee del byte correspondiente
-			//LeerDePagina(contenidoPagina, desplazamiento, argumentoInstrucciones[2])
 		}
 
 	}
