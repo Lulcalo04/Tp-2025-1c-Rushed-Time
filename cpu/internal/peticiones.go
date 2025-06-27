@@ -9,6 +9,8 @@ import (
 	"strconv"
 )
 
+// &--------------------------------------------Funciones de Cliente-------------------------------------------------------------
+
 func HandshakeConKernel(cpuid string) bool {
 
 	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
@@ -247,47 +249,6 @@ func PeticionReadAMemoria(direccionFisica int, instruccion string, data string, 
 
 }
 
-func PeticionGotoAMemoria(direccionFisica int, instruccion string, pid int) {
-
-	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/cpu/goto", Config_CPU.IPMemory, Config_CPU.PortMemory)
-
-	// Declaro el body de la petición
-	pedidoBody := globals.CPUGotoAMemoriaRequest{
-		PID:             pid,
-		Instruccion:     instruccion,
-		DireccionFisica: direccionFisica,
-	}
-
-	// Serializo el body a JSON
-	bodyBytes, err := json.Marshal(pedidoBody)
-	if err != nil {
-		Logger.Debug("Error serializando JSON", "error", err)
-		return
-	}
-
-	// Hacemos la petición POST al server
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		Logger.Debug("Error conectando con Memoria", "error", err)
-		return
-	}
-	defer resp.Body.Close() // Cierra la conexión al finalizar la función
-
-	var respuestaMemoria globals.CPUGotoAMemoriaResponse
-	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
-		Logger.Debug("Error decodificando respuesta JSON", "error", err)
-		return
-	}
-
-	if respuestaMemoria.Respuesta {
-		Logger.Debug("Goto exitoso", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica)
-	} else {
-		Logger.Debug("Error Goto", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica)
-	}
-
-}
-
 func PeticionIOKernel(pid int, nombreDispositivo string, tiempo string) {
 
 	tiempoInt, err := strconv.Atoi(tiempo)
@@ -497,4 +458,39 @@ func PeticionDesalojoKernel() {
 	} else {
 		Logger.Debug("No se pudo desalojar el proceso", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC)
 	}
+}
+
+func PedirPaginaAMemoria(pid int, direccionFisica int, numeroDePagina int) *EntradaCache {
+	// Declaro la URL a la que me voy a conectar (handler de petición de página con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/pagina/pedir", Config_CPU.IPMemory, Config_CPU.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.CPUtoMemoriaPageRequest{
+		PID:             pid,
+		DireccionFisica: direccionFisica,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return nil
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return nil
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaMemoria globals.MemoriaToCPUPageResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return nil
+	}
+
+	// Agregamos la página que nos devolvió Memoria a la Cache
+	return AgregarPaginaEnCache(numeroDePagina, respuestaMemoria.ContenidoPagina, direccionFisica)
 }

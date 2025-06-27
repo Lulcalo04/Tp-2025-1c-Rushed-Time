@@ -218,3 +218,13 @@ type CPUtoKernelDesalojoRequest struct {
 type CPUtoKernelDesalojoResponse struct {
 	Respuesta bool `json:"response"`
 }
+
+type CPUtoMemoriaPageRequest struct {
+	PID             int `json:"pid"`
+	DireccionFisica int `json:"direccion_fisica"`
+}
+
+type MemoriaToCPUPageResponse struct {
+	PID             int    `json:"pid"`
+	ContenidoPagina []byte `json:"contenido_pagina"` // Contenido de la página solicitada
+}

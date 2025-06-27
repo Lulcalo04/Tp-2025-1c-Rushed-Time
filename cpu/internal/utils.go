@@ -46,7 +46,7 @@ type PCBdeCPU struct {
 
 var EstructuraMemoriaDeCPU EstructuraMemoria
 var ProcesoEjecutando PCBdeCPU
-var SeUsaMemoria bool = false
+var InstruccionUsaMemoria bool = false
 var argumentoInstrucciones []string
 
 var mutexProcesoEjecutando sync.Mutex
@@ -120,67 +120,32 @@ func Decode() {
 
 	if (argumentoInstrucciones[0] == "WRITE") || (argumentoInstrucciones[0] == "READ") || (argumentoInstrucciones[0] == "GOTO") {
 		// Si la instruccion es WRITE READ O GOTO, Se tiene que utilizar la MMU para traducir la direccion logica a fisica
-		SeUsaMemoria = true
+		InstruccionUsaMemoria = true
 	}
 
 }
-
-/* func Execute() {
-
-	LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1]+" "+argumentoInstrucciones[1]) //! PREGUNTAR QUE ES PARAMETROS
-	//Si decode me dijo q tengo q traducir llamo a MMU
-
-	if HayQueTraducir {
-		DireccionFisica := ObtenerDireccionFisica(argumentoInstrucciones[1])
-
-		switch argumentoInstrucciones[0] {
-		case "WRITE":
-			// Si la instruccion es WRITE, se escribe en la direccion fisica
-			PeticionWriteAMemoria(DireccionFisica, argumentoInstrucciones[0], argumentoInstrucciones[2], ProcesoEjecutando.PID)
-		case "READ":
-			// Si la instruccion es READ, se lee de la direccion fisica
-			PeticionReadAMemoria(DireccionFisica, argumentoInstrucciones[0], argumentoInstrucciones[2], ProcesoEjecutando.PID)
-		case "GOTO":
-			// Si la instruccion es GOTO, se cambia el PC al valor de la direccion logica
-			PeticionGotoAMemoria(DireccionFisica, argumentoInstrucciones[0], ProcesoEjecutando.PID)
-			return // No se incrementa el PC
-		}
-	}
-
-	//Si estamos aca significa que la instuccion es syscall
-	switch argumentoInstrucciones[0] {
-	case "IO":
-		// Si la instruccion es IO, se realiza una peticion al kernel para que maneje la syscall
-		PeticionIOKernel(ProcesoEjecutando.PID, argumentoInstrucciones[1], argumentoInstrucciones[2])
-	case "INIT_PROC":
-		// Si la instruccion es INIT_PROC, se realiza una peticion al kernel para que maneje la syscall
-		PeticionInitProcKernel(ProcesoEjecutando.PID, argumentoInstrucciones[1], argumentoInstrucciones[2])
-	case "DUMP_MEMORY":
-		// Si la instruccion es DUMP_MEMORY, se realiza una peticion al kernel para que maneje la syscall
-		PeticionDumpMemoryKernel(ProcesoEjecutando.PID)
-	case "EXIT":
-		// Si la instruccion es EXIT, se realiza una peticion al kernel para que maneje la syscall
-		PeticionExitKernel(ProcesoEjecutando.PID)
-	}
-
-	ProcesoEjecutando.PC++ // Incrementa el PC para la siguiente instruccion
-} */
 
 func Execute() {
 
 	LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1]+" "+argumentoInstrucciones[1]) //! PREGUNTAR QUE ES PARAMETROS
 
-	if SeUsaMemoria {
+	if InstruccionUsaMemoria {
 
 		//Averiguar la pagina de esa Direccion Logica para saber si la tiene cache
 		numeroDePagina, direccionLogicaInt := CalculoPagina(argumentoInstrucciones[1])
 		var desplazamiento int = direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina
 		var paginaCache *EntradaCache
-		if CacheHabilitada {
+
+		if CacheHabilitada { // Si la Cache esta habilitada, se busca la pagina en cache
 			paginaCache = BuscarPaginaEnCache(numeroDePagina)
-			if paginaCache == nil {
-				//Cache Miss, tengo que pedir a memoria (TLB o MMU)
+			if paginaCache == nil { // Cache Miss, busco la pagina en memoria
+				// Se obtiene la direccion fisica
+				direccionFisica := ObtenerDireccionFisica(numeroDePagina, direccionLogicaInt, desplazamiento)
+				// Le pido la pagina a memoria
+				paginaCache = PedirPaginaAMemoria(ProcesoEjecutando.PID, direccionFisica, numeroDePagina)
 			}
+
+			// Escribo/Leo la pagina en cache
 			switch argumentoInstrucciones[0] {
 			case "WRITE":
 				// Si la instruccion es WRITE, se escribe en el byte correspondiente
@@ -189,6 +154,7 @@ func Execute() {
 				// Si la instruccion es READ, se lee del byte correspondiente
 				LeerDePagina(paginaCache, desplazamiento, argumentoInstrucciones[2])
 			}
+
 		} else { //Cache desabilitada, peticiones a memoria con los recursos directamente
 
 		}
@@ -240,26 +206,20 @@ func CheckInterrupt() bool {
 	return false
 }
 
-func ObtenerDireccionFisica(direccionLogica string) int {
+func ObtenerDireccionFisica(numeroDePagina int, direccionLogicaInt int, desplazamiento int) int {
 
-	nroPagina, direccionLogicaInt := CalculoPagina(direccionLogica)
 	var frame int
 	var direccionFisica int
-	var desplazamiento int = direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina
 
-	//if CacheHabilitada
-	//ver si no esta cargada en cache ?
-
-	//if TLBHabilitada
-	//primero llame TLB
-	if TLBHabilitada {
-		frame = BuscarFrameEnTLB(nroPagina)
+	//Si la TLB esta habilitada
+	if TLBHabilitada { // Busco el la traducción (dirección física del frame) en la TLB
+		frame = BuscarFrameEnTLB(numeroDePagina)
 	}
-	//tlb me pasa el inicio del frame correspondiente y a eso le tengo que sumar el desplazamiento
-	//if TLBmiss, frame = -1 y llamo a MMU
-	if frame == -1 {
-		direccionFisica = MMU(direccionLogicaInt, nroPagina, desplazamiento)
-	} else { // Si el frame fue encontrado en la TLB, calculo la direccion fisica directamente
+
+	if frame == -1 { //TLB Miss: Si el frame no fue encontrado en la TLB, llamo a MMU para realizar la traducción
+		direccionFisica = MMU(direccionLogicaInt, numeroDePagina, desplazamiento)
+	} else { //TLB Hit: Si el frame fue encontrado en la TLB, calculo la direccion fisica directamente
+		//TLB me pasa el inicio del frame correspondiente y a eso le tengo que sumar el desplazamiento
 		direccionFisica = frame*EstructuraMemoriaDeCPU.TamanioPagina + desplazamiento
 	}
 

@@ -3,6 +3,7 @@ package cpu_internal
 import (
 	"fmt"
 	"strconv"
+	"time"
 )
 
 type CacheS struct {
@@ -31,12 +32,14 @@ func InicializarCache() {
 	}
 }
 
-func AgregarPaginaEnCache(numeroDePagina int, contenido []byte, direccionFisica int) {
-	// Si la Cache esta llena se tiene que elegir una victima a eliminar
-	/* if len(Cache.Entradas) == Cache.CantidadEntradas {
+func AgregarPaginaEnCache(numeroDePagina int, contenido []byte, direccionFisica int) *EntradaCache {
+	// Simulamos el delay de la Cache
+	time.Sleep(time.Duration(Cache.Delay) * time.Millisecond)
 
-		Cache.Entradas = Cache.Entradas[1:]
-	} */
+	// Si la Cache esta llena se tiene que elegir una victima a eliminar
+	if len(Cache.Entradas) == Cache.CantidadEntradas {
+		ElegirPaginaVictima()
+	}
 
 	// Agregar la nueva entrada a la Cache
 	nuevaEntrada := EntradaCache{
@@ -45,11 +48,18 @@ func AgregarPaginaEnCache(numeroDePagina int, contenido []byte, direccionFisica 
 		Pagina:          numeroDePagina,
 		Contenido:       contenido,
 	}
-	Cache.Entradas = append(Cache.Entradas, nuevaEntrada)
+
+	Cache.Entradas = append(Cache.Entradas, nuevaEntrada) //! DEPENDIENDO EL ALGORITMO ESTO CAMBIA, NO SIEMPRE SE AGREGA AL FINAL
+
 	LogPaginaIngresadaEnCache(ProcesoEjecutando.PID, numeroDePagina)
+
+	return &Cache.Entradas[len(Cache.Entradas)-1] // Retorna la nueva entrada agregada a la Cache
 }
 
 func BuscarPaginaEnCache(numeroDePagina int) *EntradaCache {
+	// Simulamos el delay de la Cache
+	time.Sleep(time.Duration(Cache.Delay) * time.Millisecond)
+
 	for i := range Cache.Entradas {
 		entrada := &Cache.Entradas[i]
 		if entrada.Pagina == numeroDePagina && entrada.PID == ProcesoEjecutando.PID {
@@ -62,6 +72,8 @@ func BuscarPaginaEnCache(numeroDePagina int) *EntradaCache {
 }
 
 func EscribirEnPagina(paginaCache *EntradaCache, desplazamiento int, valor string) {
+	// Simulamos el delay de la Cache
+	time.Sleep(time.Duration(Cache.Delay) * time.Millisecond)
 
 	// Ver si el desplazamiento mas el valor a escribir no supera el tamaño de la pagina
 	if EstructuraMemoriaDeCPU.TamanioPagina >= desplazamiento+len(valor) {
@@ -78,6 +90,8 @@ func EscribirEnPagina(paginaCache *EntradaCache, desplazamiento int, valor strin
 }
 
 func LeerDePagina(paginaCache *EntradaCache, desplazamiento int, tamanio string) {
+	// Simulamos el delay de la Cache
+	time.Sleep(time.Duration(Cache.Delay) * time.Millisecond)
 
 	tamanioInt, err := strconv.Atoi(tamanio)
 	if err != nil {
@@ -101,4 +115,8 @@ func LeerDePagina(paginaCache *EntradaCache, desplazamiento int, tamanio string)
 	direccionFisica := paginaCache.DireccionFisica + desplazamiento
 	LogLecturaEscrituraMemoria(ProcesoEjecutando.PID, "LEER", direccionFisica, string(TextoExtraido))
 
+}
+
+func ElegirPaginaVictima() {
+	//! FALTA DESARROLLAR TANTO CLOCK COMO CLOCK-M
 }
