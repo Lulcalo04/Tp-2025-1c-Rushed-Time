@@ -170,12 +170,6 @@ func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame i
 	mp.insertarEnMultinivel(subTabla, numPagina, frame, nivelActual+1)
 }
 
-// ! falta hacer la logica de swappear a disco
-func swapping(mp *Memoria, pid int, numPagina int) (int, error) {
-
-	return -1, fmt.Errorf("swap no implementado")
-}
-
 func (mp *Memoria) buscarFramePorEntradas(tabla *TablaPags, entradas []int) (FrameID, bool) {
 	actual := tabla
 	for nivel, idx := range entradas {
