@@ -187,7 +187,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// !Endpoint de liberacion de espacio = /espacio/liberar
+// *Endopoint de liberacion de espacio = /espacio/liberar
 func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
@@ -202,37 +202,32 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Logica para liberar espacio en memoria
 
-	liberacionDeMemoria := true // Simulacion
+	pid := pedidoRecibido.PID
+	err := MemoriaGlobal.LiberarProceso(pid)
 
 	w.Header().Set("Content-Type", "application/json") // Setear Content-Type JSON (osea que la respuesta sera del tipo JSON)
 
-	if liberacionDeMemoria {
-		Logger.Debug("Liberacion de espacio aceptada", "PID", pedidoRecibido.PID)
-
-		respuestaMemoria := globals.LiberacionMemoriaResponse{
+	if err == nil {
+		Logger.Debug("Liberacion de espacio aceptada", "PID", pid)
+		respuesta := globals.LiberacionMemoriaResponse{
 			Modulo:    "Memoria",
 			Respuesta: true,
-			Mensaje:   fmt.Sprintf("Liberacion de espacio en memoria aceptada para PID %d", pedidoRecibido.PID),
+			Mensaje:   fmt.Sprintf("Liberacion de espacio en memoria aceptada para PID %d", pid),
 		}
-
-		w.WriteHeader(http.StatusOK) //Confirmar que la respuesta es 200 OK
-		json.NewEncoder(w).Encode(respuestaMemoria)
+		json.NewEncoder(w).Encode(respuesta)
 	} else {
-		Logger.Debug("Liberacion de espacio fallida", "PID", pedidoRecibido.PID)
-
-		respuestaMemoria := globals.LiberacionMemoriaResponse{
+		Logger.Debug("Liberacion de espacio fallida", "PID", pid)
+		respuesta := globals.LiberacionMemoriaResponse{
 			Modulo:    "Memoria",
 			Respuesta: false,
-			Mensaje:   fmt.Sprintf("Liberacion de espacio en memoria para PID %d rechazada", pedidoRecibido.PID),
+			Mensaje:   fmt.Sprintf("Error liberando memoria para PID %d: %v", pid, err),
 		}
-
-		w.WriteHeader(http.StatusOK) // Siempre responder OK con JSON aunque falle la liberacion
-		json.NewEncoder(w).Encode(respuestaMemoria)
+		json.NewEncoder(w).Encode(respuesta)
 	}
+
 }
 
 // *Endpoint de pedido de espacio = /dump
-
 func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 
 	var pedidoRecibido globals.DumpMemoryRequest
@@ -301,6 +296,7 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// * Endpoint de swappeo = /syscall/swappeo
 func SwappingHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
@@ -335,6 +331,7 @@ func SwappingHandler(w http.ResponseWriter, r *http.Request) {
 	Logger.Debug("Proceso swappeado exitosamente", "PID", req.PID)
 }
 
+// *Endpoint de restauracion = /syscall/restaurar
 func RestaurarHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
@@ -466,7 +463,7 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-//---------------Case CACHE activada ------------------
+//!--------------Case CACHE activada ------------------
 
 //--------------- Case CACHE desactivada ------------------
 
@@ -554,40 +551,59 @@ func calcularEntradasPorNivel(numPagina int, niveles int, IndicePorNivel int) []
 
 // *SuspenderPagina guarda la página en swap y libera el frame en RAM.
 func (mp *Memoria) SuspenderPagina(pid, pagina int) error {
+	// 1) Validar proceso existe
 	pi, ok := mp.infoProc[pid]
 	if !ok {
 		return fmt.Errorf("proceso %d no existe", pid)
 	}
 
-	// Validar que el índice de página sea válido
+	// 2) Validar índice de página ANTES de hacer cualquier cosa
 	if pagina < 0 || pagina >= len(pi.Pages) {
 		return fmt.Errorf("página %d fuera de rango para proceso %d", pagina, pid)
 	}
 
-	info := &pi.Pages[pagina]
-	if !info.InRAM {
+	page := &pi.Pages[pagina]
+
+	// 3) Verificar si ya está en swap
+	if !page.InRAM {
 		return nil // ya está en swap
 	}
 
-	// 1) Leer datos de RAM
-	start := info.FrameID * Config_Memoria.PageSize
+	// 4) Reservar offset en swap SOLO si la página está en RAM
+	var offset int64
+	if len(mp.freeSwapOffsets) > 0 {
+		// Si hay offsets libres, usar el último (más eficiente)
+		offset = mp.freeSwapOffsets[len(mp.freeSwapOffsets)-1]
+		mp.freeSwapOffsets = mp.freeSwapOffsets[:len(mp.freeSwapOffsets)-1]
+	} else {
+		// Usar nuevo offset
+		offset = mp.nextSwapOffset
+		mp.nextSwapOffset += int64(Config_Memoria.PageSize)
+	}
+
+	// 5) Leer datos de RAM
+	start := page.FrameID * Config_Memoria.PageSize
 	buf := make([]byte, Config_Memoria.PageSize)
 	copy(buf, mp.datos[start:start+Config_Memoria.PageSize])
 
-	// 2) Escribir en swapfile.bin
-	off := mp.nextSwapOffset
-	if _, err := mp.swapFile.WriteAt(buf, off); err != nil {
+	// 6) Escribir en swap
+	if _, err := mp.swapFile.WriteAt(buf, offset); err != nil {
+		// Si falla, devolver el offset libre si era reutilizado
+		if offset < mp.nextSwapOffset {
+			mp.freeSwapOffsets = append(mp.freeSwapOffsets, offset)
+		}
 		return fmt.Errorf("error escribiendo swap: %w", err)
 	}
 
-	// 3) Liberar frame en bitmap
-	mp.liberarFrame(info.FrameID)
-	Logger.Debug("Página suspendida exitosamente", "PID", pid, "Pagina", pagina, "SwapOffset", off)
+	// 7) Liberar frame en bitmap
+	mp.liberarFrame(page.FrameID)
 
-	// 4) Actualizar metadata
-	info.InRAM = false
-	info.Offset = off
-	mp.nextSwapOffset += int64(Config_Memoria.PageSize)
+	// 8) Actualizar metadata
+	page.InRAM = false
+	page.Offset = offset
+	// NO incrementar nextSwapOffset aquí - ya se hizo arriba
+
+	Logger.Debug("Página suspendida exitosamente", "PID", pid, "Pagina", pagina, "SwapOffset", offset)
 	return nil
 }
 
@@ -610,7 +626,6 @@ func (mp *Memoria) RestaurarPagina(pid, pagina int) error {
 	}
 
 	//2) Leer datos desde swap
-
 	buffer := make([]byte, Config_Memoria.PageSize)
 	if _, err := mp.swapFile.ReadAt(buffer, info.Offset); err != nil {
 		mp.liberarFrame(frameID)
@@ -646,4 +661,25 @@ func listaDeInstrucciones(pid int) []string {
 		return nil
 	}
 	return instrucciones
+}
+
+func (m *Memoria) LiberarProceso(pid int) error {
+	pi, ok := m.infoProc[pid]
+	if !ok {
+		return fmt.Errorf("el proceso %d no existe", pid)
+	}
+
+	// Liberar frames en RAM o marcar offset SWAP como libre
+	for _, page := range pi.Pages {
+		if page.InRAM {
+			m.liberarFrame(page.FrameID)
+		} else {
+			m.freeSwapOffsets = append(m.freeSwapOffsets, page.Offset)
+		}
+	}
+
+	// Borrar metadata
+	delete(m.infoProc, pid)
+
+	return nil
 }

@@ -6,14 +6,15 @@ import (
 )
 
 type Memoria struct {
-	datos          []byte                  // slice de bytes que simula la RAM de usuario
-	pageSize       int                     // tamaño de cada página (frame) en bytes
-	totalFrames    int                     // número de frames = len(datos) / pageSize
-	listaDeFrames  []bool                  // bitmap: listaDEFrames[i] = true si el frame i está libre
-	tablas         map[int]*TablaPags      // mapa PID → raíz de la tabla multinivel de ese proceso
-	infoProc       map[int]*InfoPorProceso // asocia el PID con la metadata del proceso
-	swapFile       *os.File                // Es un filedescriptor abierto para evitar el overhead de abrir y cerrar el archivo cada vez que se necesite acceder a él
-	nextSwapOffset int64                   // próximo offset válido en swapfile
+	datos           []byte                  // slice de bytes que simula la RAM de usuario
+	pageSize        int                     // tamaño de cada página (frame) en bytes
+	totalFrames     int                     // número de frames = len(datos) / pageSize
+	listaDeFrames   []bool                  // bitmap: listaDEFrames[i] = true si el frame i está libre
+	tablas          map[int]*TablaPags      // mapa PID → raíz de la tabla multinivel de ese proceso
+	infoProc        map[int]*InfoPorProceso // asocia el PID con la metadata del proceso
+	swapFile        *os.File                // Es un filedescriptor abierto para evitar el overhead de abrir y cerrar el archivo cada vez que se necesite acceder a él
+	nextSwapOffset  int64                   // próximo offset válido en swapfile
+	freeSwapOffsets []int64                 //offsets disponibles para reutilizar en SWAPP
 }
 
 //-------------------- INICIALIZACION ------------------
@@ -85,8 +86,18 @@ func (mp *Memoria) liberarFrame(frameID int) {
 		fmt.Printf("Error: frameID %d fuera de rango", frameID)
 		return
 	}
+
+	// Limpiar el contenido del frame por seguridad
+	start := frameID * mp.pageSize
+	end := start + mp.pageSize
+	for i := start; i < end; i++ {
+		mp.datos[i] = 0
+	}
+
+	// Marcar como libre
 	mp.listaDeFrames[frameID] = true
-	// (O opcionalmente: limpiar el contenido de data[frameID*frameSize : (frameID+1)*frameSize])
+
+	Logger.Debug("Frame liberado y limpiado", "FrameID", frameID)
 }
 
 func (mp *Memoria) framesLibres() int {
