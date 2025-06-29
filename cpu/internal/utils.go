@@ -127,7 +127,14 @@ func Decode() {
 
 func Execute() {
 
-	LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1]+" "+argumentoInstrucciones[1]) //! PREGUNTAR QUE ES PARAMETROS
+	switch len(argumentoInstrucciones) {
+	case 1:
+		LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], "")
+	case 2:
+		LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1])
+	case 3:
+		LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1]+" "+argumentoInstrucciones[2])
+	}
 
 	if InstruccionUsaMemoria {
 
