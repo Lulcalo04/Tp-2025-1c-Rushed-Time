@@ -6,11 +6,12 @@ import (
 	"time"
 )
 
-type CacheS struct {
-	Entradas         []EntradaCache
-	Algoritmo        string
-	CantidadEntradas int
-	Delay            int
+type CacheStruct struct {
+	Entradas                []EntradaCache
+	Algoritmo               string
+	CantidadEntradas        int
+	Delay                   int
+	PunteroEntradaReemplazo int // Puntero que se modifica al ejecutar los algoritmos de reemplazo
 }
 
 type EntradaCache struct {
@@ -18,9 +19,11 @@ type EntradaCache struct {
 	Pagina          int
 	Contenido       []byte
 	DireccionFisica int
+	Usado           bool // Indica si la pagina fue usada
+	Modificado      bool // Indica si la pagina fue modificada
 }
 
-var Cache CacheS
+var Cache CacheStruct
 var CacheHabilitada bool = false
 
 func InicializarCache() {
@@ -29,6 +32,7 @@ func InicializarCache() {
 		Cache.Algoritmo = Config_CPU.CacheReplacement
 		Cache.CantidadEntradas = Config_CPU.CacheEntries
 		Cache.Delay = Config_CPU.CacheDelay
+		Cache.PunteroEntradaReemplazo = 0
 	}
 }
 
@@ -36,24 +40,36 @@ func AgregarPaginaEnCache(numeroDePagina int, contenido []byte, direccionFisica 
 	// Simulamos el delay de la Cache
 	time.Sleep(time.Duration(Cache.Delay) * time.Millisecond)
 
-	// Si la Cache esta llena se tiene que elegir una victima a eliminar
-	if len(Cache.Entradas) == Cache.CantidadEntradas {
-		ElegirPaginaVictima()
-	}
-
-	// Agregar la nueva entrada a la Cache
+	// Declaro la nueva entrada de Cache
 	nuevaEntrada := EntradaCache{
 		DireccionFisica: direccionFisica,
 		PID:             ProcesoEjecutando.PID,
 		Pagina:          numeroDePagina,
 		Contenido:       contenido,
+		Usado:           true,
+		Modificado:      false,
 	}
-
-	Cache.Entradas = append(Cache.Entradas, nuevaEntrada) //! DEPENDIENDO EL ALGORITMO ESTO CAMBIA, NO SIEMPRE SE AGREGA AL FINAL
 
 	LogPaginaIngresadaEnCache(ProcesoEjecutando.PID, numeroDePagina)
 
-	return &Cache.Entradas[len(Cache.Entradas)-1] // Retorna la nueva entrada agregada a la Cache
+	// Si la Cache esta llena se tiene que elegir una victima a eliminar
+	if len(Cache.Entradas) == Cache.CantidadEntradas {
+		paginaVictima, posicionEnCache := ElegirPaginaVictima()
+
+		if paginaVictima.Modificado {
+			// Reemplazamos la pagina victima con la nueva entrada
+			ReemplazarPaginaVictima(paginaVictima, &nuevaEntrada, posicionEnCache)
+		}
+
+		// Retorna la entrada reemplazada en la Cache
+		return &Cache.Entradas[posicionEnCache]
+	} else {
+		// Si la Cache no esta llena, simplemente agregamos la nueva entrada al final de la lista
+		Cache.Entradas = append(Cache.Entradas, nuevaEntrada)
+
+		// Retorna la nueva entrada, que es la ultima de la lista
+		return &Cache.Entradas[len(Cache.Entradas)-1]
+	}
 }
 
 func BuscarPaginaEnCache(numeroDePagina int) *EntradaCache {
@@ -77,8 +93,16 @@ func EscribirEnPaginaCache(paginaCache *EntradaCache, desplazamiento int, valor 
 
 	// Ver si el desplazamiento mas el valor a escribir no supera el tamaño de la pagina
 	if EstructuraMemoriaDeCPU.TamanioPagina >= desplazamiento+len(valor) {
+
 		// Copio el valor en el array de bytes a partir del desplazamiento indicado
 		copy(paginaCache.Contenido[desplazamiento:], []byte(valor))
+
+		// Actualizo el flag de modificado a true
+		paginaCache.Modificado = true
+
+		// Actualizo el flag de usado a true
+		paginaCache.Usado = true
+
 	} else {
 		Logger.Debug("Error al escribir en la pagina: el desplazamiento mas el valor a escribir supera el tamaño de la pagina")
 		// Manejar error si el desplazamiento es mayor al tamaño del contenido
@@ -101,10 +125,13 @@ func LeerDePaginaCache(paginaCache *EntradaCache, desplazamiento int, tamanio st
 	var TextoExtraido []byte
 	// Ver si el desplazamiento mas el valor a leer no supera el tamaño de la pagina
 	if EstructuraMemoriaDeCPU.TamanioPagina >= desplazamiento+tamanioInt {
-		// Copio el valor del array de bytes a partir del desplazamiento indicado
 
+		// Copio el valor del array de bytes a partir del desplazamiento indicado
 		TextoExtraido = paginaCache.Contenido[desplazamiento : desplazamiento+tamanioInt]
-		//texto3 := arr[inicio : inicio+hasta] /
+
+		// Actualizo el flag de usado a true
+		paginaCache.Usado = true
+
 	} else {
 		Logger.Debug("Error al leer de la pagina: el desplazamiento mas el valor a leer supera el tamaño de la pagina")
 		// Manejar error si el desplazamiento es mayor al tamaño del contenido
@@ -117,7 +144,66 @@ func LeerDePaginaCache(paginaCache *EntradaCache, desplazamiento int, tamanio st
 
 }
 
-func ElegirPaginaVictima() {
-	//! FALTA DESARROLLAR TANTO CLOCK COMO CLOCK-M
+func ElegirPaginaVictima() (*EntradaCache, int) {
+	paginaVictima := &EntradaCache{}
+	posicionEnCache := -1
+	cantidad := len(Cache.Entradas) // Me guardo la cantidad de entradas en la Cache
+
+	switch Cache.Algoritmo {
+	case "CLOCK":
+		for {
+			// Me guardo en "entrada" la direccion en memoria de la entrada a analizar
+			entrada := &Cache.Entradas[Cache.PunteroEntradaReemplazo]
+			if !entrada.Usado {
+				// Si la entrada no fue usada, la elijo como victima
+				// Me guardo la pagina victima y su posicion en la Cache
+				posicion := Cache.PunteroEntradaReemplazo
+				Cache.PunteroEntradaReemplazo = (Cache.PunteroEntradaReemplazo + 1) % cantidad
+
+				// Retorno la pagina victima y su posicion en la Cache
+				return entrada, posicion
+			} else {
+				// Si la entrada fue usada, la marco como no usada y avanzo el puntero
+				entrada.Usado = false
+				Cache.PunteroEntradaReemplazo = (Cache.PunteroEntradaReemplazo + 1) % cantidad
+			}
+		}
+	case "CLOCK-M":
+		// Primera pasada: buscar U=false y M=false
+		for i := 0; i < cantidad; i++ {
+			idx := Cache.PunteroEntradaReemplazo
+			entrada := &Cache.Entradas[idx]
+			if !entrada.Usado && !entrada.Modificado {
+				posicion := idx
+				Cache.PunteroEntradaReemplazo = (idx + 1) % cantidad
+				return entrada, posicion
+			}
+			// Si no cumple, pongo Usado en false
+			entrada.Usado = false
+			Cache.PunteroEntradaReemplazo = (idx + 1) % cantidad
+		}
+		// Segunda pasada: buscar U=false y M=true
+		for i := 0; i < cantidad; i++ {
+			idx := Cache.PunteroEntradaReemplazo
+			entrada := &Cache.Entradas[idx]
+			if !entrada.Usado && entrada.Modificado {
+				posicion := idx
+				Cache.PunteroEntradaReemplazo = (idx + 1) % cantidad
+				return entrada, posicion
+			}
+			Cache.PunteroEntradaReemplazo = (idx + 1) % cantidad
+		}
+	}
+	return paginaVictima, posicionEnCache
 }
 
+func ReemplazarPaginaVictima(paginaVictima *EntradaCache, nuevaEntrada *EntradaCache, posicionEnCache int) {
+	// Simulamos el delay de la Cache
+	time.Sleep(time.Duration(Cache.Delay) * time.Millisecond)
+
+	// Le enviamos a memoria la pagina victima para que sea actualizada
+	ActualizarPaginaEnMemoria(paginaVictima.PID, paginaVictima.Pagina, paginaVictima.Contenido)
+
+	// Reemplazamos la pagina victima con la nueva entrada
+	Cache.Entradas[posicionEnCache] = *nuevaEntrada
+}
