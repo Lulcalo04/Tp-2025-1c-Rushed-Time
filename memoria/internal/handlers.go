@@ -6,9 +6,17 @@ import (
 	"globals"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
+	"utils/client"
+	"utils/globals"
 )
 
+// * hechos
+// ^ en proceso
+// ! por hacer
+// TODO -- comentarios importantes en funciones 
 // -------------------------------------------Funcion para iniciar Server de Memoria-------------------------------------------------------------
 
 func IniciarServerMemoria(puerto int) {
@@ -41,10 +49,10 @@ func IniciarServerMemoria(puerto int) {
 
 // * Endpoint de handshake = /handshake
 func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
-	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
+
 	w.Header().Set("Content-Type", "application/json")
 
-	//Se utiliza el encoder para enviar la respuesta en formato JSON
+
 	json.NewEncoder(w).Encode(
 		map[string]string{
 			"modulo":  "Memoria",
@@ -54,7 +62,7 @@ func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 
 // * Endpoint de handshake = /handshake/cpu
 func HandshakeConCPU(w http.ResponseWriter, r *http.Request) {
-	// Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	var cpuHandshakeRequest globals.CPUToMemoriaHandshakeRequest
@@ -76,11 +84,10 @@ func HandshakeConCPU(w http.ResponseWriter, r *http.Request) {
 
 // *Endpoint de ping = /ping
 func PingHandler(w http.ResponseWriter, r *http.Request) {
-	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
+
 	w.Header().Set("Content-Type", "application/json")
 
-	//Se utiliza el encoder para enviar la respuesta en formato JSON
-	var respuestaPing = globals.PingResponse{
+	var respuestaPing = client.PingResponse{
 		Modulo:  "Memoria",
 		Mensaje: "Pong",
 	}
@@ -97,9 +104,6 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
 		return
 	}
-
-	// LOGICA PARA VERIFICAR Y RESERVAR ESPACIO EN MEMORIA
-
 	tamanioSolicitado := pedidoRecibido.ProcesoPCB.TamanioEnMemoria
 
 	//Este calculo es para determinar cuantas paginas  se necesitan para el tamanio solicitado, se suma el PageSize y se resta 1 para redondear hacia arriba
@@ -117,6 +121,9 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		if MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID] == nil {
 			MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID] = NuevaTablaPags()
 		}
+		//guardo el tamanio del proceso
+		TamaniosProcesos[pedidoRecibido.ProcesoPCB.PID] = pedidoRecibido.ProcesoPCB.TamanioEnMemoria
+
 		tablaRaiz := MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID]
 
 		//Reservar espacio en memoria
@@ -161,7 +168,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ^Endpoint de liberacion de espacio = /espacio/liberar
+// !Endpoint de liberacion de espacio = /espacio/liberar
 func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
@@ -205,36 +212,67 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ^Endpoint de pedido de espacio = /dump
+// *Endpoint de pedido de espacio = /dump
+
 func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
+
 	var pedidoRecibido globals.DumpMemoryRequest
+	var numPaginas int
 	if err := json.NewDecoder(r.Body).Decode(&pedidoRecibido); err != nil {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
 		return
 	}
 
-	// Logica para verificar espacio y reservarlo
+	// Logica para hacer el dump de memoria:
 
-	//! HAY QUE DESARROLLAR LA LOGICA DE DUMPEO DEL PROECESO
+	// verificamos que el proceso exista en memoria
+	tablaRaiz := MemoriaGlobal.tablas[pedidoRecibido.PID]
+	if tablaRaiz == nil {
+		http.Error(w, "Proceso no encontrado en memoria", http.StatusNotFound)
+		return
+	}
 
-	dumpMemoria := true //! Simulamos que dumpea (checkpoint 2)
+	//calculo del tamanio de paginas del proceso: 
 
-	if dumpMemoria {
+	tamanioPaginas := Config_Memoria.PageSize
+	numPaginas = (TamaniosProcesos[pedidoRecibido.PID] + tamanioPaginas - 1) / tamanioPaginas	
+	//Creo el buffer para el dump 
+
+	dump:= make([]byte, numPaginas * tamanioPaginas)
+
+	for pagina:= 0; pagina < numPaginas; pagina ++ {
+
+		entradas:= calcularEntradasPorNivel(pagina, Config_Memoria.EntriesPerPage, Config_Memoria.NumberOfLevels	)
+		frameID, ok := MemoriaGlobal.buscarFramePorEntradas(tablaRaiz, entradas)
+
+		if ok {
+
+			origen:= int(frameID) * tamanioPaginas
+			destino:= pagina * tamanioPaginas
+			copy(dump[destino:destino+tamanioPaginas], MemoriaGlobal.datos[origen: origen+tamanioPaginas])
+		}
+		//TODO -- nota: no ponemos que si no esta en memoria principal, sus valores se pongan en cero, porque ya vienen inicializados en cero. 
+	}
+
+	//timestamp guarda el dia y hora donde se hace el dump, en formato YYYYMMDD_HHMMSS
+	// TODO  nota sobre Unix: creo que devuelve el tiempo  desde el 1 de enero de 1970
+	 timestamp := time.Now().Unix() //! arreglar esto
+	 nombreArchivo := fmt.Sprintf("<%d><%d>.dpm", pedidoRecibido.PID, timestamp)
+	 dumpPath := filepath.Join(Config_Memoria.DumpPath, nombreArchivo)
+
+	if err:= os.WriteFile(dumpPath, dump, 0644); err != nil {
 		// Si el pedido es valido, se hace la concesion de espacio
 		Logger.Debug("Solicitud de Dump Memory aceptada", "PID", pedidoRecibido.PID)
 
-		// Preparar respuesta y codificarla como JSON (se envia automaticamente a traves del encode)
 		resp := globals.DumpMemoryResponse{
 			Modulo:    "Memoria",
-			Respuesta: true, // Simulamos que se concede el espacio
+			Respuesta: true, 
 			Mensaje:   fmt.Sprintf("Dump Memory concedido para PID %d", pedidoRecibido.PID),
 		}
 		json.NewEncoder(w).Encode(resp)
 	} else {
-		// Si el pedido no es valido, se envia un mensaje de error
 		Logger.Debug("Solicitud de Dump Memory rechazada", "PID", pedidoRecibido.PID)
 
-		// Preparar respuesta y codificarla como JSON (se envia automaticamente a traves del encode)
 		resp := globals.DumpMemoryResponse{
 			Modulo:    "Memoria",
 			Respuesta: false,
@@ -280,7 +318,7 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	// string(content) convierte el proceso (que es un slice de bytes) a string
 	// strings.TrimSpace elimina los espacios en blanco al principio y al final de la cadena para evitar saltos de linea
 	// strings.Split divide la cadena en un slice de strings
-	// lineas me devolvera, por ejemplo : []string{"Instruccion 1", "Instruccion 2", "Instruccion 3"}
+	// TODO -- nota:  lineas me devolvera, por ejemplo : []string{"Instruccion 1", "Instruccion 2", "Instruccion 3"}
 
 	lineas := strings.Split(strings.TrimSpace(string(content)), "\n")
 
@@ -334,7 +372,8 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// ^ Endpoint de write = /cpu/write
+//! borrar esta funcion
+// ^ Endpoint de write = /cpu/write 
 func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 
 	var request globals.CPUWriteAMemoriaRequest
@@ -372,7 +411,8 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-/* // ^ Endpoint de read = /cpu/read
+//! borrar esta funcion
+// ^ Endpoint de read = /cpu/read 
 func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
 	var request globals.CPUReadAMemoriaRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -402,4 +442,35 @@ func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-} */
+}
+//! borrar esta funcion 
+// ^Endpoint de GoTo = /cpu/goto 
+func HacerGotoHandler(w http.ResponseWriter, r *http.Request) {
+	var request globals.CPUGotoAMemoriaRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "JSON invalido", http.StatusBadRequest)
+		return
+	}
+	
+	// Simulamos la logica de salto en memoria (checkpoint 2)
+	respuestaGoto := true //! Simulacion
+
+	response := globals.CPUGotoAMemoriaResponse{
+		Respuesta: respuestaGoto,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ------------------------------Funciones Auxiliares -----------------------------
+
+// La usamos para el dump memory
+func calcularEntradasPorNivel(numPagina int, niveles int, IndicePorNivel int) []int {
+	entradas := make([]int, niveles)
+	for i := niveles - 1; i >= 0; i-- {
+		entradas[i] = numPagina % IndicePorNivel
+		numPagina /= IndicePorNivel
+	}
+	return entradas
+}

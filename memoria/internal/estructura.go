@@ -90,7 +90,7 @@ func (mp *Memoria) LeerBytes(offset, length int) ([]byte, error) {
 	copia := make([]byte, length)
 	copy(copia, mp.datos[offset:offset+length])
 	return copia, nil
-	//Devuelve un slice de bytes que contiene los datos leídos desde el offset especificado.
+	//Devuelve  un slice de bytes que contiene los datos leídos desde el offset especificado.
 }
 
 func (mp *Memoria) EscribirBytes(offset int, contenido []byte) error {
