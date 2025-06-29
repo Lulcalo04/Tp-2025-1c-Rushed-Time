@@ -50,4 +50,16 @@ type TablaPags struct {
 
 //-------------------------------------------------------------------------
 
-type TamanioProcesos map[int]int
+//type TamanioProcesos map[int]int  // asocia el PID con el tamaño del proceso
+type InfoPorProceso struct {
+	Pages         []PageInfo //  slice de información de páginas del proceso
+	Instrucciones []string   //  lista de instrucciones de ese proceso
+	Size          int        // tamaño del proceso en bytes
+	TablaRaiz     *TablaPags // tabla raíz del proceso
+}
+
+type PageInfo struct {
+	InRAM   bool  // si está en RAM o ya pasó a swap
+	FrameID int   // el frame físico (si InRAM)
+	Offset  int64 // desplazamiento en swapfile.bin (si !InRAM)
+}

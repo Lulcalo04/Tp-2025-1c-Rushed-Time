@@ -79,18 +79,31 @@ else {
 
 ----------------------------------- SWAP -------------------------------------------------
 
+En el TP, Swap es un archivo llamado swapfile.bin, que simula el espacio en disco, es donde voy a guardar los procesos que 
+ya no estan en memoria RAM. 
+
+Kernel nos va decir: "Suspendeme el proceso con PID X" y nosotros tenemos que guardar el contenido de ese proceso en RAM, en el archivo swapfile.bin.
+
+Entonces tengo que hacer en la funcion que baja a SWAP a un proceso: 
+1. Verificar que el PID existe en memoria
+2. Guardar en swapfile.bin el contenido que este en RAM de ese proceso, NO las paginas. 
+3. Marco en la tabla de paginas que ESAS paginas estan en SWAP. 
+4. Libero los frames que estaban ocupados por ese proceso.
+5. Le envio un OK a Kernel.
+
+
 ------------------------------------Checkpoint 3 -----------------------------------------
  
 Leer config (memory_size, page_size, etc.)	                   (listo)
 Iniciar memoria principal ([]byte)	                           (listo)
 Crear y gestionar bitmap de frames	                           (listo)
 Crear tablas multinivel por proceso	                           (listo)
-Traducir dirección lógica → física	                           (listo, creo, hay que preguntar bien en soporte)
-Atender INIT_PROC, SUSPEND, EXIT del Kernel	                   (falta)
+Traducir dirección lógica → física	                           (listo)
+Atender INIT_PROC, SUSPEND, EXIT del Kernel	                   (FALTA)
 Atender LEER y ESCRIBIR de CPU	                               (listo)
 Exponer endpoints HTTP para todas las funciones	               (listo)
 Logs obligatorios                                              (listo)           
-Simulación básica de swap (puede ser memoria o archivo)        (falta)
+Simulación básica de swap (puede ser memoria o archivo)        (En proceso)
 memoria_dump (pedido desde Kernel)                             (listo)    
 
 ----------------------------------------Leer en memoria ( modificar, porque ahora trabajamos con paginas completas, no con frames ) ----------------------------------------

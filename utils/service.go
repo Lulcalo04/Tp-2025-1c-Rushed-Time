@@ -45,10 +45,6 @@ type DumpMemoryResponse struct {
 	Mensaje   string `json:"mensaje"`
 }
 
-type InstruccionesRequest struct {
-	PID int `json:"pid"`
-}
-
 type InstruccionesResponse struct {
 	PID           int      `json:"pid"`
 	Instrucciones []string `json:"instrucciones"`
@@ -226,4 +222,10 @@ type CPUActualizarPaginaEnMemoriaRequest struct {
 type CPUActualizarPaginaEnMemoriaResponse struct {
 	Respuesta bool `json:"respuesta"`
 	Frame     int  `json:"frame"` // Frame donde se actualizó la página
+}
+type SwappingRequest struct { // Request para el swapping
+	PID int `json:"pid"`
+}
+type SwappingResponse struct { // Response para el swapping
+	Respuesta bool `json:"respuesta"`
 }

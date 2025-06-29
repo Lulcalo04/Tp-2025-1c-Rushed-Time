@@ -1,14 +1,22 @@
 package memoria_internal
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 type Memoria struct {
-	datos         []byte             // slice de bytes que simula la RAM de usuario
-	pageSize      int                // tamaño de cada página (frame) en bytes
-	totalFrames   int                // número de frames = len(datos) / pageSize
-	listaDeFrames []bool             // bitmap: listaDEFrames[i] = true si el frame i está libre
-	tablas        map[int]*TablaPags // mapa PID → raíz de la tabla multinivel de ese proceso
+	datos          []byte                  // slice de bytes que simula la RAM de usuario
+	pageSize       int                     // tamaño de cada página (frame) en bytes
+	totalFrames    int                     // número de frames = len(datos) / pageSize
+	listaDeFrames  []bool                  // bitmap: listaDEFrames[i] = true si el frame i está libre
+	tablas         map[int]*TablaPags      // mapa PID → raíz de la tabla multinivel de ese proceso
+	infoProc       map[int]*InfoPorProceso // asocia el PID con la metadata del proceso
+	swapFile       *os.File                // Es un filedescriptor abierto para evitar el overhead de abrir y cerrar el archivo cada vez que se necesite acceder a él
+	nextSwapOffset int64                   // próximo offset válido en swapfile
 }
+
+//-------------------- INICIALIZACION ------------------
 
 func InicializarMemoria() {
 
@@ -19,6 +27,17 @@ func InicializarMemoria() {
 	for i := range marcosLibres {
 		marcosLibres[i] = true
 	}
+}
+
+func InicializarSWAP() {
+	f, err := os.OpenFile(Config_Memoria.SwapfilePath,
+		os.O_CREATE|os.O_RDWR, 0666)
+	if err != nil {
+		panic(fmt.Sprintf("No puedo abrir swapfile: %v", err))
+	}
+	MemoriaGlobal.swapFile = f
+	MemoriaGlobal.nextSwapOffset = 0
+	MemoriaGlobal.infoProc = make(map[int]*InfoPorProceso)
 }
 
 //---------------- FUNCIONES DE MEMORIA ----------------
@@ -61,7 +80,7 @@ func (mp *Memoria) obtenerFrameLibre() (int, error) {
 
 // Funcion para liberar un frame
 func (mp *Memoria) liberarFrame(frameID int) {
-	
+
 	if frameID < 0 || frameID >= mp.totalFrames {
 		fmt.Printf("Error: frameID %d fuera de rango", frameID)
 		return
@@ -153,22 +172,22 @@ func (mp *Memoria) insertarEnMultinivel(tabla *TablaPags, numPagina int, frame i
 
 // ! falta hacer la logica de swappear a disco
 func swapping(mp *Memoria, pid int, numPagina int) (int, error) {
-	
+
 	return -1, fmt.Errorf("swap no implementado")
 }
 
 func (mp *Memoria) buscarFramePorEntradas(tabla *TablaPags, entradas []int) (FrameID, bool) {
-    actual := tabla
-    for nivel, idx := range entradas {
-        if nivel == Config_Memoria.NumberOfLevels-1 {
-            frame, ok := actual.Entradas[idx].(FrameID)
-            return frame, ok
-        }
-        subTabla, ok := actual.Entradas[idx].(*TablaPags)
-        if !ok || subTabla == nil {
-            return 0, false
-        }
-        actual = subTabla
-    }
-    return 0, false
+	actual := tabla
+	for nivel, idx := range entradas {
+		if nivel == Config_Memoria.NumberOfLevels-1 {
+			frame, ok := actual.Entradas[idx].(FrameID)
+			return frame, ok
+		}
+		subTabla, ok := actual.Entradas[idx].(*TablaPags)
+		if !ok || subTabla == nil {
+			return 0, false
+		}
+		actual = subTabla
+	}
+	return 0, false
 }
