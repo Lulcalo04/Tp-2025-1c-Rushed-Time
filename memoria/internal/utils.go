@@ -13,7 +13,7 @@ type ConfigMemoria struct {
 	SwapDelay      int    `json:"swap_delay"`
 	LogLevel       string `json:"log_level"`
 	DumpPath       string `json:"dump_path"`
-	SciptsPath     string `json:"scripts_path"`
+	ScriptsPath    string `json:"scripts_path"`
 }
 
 var MemoriaGlobal *Memoria
@@ -21,8 +21,6 @@ var MemoriaGlobal *Memoria
 var Config_Memoria *ConfigMemoria
 
 var Logger *slog.Logger
-
-
 
 type InstruccionesRequest struct {
 	PID int `json:"pid"`
@@ -38,7 +36,7 @@ type FrameID int
 
 // EntradaTabla:
 //	– nil  ->  no asignado
-//	– *TablaPags  -> uun puntero a una subtabla de nivel inferior 
+//	– *TablaPags  -> uun puntero a una subtabla de nivel inferior
 //	– FrameID   -> un frame en memoriaPrincipal
 type EntradaTabla interface{}
 
@@ -49,4 +47,3 @@ type TablaPags struct {
 }
 
 //-------------------------------------------------------------------------
-

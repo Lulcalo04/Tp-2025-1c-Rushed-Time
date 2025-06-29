@@ -164,96 +164,11 @@ func PeticionFrameAMemoria(entradasPorNivel []int, pid int) int {
 
 }
 
-func PeticionWriteAMemoria(direccionFisica int, instruccion string, data string, pid int) {
-
-	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/cpu/write", Config_CPU.IPMemory, Config_CPU.PortMemory)
-
-	// Declaro el body de la petición
-	pedidoBody := globals.CPUWriteAMemoriaRequest{
-		PID:             pid,
-		Instruccion:     instruccion,
-		DireccionFisica: direccionFisica,
-		Data:            data,
-	}
-
-	// Serializo el body a JSON
-	bodyBytes, err := json.Marshal(pedidoBody)
-	if err != nil {
-		Logger.Debug("Error serializando JSON", "error", err)
-		return
-	}
-
-	// Hacemos la petición POST al server
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		Logger.Debug("Error conectando con Memoria", "error", err)
-		return
-	}
-	defer resp.Body.Close() // Cierra la conexión al finalizar la función
-
-	var respuestaMemoria globals.CPUWriteAMemoriaResponse
-	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
-		Logger.Debug("Error decodificando respuesta JSON", "error", err)
-		return
-	}
-
-	if respuestaMemoria.Respuesta {
-		LogLecturaEscrituraMemoria(pid, instruccion, direccionFisica, data)
-	} else {
-		Logger.Debug("Error al escribir en memoria", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica, "data", data)
-	}
-
-}
-
-func PeticionReadAMemoria(direccionFisica int, instruccion string, data string, pid int) {
-	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/cpu/read", Config_CPU.IPMemory, Config_CPU.PortMemory)
-
-	// Declaro el body de la petición
-	pedidoBody := globals.CPUReadAMemoriaRequest{
-		PID:             pid,
-		Instruccion:     instruccion,
-		DireccionFisica: direccionFisica,
-		Data:            data,
-	}
-
-	// Serializo el body a JSON
-	bodyBytes, err := json.Marshal(pedidoBody)
-	if err != nil {
-		Logger.Debug("Error serializando JSON", "error", err)
-		return
-	}
-
-	// Hacemos la petición POST al server
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		Logger.Debug("Error conectando con Memoria", "error", err)
-		return
-	}
-	defer resp.Body.Close() // Cierra la conexión al finalizar la función
-
-	var respuestaMemoria globals.CPUReadAMemoriaResponse
-	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
-		Logger.Debug("Error decodificando respuesta JSON", "error", err)
-		return
-	}
-
-	if respuestaMemoria.Respuesta {
-		//Logeo e imprimo lo leido de memoria
-		LogLecturaEscrituraMemoria(pid, instruccion, direccionFisica, data)
-		fmt.Printf("PID: %d - Acción: %s - Dirección Física: %d - Valor: %s", pid, instruccion, direccionFisica, data)
-	} else {
-		Logger.Debug("Error al leer de memoria", "pid", pid, "instruccion", instruccion, "direccion_fisica", direccionFisica, "data", data)
-	}
-
-}
-
 func PeticionIOKernel(pid int, nombreDispositivo string, tiempo string) {
 
 	tiempoInt, err := strconv.Atoi(tiempo)
 	if err != nil {
-		Logger.Error("Error al convertir direccionLogica a int", "error", err)
+		Logger.Debug("Error al convertir direccionLogica a int", "error", err)
 		return
 	}
 
@@ -300,7 +215,7 @@ func PeticionInitProcKernel(pid int, nombreArchivo string, tamanio string) {
 
 	tamanioInt, err := strconv.Atoi(tamanio)
 	if err != nil {
-		Logger.Error("Error al convertir tamanio a int", "error", err)
+		Logger.Debug("Error al convertir tamanio a int", "error", err)
 		return
 	}
 
@@ -493,4 +408,134 @@ func PedirPaginaAMemoria(pid int, direccionFisica int, numeroDePagina int) *Entr
 
 	// Agregamos la página que nos devolvió Memoria a la Cache
 	return AgregarPaginaEnCache(numeroDePagina, respuestaMemoria.ContenidoPagina, direccionFisica)
+}
+
+func EscribirEnPaginaMemoria(pid int, direccionFisica int, valor string) {
+
+	valorEnBytes := []byte(valor)
+
+	// Declaro la URL a la que me voy a conectar (handler de petición de página con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/pagina/escribir", Config_CPU.IPMemory, Config_CPU.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.CPUWriteAMemoriaRequest{
+		PID:             pid,
+		DireccionFisica: direccionFisica,
+		Data:            valorEnBytes,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaMemoria globals.CPUWriteAMemoriaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaMemoria.Respuesta {
+		LogLecturaEscrituraMemoria(pid, "WRITE", direccionFisica, valor)
+	} else {
+		Logger.Debug("Error al escribir en memoria", "pid", pid, "direccion_fisica", direccionFisica, "data", valor)
+	}
+
+}
+
+func LeerDePaginaMemoria(pid int, direccionFisica int, tamanio string) {
+
+	tamanioInt, err := strconv.Atoi(tamanio)
+	if err != nil {
+		Logger.Debug("Error al convertir tamanio a int", "error", err)
+		return
+	}
+	// Declaro la URL a la que me voy a conectar (handler de petición de página con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/pagina/leer", Config_CPU.IPMemory, Config_CPU.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.CPUReadAMemoriaRequest{
+		PID:             pid,
+		DireccionFisica: direccionFisica,
+		Tamanio:         tamanioInt,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaMemoria globals.CPUReadAMemoriaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaMemoria.Respuesta {
+		//Logeo e imprimo lo leido de memoria
+		LogLecturaEscrituraMemoria(pid, "READ", direccionFisica, string(respuestaMemoria.Data))
+		fmt.Printf("PID: %d - Acción: READ - Dirección Física: %d - Valor: %s\n", pid, direccionFisica, string(respuestaMemoria.Data))
+	} else {
+		Logger.Debug("Error al leer de memoria", "pid", pid, "direccion_fisica", direccionFisica, "tamanio", tamanio)
+	}
+}
+
+func ActualizarPaginaEnMemoria(pid int, numeroDePagina int, data []byte) {
+
+	// Declaro la URL a la que me voy a conectar (handler de actualización de página con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/pagina/actualizar", Config_CPU.IPMemory, Config_CPU.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.CPUActualizarPaginaEnMemoriaRequest{
+		PID:            pid,
+		NumeroDePagina: numeroDePagina,
+		Data:           data,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return
+	}
+	defer resp.Body.Close() // Cierra la conexión al finalizar la función
+
+	var respuestaMemoria globals.CPUActualizarPaginaEnMemoriaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return
+	}
+
+	if respuestaMemoria.Respuesta {
+		LogPaginaActualizadaDeCacheAMemoria(pid, numeroDePagina, respuestaMemoria.Frame)
+	} else {
+		Logger.Debug("Error al actualizar página en memoria", "pid", pid, "numeroDePagina", numeroDePagina)
+	}
 }

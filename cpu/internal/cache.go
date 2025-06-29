@@ -71,7 +71,7 @@ func BuscarPaginaEnCache(numeroDePagina int) *EntradaCache {
 	return nil
 }
 
-func EscribirEnPagina(paginaCache *EntradaCache, desplazamiento int, valor string) {
+func EscribirEnPaginaCache(paginaCache *EntradaCache, desplazamiento int, valor string) {
 	// Simulamos el delay de la Cache
 	time.Sleep(time.Duration(Cache.Delay) * time.Millisecond)
 
@@ -89,7 +89,7 @@ func EscribirEnPagina(paginaCache *EntradaCache, desplazamiento int, valor strin
 
 }
 
-func LeerDePagina(paginaCache *EntradaCache, desplazamiento int, tamanio string) {
+func LeerDePaginaCache(paginaCache *EntradaCache, desplazamiento int, tamanio string) {
 	// Simulamos el delay de la Cache
 	time.Sleep(time.Duration(Cache.Delay) * time.Millisecond)
 
@@ -120,3 +120,4 @@ func LeerDePagina(paginaCache *EntradaCache, desplazamiento int, tamanio string)
 func ElegirPaginaVictima() {
 	//! FALTA DESARROLLAR TANTO CLOCK COMO CLOCK-M
 }
+

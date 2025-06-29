@@ -141,7 +141,7 @@ func Execute() {
 			if paginaCache == nil { // Cache Miss, busco la pagina en memoria
 				// Se obtiene la direccion fisica
 				direccionFisica := ObtenerDireccionFisica(numeroDePagina, direccionLogicaInt, desplazamiento)
-				// Le pido la pagina a memoria
+				// Le pido la pagina a memoria y la guardo en cache
 				paginaCache = PedirPaginaAMemoria(ProcesoEjecutando.PID, direccionFisica, numeroDePagina)
 			}
 
@@ -149,13 +149,22 @@ func Execute() {
 			switch argumentoInstrucciones[0] {
 			case "WRITE":
 				// Si la instruccion es WRITE, se escribe en el byte correspondiente
-				EscribirEnPagina(paginaCache, desplazamiento, argumentoInstrucciones[2])
+				EscribirEnPaginaCache(paginaCache, desplazamiento, argumentoInstrucciones[2])
 			case "READ":
 				// Si la instruccion es READ, se lee del byte correspondiente
-				LeerDePagina(paginaCache, desplazamiento, argumentoInstrucciones[2])
+				LeerDePaginaCache(paginaCache, desplazamiento, argumentoInstrucciones[2])
 			}
 
 		} else { //Cache desabilitada, peticiones a memoria con los recursos directamente
+
+			switch argumentoInstrucciones[0] {
+			case "WRITE":
+				// Si la instruccion es WRITE, se escribe en el byte correspondiente
+				EscribirEnPaginaMemoria(ProcesoEjecutando.PID, direccionLogicaInt, argumentoInstrucciones[2])
+			case "READ":
+				// Si la instruccion es READ, se lee del byte correspondiente
+				LeerDePaginaMemoria(ProcesoEjecutando.PID, direccionLogicaInt, argumentoInstrucciones[2])
+			}
 
 		}
 

@@ -8,7 +8,6 @@ por lo que el proceso que llamó a esta syscall, inmediatamente volverá a ejecu
 
 func SyscallInitProc(pid int, nombreArchivo string, tamanioProcesoEnMemoria int) {
 	LogSyscall(pid, "INIT_PROC")
-
 	
 	InicializarPCB(tamanioProcesoEnMemoria, nombreArchivo)
 }

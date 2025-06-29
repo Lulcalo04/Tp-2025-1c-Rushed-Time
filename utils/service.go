@@ -169,40 +169,6 @@ type SolicitudFrameResponse struct {
 	Frame int `json:"frame"`
 }
 
-type CPUWriteAMemoriaRequest struct {
-	PID             int    `json:"pid"`
-	Instruccion     string `json:"instruccion"` // creo que no es necesario mandarlo a Memoria
-	DireccionFisica int    `json:"direccion_fisica"`
-	Data            string `json:"data"`
-}
-
-type CPUWriteAMemoriaResponse struct {
-	Respuesta bool `json:"respuesta"`
-}
-
-type CPUReadAMemoriaRequest struct {
-	PID             int    `json:"pid"`
-	Instruccion     string `json:"instruccion"`
-	DireccionFisica int    `json:"direccion_fisica"`
-	Data            string `json:"data"`
-}
-
-type CPUReadAMemoriaResponse struct {
-	Respuesta bool `json:"respuesta"`
-	Data      int  `json:"data"` // Datos leídos de la memoria
-
-}
-
-type CPUGotoAMemoriaRequest struct {
-	PID             int    `json:"pid"`
-	Instruccion     string `json:"instruccion"`
-	DireccionFisica int    `json:"direccion_fisica"`
-}
-
-type CPUGotoAMemoriaResponse struct {
-	Respuesta bool `json:"respuesta"`
-}
-
 type IOtoKernelDesconexionRequest struct {
 	NombreDispositivo string `json:"nombre_dispositivo"`
 	IpInstancia       string `json:"ip_instancia"`
@@ -227,4 +193,37 @@ type CPUtoMemoriaPageRequest struct {
 type MemoriaToCPUPageResponse struct {
 	PID             int    `json:"pid"`
 	ContenidoPagina []byte `json:"contenido_pagina"` // Contenido de la página solicitada
+}
+
+type CPUWriteAMemoriaRequest struct {
+	PID             int    `json:"pid"`
+	DireccionFisica int    `json:"direccion_fisica"`
+	Data            []byte `json:"data"`
+}
+
+type CPUWriteAMemoriaResponse struct {
+	Respuesta bool `json:"respuesta"`
+}
+
+type CPUReadAMemoriaRequest struct {
+	PID             int `json:"pid"`
+	DireccionFisica int `json:"direccion_fisica"`
+	Tamanio         int `json:"data"`
+}
+
+type CPUReadAMemoriaResponse struct {
+	Respuesta bool   `json:"respuesta"`
+	Data      []byte `json:"data"` // Datos leídos de la memoria
+
+}
+
+type CPUActualizarPaginaEnMemoriaRequest struct {
+	PID            int    `json:"pid"`
+	NumeroDePagina int    `json:"numero_de_pagina"` // Número de página a actualizar
+	Data           []byte `json:"data"`
+}
+
+type CPUActualizarPaginaEnMemoriaResponse struct {
+	Respuesta bool `json:"respuesta"`
+	Frame     int  `json:"frame"` // Frame donde se actualizó la página
 }
