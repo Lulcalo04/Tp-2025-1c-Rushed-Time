@@ -139,6 +139,8 @@ type IOResponse struct {
 type InstruccionAMemoriaRequest struct {
 	PID int `json:"pid"`
 	PC  int `json:"pc"`
+	Path string `json:"path"` // ! pedir a los chicos que nos manden esto en el request
+
 }
 
 type InstruccionAMemoriaResponse struct {
@@ -216,7 +218,7 @@ type CPUReadAMemoriaResponse struct {
 type CPUActualizarPaginaEnMemoriaRequest struct {
 	PID            int    `json:"pid"`
 	NumeroDePagina int    `json:"numero_de_pagina"` // Número de página a actualizar
-	Data           []byte `json:"data"`
+	Data           []byte `json:"data"`             // Datos a sobreescribir en la pagina     
 }
 
 type CPUActualizarPaginaEnMemoriaResponse struct {
