@@ -211,6 +211,16 @@ func CheckInterrupt() bool {
 		ProcesoEjecutando.Interrupt = false
 		mutexProcesoEjecutando.Unlock()
 
+		if TLBHabilitada {
+			// Liberamos las entradas de la TLB usadas por el proceso.
+			LiberarEntradasTLB(ProcesoEjecutando.PID)
+		}
+
+		if CacheHabilitada {
+			// Liberamos las entradas de la Chaché usadas por el proceso.
+			LiberarEntradasCache(ProcesoEjecutando.PID)
+		}
+
 		//Le avisamos a kernel que desalojamos
 		PeticionDesalojoKernel()
 

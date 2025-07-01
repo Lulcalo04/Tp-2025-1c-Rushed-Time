@@ -21,6 +21,7 @@ func InicializarTLB() {
 		TLBHabilitada = true
 		TLB.Algoritmo = Config_CPU.TLBReplacement
 		TLB.CantidadEntradas = Config_CPU.TLBEntries
+		TLB.Entrada = make([]EntradasTLB, 0, TLB.CantidadEntradas) // Inicializa la TLB vacía con capacidad máxima
 	}
 }
 
@@ -56,4 +57,15 @@ func AgregarEntradaTLB(numeroDePagina int, numeroDeMarco int) {
 		Marco:  numeroDeMarco,
 	}
 	TLB.Entrada = append(TLB.Entrada, nuevaEntrada)
+}
+
+func LiberarEntradasTLB(pid int) {
+	// Crea un nuevo slice solo con las entradas que NO pertenecen al PID dado
+	nuevasEntradas := make([]EntradasTLB, 0, len(TLB.Entrada))
+	for _, entrada := range TLB.Entrada {
+		if entrada.PID != pid {
+			nuevasEntradas = append(nuevasEntradas, entrada)
+		}
+	}
+	TLB.Entrada = nuevasEntradas
 }

@@ -207,3 +207,22 @@ func ReemplazarPaginaVictima(paginaVictima *EntradaCache, nuevaEntrada *EntradaC
 	// Reemplazamos la pagina victima con la nueva entrada
 	Cache.Entradas[posicionEnCache] = *nuevaEntrada
 }
+
+func LiberarEntradasCache(pid int) {
+	// Simulamos el delay de la Cache
+	time.Sleep(time.Duration(Cache.Delay) * time.Millisecond)
+
+	nuevasEntradas := make([]EntradaCache, 0, len(Cache.Entradas))
+	for _, entrada := range Cache.Entradas {
+		if entrada.PID == pid {
+			if entrada.Modificado {
+				ActualizarPaginaEnMemoria(entrada.PID, entrada.Pagina, entrada.Contenido)
+				Logger.Debug(fmt.Sprintf("PID %d desalojado, pagina %d del proceso liberada de Caché", entrada.PID, entrada.Pagina))
+			}
+		} else {
+			// No agrego la entrada al nuevo slice (la libero)
+			nuevasEntradas = append(nuevasEntradas, entrada)
+		}
+	}
+	Cache.Entradas = nuevasEntradas
+}
