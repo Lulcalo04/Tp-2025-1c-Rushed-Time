@@ -17,6 +17,7 @@ type Memoria struct {
 	freeSwapOffsets []int64                 //offsets disponibles para reutilizar en SWAPP
 }
 
+
 //-------------------- INICIALIZACION ------------------
 
 func InicializarMemoria() {

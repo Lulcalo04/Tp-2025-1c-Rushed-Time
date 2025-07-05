@@ -56,10 +56,20 @@ type InfoPorProceso struct {
 	Instrucciones []string   //  lista de instrucciones de ese proceso
 	Size          int        // tamaño del proceso en bytes
 	TablaRaiz     *TablaPags // tabla raíz del proceso
+	Metricas *MetricasPorProceso // lista de métricas del proceso
 }
 
 type PageInfo struct {
 	InRAM   bool  // si está en RAM o ya pasó a swap
 	FrameID int   // el frame físico (si InRAM)
 	Offset  int64 // desplazamiento en swapfile.bin (si !InRAM)
+}
+
+type MetricasPorProceso struct {
+		AccesoATablaDePaginas int  // cantidad de veces que se accedió a la tabla de páginas	(listo) 
+		InstruccionesSolicitadas int // cantidad de instrucciones solicitadas					(listo)
+		BajadasASwap int // cantidad de veces que se bajó a swap								(listo)
+		SubidasAMemoriaPrincipal int // cantidad de veces que se subió a memoria principal		(listo)
+		LecturasDeMemoria int // cantidad de lecturas de memoria								(Listo)
+		EscriturasDeMemoria int // cantidad de escrituras de memoria							(listo)
 }

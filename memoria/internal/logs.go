@@ -14,14 +14,14 @@ func LogCreacionDeProceso(pid int, size int) {
 	Logger.Info(fmt.Sprintf("## PID: %d - Proceso Creado - Tamaño: %d", pid, size))
 }
 
-func LogDestruccionDeProceso(pid int, atp int, instSol int, swap int, memPrin int, lecMem int, escMem int) {
+func LogDestruccionDeProceso(pid int, metricas MetricasPorProceso) {
 	Logger.Info(fmt.Sprintf("## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d",
-		pid, atp, instSol, swap, memPrin, lecMem, escMem))
+		pid, metricas.AccesoATablaDePaginas, metricas.InstruccionesSolicitadas, metricas.BajadasASwap, metricas.SubidasAMemoriaPrincipal, metricas.LecturasDeMemoria, metricas.EscriturasDeMemoria))
 }
 
 func LogObtenerInstruccion(pid int, pc int, instruccion string, args ...string) {
 	Logger.Info(fmt.Sprintf("## PID: %d - Obtener instrucción: %d - Instrucción: %s %s",
-		pid, pc, instruccion, fmt.Sprint(args)))
+		pid, pc, instruccion, fmt.Sprint(args))) // no pasamos el args, porque no sabemos que es
 }
 
 func LogOperacionEnEspacioUsuario(pid int, operacion string, direccionFisica int, size int) {
