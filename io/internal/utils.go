@@ -89,6 +89,7 @@ func RecibirSolicitudIO(w http.ResponseWriter, r *http.Request) {
 // & ----------------------------------------------- Peticiones ------------------------------------------------------------------//
 
 func HandshakeKernel(ipKernel string, puertoKernel int, nombreIO string) {
+	Logger.Debug("Iniciando Handshake con el kernel", "ip", ipKernel, "puerto", puertoKernel, "nombre_io", nombreIO)
 
 	//Aca estamos armando un paquete con el nombre del IO y la ip y puerto del IO
 	paquete := globals.IoHandshakeRequest{
@@ -108,6 +109,7 @@ func HandshakeKernel(ipKernel string, puertoKernel int, nombreIO string) {
 	if err != nil {
 		Logger.Debug("Error enviando mensajes", "ip", ipKernel, "puerto", puertoKernel)
 	}
+	defer resp.Body.Close()
 	Logger.Debug("Respuesta del servidor", "status", resp.Status)
 
 }

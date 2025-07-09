@@ -1,6 +1,7 @@
 package kernel_internal
 
 import (
+	"fmt"
 	"globals"
 	"log/slog"
 	"os"
@@ -51,7 +52,7 @@ type InstanciaIO struct {
 
 var ListaDispositivosIO map[string]*DispositivoIO
 
-var ListaIdentificadoresCPU []IdentificadorCPU
+var ListaIdentificadoresCPU []IdentificadorCPU = make([]IdentificadorCPU, 0)
 
 var Config_Kernel *ConfigKernel
 
@@ -65,15 +66,19 @@ var canceladoresBlocked = make(map[int]chan struct{})
 
 func IniciarKernel() {
 	//Inicializa la config de kernel
+	fmt.Println("Iniciando configuración...")
 	globals.IniciarConfiguracion("kernel/config.json", &Config_Kernel)
 
 	//Crea el archivo donde se logea kernel
+	fmt.Println("Iniciando logger...")
 	Logger = globals.ConfigurarLogger("kernel", Config_Kernel.LogLevel)
 
 	//Prende el server de kernel en un hilo aparte
+	fmt.Println("Iniciando el servidor de Kernel en el puerto", Config_Kernel.PortKernel)
 	go IniciarServerKernel(Config_Kernel.PortKernel)
 
 	//Realiza el handshake con memoria
+
 	HandshakeConMemoria(Config_Kernel.IPMemory, Config_Kernel.PortMemory)
 
 	//Realizar el handshake con Memoria
@@ -84,6 +89,7 @@ func IniciarKernel() {
 
 	//Inicia los planificadores
 	IniciarPlanificadores()
+	fmt.Println("Kernel iniciado correctamente.")
 }
 
 func InicializarProcesoCero() {
@@ -102,6 +108,10 @@ func InicializarProcesoCero() {
 		os.Exit(1)
 	}
 
+	Logger.Debug("Inicializando Proceso Cero",
+		"tamanio_proceso", tamanioProceso,
+		"nombre_archivo_pseudocodigo", nombreArchivoPseudocodigo)
+
 	InicializarPCB(tamanioProceso, nombreArchivoPseudocodigo)
 
 }
@@ -116,13 +126,16 @@ func BuscarProcesoEnCola(pid int, cola *[]globals.PCB) *globals.PCB {
 }
 
 func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
+	Logger.Debug("Inicializando PCB",
+		"tamanio_en_memoria", tamanioEnMemoria,
+		"nombre_archivo_pseudo", nombreArchivoPseudo)
 
 	ContadorPID++
 
 	pcb := globals.PCB{
 		PID:                ContadorPID,
 		PC:                 0,
-		Estado:             globals.New,
+		Estado:             globals.Null,
 		PathArchivoPseudo:  nombreArchivoPseudo,
 		InicioEstadoActual: time.Now(),
 		MetricasDeEstados:  make(map[globals.Estado]int),
@@ -136,48 +149,69 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 	}
 
 	LogCreacionDeProceso(ContadorPID)
+
+	fmt.Println("PCB creado, moviendo proceso a cola New")
 	MoverProcesoACola(pcb, &ColaNew)
+	fmt.Println("Proceso movido a cola New:", ContadorPID)
+
 	// Al agregar un nuevo proceso a la cola de New, notificamos al planificador de largo plazo
+	Logger.Debug("Notificando al planificador de largo plazo sobre el nuevo proceso", "pid", ContadorPID)
 	LargoNotifier <- struct{}{}
+	Logger.Debug("Notificación enviada al planificador de largo plazo", "pid", ContadorPID)
 
 }
 
 func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
+	Logger.Debug("Iniciando MoverProcesoACola", "proceso", proceso.PID, "estado_actual", proceso.Estado)
+
 	//& El mutex actualmente lo estamos usando con todas las colas, pero seguramente estamos haciendo mucho overhead
 	//& porque no todas las colas se usan al mismo tiempo. Hay que ver si podemos optimizar eso.
 
 	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
 
+	fmt.Println("Estado anterior del proceso:", procesoEstadoAnterior)
+
+	Logger.Debug("Obteniendo mutex de la cola de origen", "proceso", proceso.PID)
+	fmt.Println("Obteniendo mutex de la cola de origen:", "proceso:", proceso.PID, "estado:", proceso.Estado)
 	// Obtener el mutex de la cola de origen
 	var mutexOrigen *sync.Mutex
 	for colaOrigen, estado := range ColaEstados {
 		if proceso.Estado == estado {
+			fmt.Println("Esta en la cola", estado)
 			mutexOrigen = ColaMutexes[colaOrigen]
+			fmt.Println("Mutex de la cola de origen obtenido", "mutex_origen:", estado)
 			break
 		}
+		fmt.Println("No esta en la cola", estado)
 	}
 
+	Logger.Debug("Obteniendo mutex de la cola de destino", "proceso", proceso.PID)
+	fmt.Println("Obteniendo mutex de la cola de destino:", "proceso:", proceso.PID, "cola_destino:", ColaEstados[colaDestino])
 	// Obtener el mutex de la cola de destino
 	mutexDestino := ColaMutexes[colaDestino]
+	fmt.Println("Mutex de la cola de destino obtenido", "mutex_destino:", ColaEstados[colaDestino])
 
 	// Bloquear ambas colas (origen y destino)
 	if mutexOrigen != nil {
-		mutexOrigen.Lock()         // Bloquear mutexOrigen si no es nil
-		defer mutexOrigen.Unlock() // Defer para desbloquear al final de la función
-	}
-	if mutexDestino != nil {
-		mutexDestino.Lock()         // Bloquear mutexDestino
-		defer mutexDestino.Unlock() // Defer para desbloquear al final de la función
+		fmt.Println("Intentando bloquear mutexOrigen")
+		mutexOrigen.Lock()
+		fmt.Println("MutexOrigen bloqueado")
 	}
 
 	// Buscar y eliminar el proceso de su cola actual
+	Logger.Debug("Buscando y eliminando el proceso de su cola actual", "proceso", proceso.PID)
+	fmt.Println("Buscando proceso en su cola actual...", "proceso:", proceso.PID, "estado:", proceso.Estado)
 	for cola, estado := range ColaEstados {
 		if proceso.Estado == estado {
+			fmt.Println("Proceso encontrado en la cola:", estado)
 			for i, p := range *cola {
 				if p.PID == proceso.PID {
 					// Eliminar el proceso de la cola actual
 					*cola = append((*cola)[:i], (*cola)[i+1:]...)
+					fmt.Println("Proceso eliminado de la cola actual", "proceso:", proceso.PID, "cola_actual:", estado)
+					mutexOrigen.Unlock()
+					fmt.Println("MutexOrigen desbloqueado")
 					break
 				}
 			}
@@ -185,10 +219,24 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 		}
 	}
 
+	if mutexDestino != nil {
+		fmt.Println("Intentando bloquear mutexDestino...")
+		mutexDestino.Lock()
+		fmt.Println("MutexDestino bloqueado")
+		defer func() {
+			mutexDestino.Unlock()
+			fmt.Println("MutexDestino desbloqueado")
+		}()
+	}
+
 	// Agregar el proceso a la cola destino
+	Logger.Debug("Agregando el proceso a la cola destino", "proceso", proceso.PID)
+	fmt.Println("Agregando el proceso a la cola destino:", "proceso:", proceso.PID, "estado_destino:", ColaEstados[colaDestino])
 	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
+		fmt.Println("Estado destino encontrado", "estado_destino:", estadoDestino)
 		proceso.Estado = estadoDestino
 		*colaDestino = append(*colaDestino, proceso)
+		fmt.Println("Proceso agregado a la cola destino", "proceso:", proceso.PID, "estado_destino:", ColaEstados[colaDestino])
 	}
 
 	if proceso.Estado != procesoEstadoAnterior {
@@ -211,6 +259,7 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
 	}
 
+	Logger.Debug("Proceso movido a la cola destino", "proceso", proceso.PID, "estado_destino", proceso.Estado)
 }
 
 func MoverProcesoDeExecABlocked(pid int) {
@@ -266,7 +315,9 @@ func MoverProcesoDeBlockedAReady(pid int) {
 
 		//Lo muevo a la cola destino
 		MoverProcesoACola(*pcbDelProceso, &ColaSuspReady)
-		LargoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
+		Logger.Debug("Enviando notificación a LargoNotifier")
+		LargoNotifier <- struct{}{}
+		Logger.Debug("Notificación enviada a LargoNotifier")
 	} else {
 		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
 		MoverProcesoACola(*pcbDelProceso, &ColaReady)
@@ -594,7 +645,9 @@ func IniciarContadorBlocked(pcb globals.PCB, milisegundos int) {
 			if BuscarProcesoEnCola(pcb.PID, &ColaBlocked) != nil {
 				MoverProcesoACola(pcb, &ColaSuspBlocked)
 				//! PEDIR A MEMORIA QUE HAGA EL SWAP
+				Logger.Debug("Enviando notificación a LargoNotifier")
 				LargoNotifier <- struct{}{}
+				Logger.Debug("Notificación enviada a LargoNotifier")
 			}
 		case <-cancel:
 			timer.Stop()

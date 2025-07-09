@@ -3,8 +3,18 @@ package globals
 // &-------------------------------------------Structs de handlers (Request y Response)-------------------------------------------
 
 type HandshakeRequest struct {
-	Modulo string `json:"modulo"`
-	Nombre string `json:"nombre"`
+	Modulo    string `json:"modulo"`
+	Ip        string `json:"ip"`
+	Port      int    `json:"port"`
+	Respuesta bool   `json:"respuesta"`
+}
+
+type HandshakeResponse struct {
+	Modulo    string `json:"modulo"`
+	Ip        string `json:"ip"`
+	Port      int    `json:"port"`
+	Respuesta bool   `json:"respuesta"`
+	Mensaje   string `json:"mensaje"`
 }
 
 type PingResponse struct {
@@ -137,8 +147,8 @@ type IOResponse struct {
 }
 
 type InstruccionAMemoriaRequest struct {
-	PID int `json:"pid"`
-	PC  int `json:"pc"`
+	PID  int    `json:"pid"`
+	PC   int    `json:"pc"`
 	Path string `json:"path"` // ! pedir a los chicos que nos manden esto en el request
 
 }
@@ -218,7 +228,7 @@ type CPUReadAMemoriaResponse struct {
 type CPUActualizarPaginaEnMemoriaRequest struct {
 	PID            int    `json:"pid"`
 	NumeroDePagina int    `json:"numero_de_pagina"` // Número de página a actualizar
-	Data           []byte `json:"data"`             // Datos a sobreescribir en la pagina     
+	Data           []byte `json:"data"`             // Datos a sobreescribir en la pagina
 }
 
 type CPUActualizarPaginaEnMemoriaResponse struct {

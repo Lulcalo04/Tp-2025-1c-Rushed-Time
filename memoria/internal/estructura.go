@@ -17,38 +17,14 @@ type Memoria struct {
 	freeSwapOffsets []int64                 //offsets disponibles para reutilizar en SWAPP
 }
 
-//-------------------- INICIALIZACION ------------------
-
-func InicializarMemoria() {
-
-	numFrames := Config_Memoria.MemorySize / Config_Memoria.PageSize
-
-	// 2) Crear un slice que indique si cada marco está libre (true) u ocupado (false)
-	marcosLibres := make([]bool, numFrames)
-	for i := range marcosLibres {
-		marcosLibres[i] = true
-	}
-}
-
-func InicializarSWAP() {
-	f, err := os.OpenFile(Config_Memoria.SwapfilePath,
-		os.O_CREATE|os.O_RDWR, 0666)
-	if err != nil {
-		panic(fmt.Sprintf("No puedo abrir swapfile: %v", err))
-	}
-	MemoriaGlobal.swapFile = f
-	MemoriaGlobal.nextSwapOffset = 0
-	MemoriaGlobal.infoProc = make(map[int]*InfoPorProceso)
-}
-
 //---------------- FUNCIONES DE MEMORIA ----------------
 
-func NuevaMemoria(memorySize, pageSize int) *Memoria {
+func NuevaMemoria() {
 	// 1) Crear el slice de bytes de tamaño memorySize
-	datos := make([]byte, memorySize)
+	datos := make([]byte, Config_Memoria.MemorySize)
 
 	// 2) Calcular cuántos frames caben en esos bytes
-	totalFrames := memorySize / pageSize
+	totalFrames := Config_Memoria.MemorySize / Config_Memoria.PageSize
 
 	// 3) Inicializar el bitmap de frames libres
 	listaDeFrames := make([]bool, totalFrames)
@@ -59,12 +35,24 @@ func NuevaMemoria(memorySize, pageSize int) *Memoria {
 	// 4) Inicializar el mapa de tablas multinivel
 	tablas := make(map[int]*TablaPags)
 
-	return &Memoria{
-		datos:         datos,
-		pageSize:      pageSize,
-		totalFrames:   totalFrames,
-		listaDeFrames: listaDeFrames,
-		tablas:        tablas,
+	// 5) Inicializar el archivo de swap
+	f, err := os.OpenFile(Config_Memoria.SwapfilePath,
+		os.O_CREATE|os.O_RDWR, 0666)
+	if err != nil {
+		panic(fmt.Sprintf("No puedo abrir swapfile: %v", err))
+	}
+
+	// 6) Inicializar la memoria global
+	MemoriaGlobal = &Memoria{
+		datos:           datos,
+		pageSize:        Config_Memoria.PageSize,
+		totalFrames:     totalFrames,
+		listaDeFrames:   listaDeFrames,
+		tablas:          tablas,
+		infoProc:        make(map[int]*InfoPorProceso), // Inicializamos el mapa de info de procesos
+		swapFile:        f,
+		freeSwapOffsets: make([]int64, 0), // Inicializamos con un slice
+		nextSwapOffset:  0,                // Inicializamos el offset de swap
 	}
 }
 

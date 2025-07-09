@@ -95,7 +95,7 @@ func HandshakeConMemoria(cpuid string) bool {
 func SolicitarSiguienteInstruccionMemoria(pid int, pc int) {
 
 	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/cpu/instruccion", Config_CPU.IPMemory, Config_CPU.PortMemory)
+	url := fmt.Sprintf("http://%s:%d/cpu/instrucciones", Config_CPU.IPMemory, Config_CPU.PortMemory)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.InstruccionAMemoriaRequest{
