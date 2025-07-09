@@ -12,14 +12,31 @@ import (
 // &--------------------------------------------Funciones de Cliente-------------------------------------------------------------
 
 func HandshakeConMemoria(ip string, puerto int) {
+	Logger.Debug("Iniciando Handshake con Memoria")
+	fmt.Println("Iniciando Handshake con Memoria")
+
 	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
 	url := fmt.Sprintf("http://%s:%d/handshake", ip, puerto)
 
-	// Hacemos la petición GET al server
-	resp, err := http.Get(url)
+	// Declaro el body de la petición
+	pedidoBody := globals.HandshakeRequest{
+		Modulo:    "Kernel",
+		Ip:        Config_Kernel.IPKernel,
+		Port:      Config_Kernel.PortKernel,
+		Respuesta: false,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		os.Exit(1) // Termina el programa si hay un error al serializar
+	}
+	// Hago la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		Logger.Debug("Error conectando con Memoria", "error", err)
-		os.Exit(1)
+		os.Exit(1) // Termina el programa si hay un error de conexión
 	}
 	defer resp.Body.Close() // Cierra la conexión al finalizar la función
 
@@ -29,10 +46,12 @@ func HandshakeConMemoria(ip string, puerto int) {
 		Logger.Debug("Error decodificando respuesta JSON", "error", err)
 		os.Exit(1)
 	}
-
+	fmt.Println("Handshake exitoso")
 	Logger.Debug("Handshake exitoso",
-		"nombre", "Memoria",
-		"modulo", respuesta.Modulo)
+		"modulo", "Memoria",
+		"ip", respuesta.Ip,
+		"puerto", respuesta.Port,
+		"respuesta", respuesta.Respuesta)
 }
 
 func PingCon(nombre string, ip string, puerto int) (respuestaPing bool) {
@@ -84,20 +103,24 @@ func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
 		return false
 	}
 
+	Logger.Debug("Enviando petición de espacio a Memoria", "url", url, "proceso", pcbDelProceso.PID)
+
 	// Hacemos la petición POST al server
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
 	if err != nil {
-		Logger.Debug("Error conectando con Memoria", "error", err)
+		Logger.Debug("Error conectando con Memoria", "error", err, "url", url)
 		return false
 	}
 	defer resp.Body.Close() // Cierra la conexión al finalizar la función
 
+	Logger.Debug("Respuesta de Memoria recibida", "status_code", resp.StatusCode, "proceso", pcbDelProceso.PID)
 	// Decodifico la respuesta JSON del server
 	var respuestaMemoria globals.PeticionMemoriaResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
-		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		Logger.Debug("Error decodificando respuesta JSON", "error", err, "proceso", pcbDelProceso.PID)
 		return false
 	}
+	Logger.Debug("Respuesta de Memoria procesada", "respuesta", respuestaMemoria.Respuesta, "mensaje", respuestaMemoria.Mensaje, "proceso", pcbDelProceso.PID)
 
 	Logger.Debug("Espacio en Memoria concedido",
 		"modulo", respuestaMemoria.Modulo,

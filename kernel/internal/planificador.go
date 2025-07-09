@@ -2,19 +2,20 @@ package kernel_internal
 
 import (
 	"bufio"
+	"fmt"
 	"globals"
 	"os"
 	"sync"
 	"time"
 )
 
-var ColaNew []globals.PCB
-var ColaReady []globals.PCB
-var ColaExec []globals.PCB
-var ColaBlocked []globals.PCB
-var ColaSuspReady []globals.PCB
-var ColaSuspBlocked []globals.PCB
-var ColaExit []globals.PCB
+var ColaNew = make([]globals.PCB, 0)
+var ColaReady = make([]globals.PCB, 0)
+var ColaExec = make([]globals.PCB, 0)
+var ColaBlocked = make([]globals.PCB, 0)
+var ColaSuspReady = make([]globals.PCB, 0)
+var ColaSuspBlocked = make([]globals.PCB, 0)
+var ColaExit = make([]globals.PCB, 0)
 
 var ColaEstados = map[*[]globals.PCB]globals.Estado{
 	&ColaNew:         globals.Estado("NEW"),
@@ -52,37 +53,57 @@ func IniciarPlanificadores() {
 
 	//ESPERAR ENTER
 	Logger.Debug("Presione ENTER para iniciar los planificadores")
+	fmt.Println("Presione ENTER para iniciar los planificadores")
+
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
-	Logger.Debug("Iniciando planificadores...")
+
+	fmt.Println("Iniciando planificadores...")
 
 	go PlanificadorLargoPlazo()
 	go PlanificadorCortoPlazo()
+
+	Logger.Debug("Planificadores iniciados")
+	fmt.Println("Planificadores iniciados")
 }
 
 var planificadorLargoMutex sync.Mutex // Mutex para evitar doble planificador de largo plazo
 var LargoNotifier = make(chan struct{})
 
 func PlanificadorLargoPlazo() {
-
 	algoritmo := Config_Kernel.SchedulerAlgorithm
+	fmt.Println("Planificador de largo plazo iniciado")
+	Logger.Debug("Planificador de largo plazo iniciado", "algoritmo", algoritmo)
+
 	for {
 		planificadorLargoMutex.Lock()
-		<-LargoNotifier
+		defer planificadorLargoMutex.Unlock()
+		Logger.Debug("Planificador de largo plazo: esperando notificación en LargoNotifier")
+		select {
+		case <-LargoNotifier:
+			Logger.Debug("Planificador de largo plazo: notificación recibida en LargoNotifier")
+		default:
+			Logger.Debug("El canal LargoNotifier está vacío, esperando notificación")
+		}
+
 		// Mientras hay
 		for hayEspacioEnMemoria && (len(ColaNew) != 0 || len(ColaSuspReady) != 0) {
+			Logger.Debug("Estado de las condiciones en el bucle del planificador", "hayEspacioEnMemoria", hayEspacioEnMemoria, "ColaNew", len(ColaNew), "ColaSuspReady", len(ColaSuspReady))
 			if algoritmo == "FIFO" {
 				// Si memoria responde...
 				if !PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
 					Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
+					fmt.Println("No se puede conectar con memoria (Ping no devuelto)")
 					break // Salimos del for para esperar un nuevo proceso en New
 				}
 
+				Logger.Debug("Estado antes de llamar a PedirEspacioAMemoria", "hayEspacioEnMemoria", hayEspacioEnMemoria, "ColaNew", len(ColaNew))
 				//! Estaria piola hacer una funcion que resuma todo esto, pero por ahora lo dejo asi
 				//Verifico si hay procesos en la cola SuspReady
 				if len(ColaSuspReady) != 0 {
 
 					// Pido espacio en memoria para el primer proceso de la cola SuspReady
 					respuestaMemoria := PedirEspacioAMemoria(ColaSuspReady[0])
+					Logger.Debug("Resultado de PedirEspacioAMemoria", "respuesta", respuestaMemoria, "proceso", ColaSuspReady[0].PID)
 
 					// Si memoria responde que no hay espacio..
 					if !respuestaMemoria {
@@ -95,7 +116,10 @@ func PlanificadorLargoPlazo() {
 				} else { //Si no hay procesos en SuspReady, ya se que hay en New
 
 					// Pido espacio en memoria para el primer proceso de la cola New
+					Logger.Debug("Llamando a PedirEspacioAMemoria", "proceso", ColaNew[0].PID)
 					respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
+					Logger.Debug("Resultado de PedirEspacioAMemoria", "respuesta", respuestaMemoria, "proceso", ColaNew[0].PID)
+					fmt.Println("Resultado de PedirEspacioAMemoria:", respuestaMemoria)
 
 					// Si memoria responde que no hay espacio...
 					if !respuestaMemoria {
@@ -105,6 +129,7 @@ func PlanificadorLargoPlazo() {
 
 					MoverProcesoACola(ColaNew[0], &ColaReady)
 					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
+					fmt.Println("Planificador de largo plazo le avisa a Planificador de corto plazo")
 				}
 
 			}
@@ -145,7 +170,6 @@ func PlanificadorLargoPlazo() {
 
 			}
 		}
-		planificadorLargoMutex.Unlock()
 	}
 }
 
@@ -153,6 +177,7 @@ var planificadorCortoMutex sync.Mutex // Mutex para evitar doble planificador de
 var CortoNotifier = make(chan struct{})
 
 func PlanificadorCortoPlazo() {
+	fmt.Println("Planificador de corto plazo iniciado")
 
 	algoritmo := Config_Kernel.ReadyIngressAlgorithm
 	for {
@@ -163,7 +188,7 @@ func PlanificadorCortoPlazo() {
 			if algoritmo == "FIFO" && CpuLibres {
 
 				// Sabemos que el proceso que acabamos de mover a Exec es el último de la cola
-				ultimoProcesoEnReady := &ColaExec[len(ColaExec)-1]
+				ultimoProcesoEnReady := &ColaReady[len(ColaReady)-1]
 
 				// Intentamos enviar el proceso a la CPU
 				if ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {

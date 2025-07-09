@@ -55,33 +55,43 @@ func IniciarCPU() {
 
 	//Verifica el identificador de la cpu valido
 	CpuId := VerificarIdentificadorCPU()
+	fmt.Println("CPU inicializada con ID", CpuId)
 
 	//Inicializa la config de cpu
+	fmt.Println("Iniciando configuración de CPU...")
 	globals.IniciarConfiguracion("cpu/config.json", &Config_CPU)
 
 	//Declaro algoritmo de reemplazo de TLB y cantidad de entradas
-	InicializarTLB()
+
+	//InicializarTLB()
 
 	//Declaro algoritmo de reemplazo de Cache y cantidad de entradas
-	InicializarCache()
+	//InicializarCache()
 
 	//Crea el archivo donde se logea cpu con su id
+	fmt.Println("Iniciando logger de CPU...")
 	Logger = ConfigurarLoggerCPU(CpuId, Config_CPU.LogLevel)
 
+	fmt.Println("Iniciando servidor de CPU...")
 	go IniciarServerCPU(Config_CPU.PortCPU)
 
 	//Realizar el handshake con Memoria
+	fmt.Println("Realizando handshake con Memoria...")
 	if !HandshakeConMemoria(CpuId) {
 		Logger.Debug("Error, no se pudo realizar el handshake con el Memoria")
 		return
 	}
+	fmt.Println("Handshake con Memoria realizado correctamente")
 
 	//Realiza el handshake con el kernel
+	fmt.Println("Realizando handshake con Kernel...")
 	if !HandshakeConKernel(CpuId) {
 		Logger.Debug("Error, no se pudo realizar el handshake con el kernel")
 		return
 	}
+	fmt.Println("Handshake con Kernel realizado correctamente")
 
+	select {}
 }
 
 func VerificarIdentificadorCPU() string {
@@ -117,6 +127,7 @@ func Decode() {
 
 	// Devuelve en un slice de strings las palabras de la instruccion actual separadas por espacios
 	argumentoInstrucciones = strings.Fields(ProcesoEjecutando.InstruccionActual)
+	fmt.Println(argumentoInstrucciones)
 
 	if (argumentoInstrucciones[0] == "WRITE") || (argumentoInstrucciones[0] == "READ") || (argumentoInstrucciones[0] == "GOTO") {
 		// Si la instruccion es WRITE READ O GOTO, Se tiene que utilizar la MMU para traducir la direccion logica a fisica
