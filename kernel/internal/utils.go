@@ -150,8 +150,12 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 
 	LogCreacionDeProceso(ContadorPID)
 
+	if len(ColaNew) > 0 {
+		fmt.Println("PID", ContadorPID, "Cola antes de mover el proceso", ColaNew[0].PID)
+	}
 	fmt.Println("PCB creado, moviendo proceso a cola New")
 	MoverProcesoACola(&pcb, &ColaNew)
+	fmt.Println("PID", ContadorPID, "Cola despues de mover el proceso", ColaNew[0].PID)
 
 	// Al agregar un nuevo proceso a la cola de New, notificamos al planificador de largo plazo
 	Logger.Debug("Notificando al planificador de largo plazo sobre el nuevo proceso", "pid", ContadorPID)
@@ -162,9 +166,7 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 
 func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 	Logger.Debug("Iniciando MoverProcesoACola", "proceso", proceso.PID, "estado_actual", proceso.Estado)
-
-	//& El mutex actualmente lo estamos usando con todas las colas, pero seguramente estamos haciendo mucho overhead
-	//& porque no todas las colas se usan al mismo tiempo. Hay que ver si podemos optimizar eso.
+	fmt.Println("Iniciando MoverProcesoACola", "proceso", proceso.PID, "estado_actual", proceso.Estado)
 
 	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
@@ -184,6 +186,11 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 	// Bloquear ambas colas (origen y destino)
 	if mutexOrigen != nil {
 		mutexOrigen.Lock()
+		defer mutexOrigen.Unlock()
+	}
+	if mutexDestino != nil {
+		mutexDestino.Lock()
+		defer mutexDestino.Unlock()
 	}
 
 	// Buscar y eliminar el proceso de su cola actual
@@ -193,7 +200,6 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 				if p.PID == proceso.PID {
 					// Eliminar el proceso de la cola actual
 					*cola = append((*cola)[:i], (*cola)[i+1:]...)
-					mutexOrigen.Unlock()
 					break
 				}
 			}
@@ -201,28 +207,25 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 		}
 	}
 
-	if mutexDestino != nil {
-		mutexDestino.Lock()
-		defer func() {
-			mutexDestino.Unlock()
-		}()
-	}
-
+	// Cambiar el estado del proceso y añadirlo a la cola de destino
 	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
 		proceso.Estado = estadoDestino
-		*colaDestino = append(*colaDestino, *proceso)
+
+		// Crear una copia del proceso antes de añadirlo a la cola
+		procesoCopia := *proceso
+		*colaDestino = append(*colaDestino, procesoCopia)
 	}
 
+	// Actualizar métricas y tiempos si el estado cambió
 	if proceso.Estado != procesoEstadoAnterior {
-
-		// Si el proceso estaba en Exec, hay que guardar el tiempo de la última ráfaga
+		// Si el proceso estaba en Exec, guardar el tiempo de la última ráfaga
 		if procesoEstadoAnterior == globals.Exec {
-			proceso.TiempoDeUltimaRafaga = time.Since(proceso.InicioEstadoActual) // Toma el tiempo transcurrido desde que el proceso entró al estado Exec
+			proceso.TiempoDeUltimaRafaga = time.Since(proceso.InicioEstadoActual)
 		}
 
 		// Actualizar la métrica de tiempo por estado del proceso
-		duracion := time.Since(proceso.InicioEstadoActual)           // Toma el tiempo transcurrido desde que el proceso entró al estado origen
-		proceso.MetricasDeTiempos[procesoEstadoAnterior] += duracion // Actualiza el tiempo acumulado en el estado anterior
+		duracion := time.Since(proceso.InicioEstadoActual)
+		proceso.MetricasDeTiempos[procesoEstadoAnterior] += duracion
 
 		// Actualizar la métrica de estado del proceso
 		proceso.MetricasDeEstados[proceso.Estado]++
@@ -233,7 +236,7 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
 	}
 
-	fmt.Println("Proceso movido de", procesoEstadoAnterior, " a", proceso.Estado)
+	fmt.Println("Proceso movido de", procesoEstadoAnterior, "a", proceso.Estado, "PID del proceso movido", proceso.PID)
 }
 
 func MoverProcesoDeExecABlocked(pid int) {

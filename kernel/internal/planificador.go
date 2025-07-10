@@ -75,12 +75,13 @@ func PlanificadorLargoPlazo() {
 	Logger.Debug("Planificador de largo plazo iniciado", "algoritmo", algoritmo)
 
 	for {
-		planificadorLargoMutex.Lock()
 
 		Logger.Debug("Planificador de largo plazo: esperando notificación en LargoNotifier")
 		fmt.Println("Planificador de largo plazo: esperando notificación en LargoNotifier")
 
 		<-LargoNotifier
+		planificadorLargoMutex.Lock()
+
 		Logger.Debug("Planificador de largo plazo: notificación recibida en LargoNotifier")
 		fmt.Println("Planificador de largo plazo: notificación recibida en LargoNotifier")
 
@@ -125,7 +126,7 @@ func PlanificadorLargoPlazo() {
 						hayEspacioEnMemoria = false // Seteo la variable del for a false
 						break                       // Salimos del for para esperar un nuevo proceso en New
 					}
-
+					fmt.Println("Quiero ver", ColaNew[0].PID)
 					MoverProcesoACola(&ColaNew[0], &ColaReady)
 					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 					fmt.Println("Planificador de largo plazo le avisa a Planificador de corto plazo")
