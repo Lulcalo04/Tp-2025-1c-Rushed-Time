@@ -50,7 +50,7 @@ type InstanciaIO struct {
 	PID      int // PID del proceso que está usando la instancia, -1 si está libre
 }
 
-var ListaDispositivosIO map[string]*DispositivoIO
+var ListaDispositivosIO map[string]*DispositivoIO = make(map[string]*DispositivoIO)
 
 var ListaIdentificadoresCPU []IdentificadorCPU = make([]IdentificadorCPU, 0)
 
@@ -151,8 +151,7 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 	LogCreacionDeProceso(ContadorPID)
 
 	fmt.Println("PCB creado, moviendo proceso a cola New")
-	MoverProcesoACola(pcb, &ColaNew)
-	fmt.Println("Proceso movido a cola New:", ContadorPID)
+	MoverProcesoACola(&pcb, &ColaNew)
 
 	// Al agregar un nuevo proceso a la cola de New, notificamos al planificador de largo plazo
 	Logger.Debug("Notificando al planificador de largo plazo sobre el nuevo proceso", "pid", ContadorPID)
@@ -161,7 +160,7 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 
 }
 
-func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
+func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 	Logger.Debug("Iniciando MoverProcesoACola", "proceso", proceso.PID, "estado_actual", proceso.Estado)
 
 	//& El mutex actualmente lo estamos usando con todas las colas, pero seguramente estamos haciendo mucho overhead
@@ -170,48 +169,31 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
 
-	fmt.Println("Estado anterior del proceso:", procesoEstadoAnterior)
-
-	Logger.Debug("Obteniendo mutex de la cola de origen", "proceso", proceso.PID)
-	fmt.Println("Obteniendo mutex de la cola de origen:", "proceso:", proceso.PID, "estado:", proceso.Estado)
 	// Obtener el mutex de la cola de origen
 	var mutexOrigen *sync.Mutex
 	for colaOrigen, estado := range ColaEstados {
 		if proceso.Estado == estado {
-			fmt.Println("Esta en la cola", estado)
 			mutexOrigen = ColaMutexes[colaOrigen]
-			fmt.Println("Mutex de la cola de origen obtenido", "mutex_origen:", estado)
 			break
 		}
-		fmt.Println("No esta en la cola", estado)
 	}
 
-	Logger.Debug("Obteniendo mutex de la cola de destino", "proceso", proceso.PID)
-	fmt.Println("Obteniendo mutex de la cola de destino:", "proceso:", proceso.PID, "cola_destino:", ColaEstados[colaDestino])
 	// Obtener el mutex de la cola de destino
 	mutexDestino := ColaMutexes[colaDestino]
-	fmt.Println("Mutex de la cola de destino obtenido", "mutex_destino:", ColaEstados[colaDestino])
 
 	// Bloquear ambas colas (origen y destino)
 	if mutexOrigen != nil {
-		fmt.Println("Intentando bloquear mutexOrigen")
 		mutexOrigen.Lock()
-		fmt.Println("MutexOrigen bloqueado")
 	}
 
 	// Buscar y eliminar el proceso de su cola actual
-	Logger.Debug("Buscando y eliminando el proceso de su cola actual", "proceso", proceso.PID)
-	fmt.Println("Buscando proceso en su cola actual...", "proceso:", proceso.PID, "estado:", proceso.Estado)
 	for cola, estado := range ColaEstados {
 		if proceso.Estado == estado {
-			fmt.Println("Proceso encontrado en la cola:", estado)
 			for i, p := range *cola {
 				if p.PID == proceso.PID {
 					// Eliminar el proceso de la cola actual
 					*cola = append((*cola)[:i], (*cola)[i+1:]...)
-					fmt.Println("Proceso eliminado de la cola actual", "proceso:", proceso.PID, "cola_actual:", estado)
 					mutexOrigen.Unlock()
-					fmt.Println("MutexOrigen desbloqueado")
 					break
 				}
 			}
@@ -220,23 +202,15 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 	}
 
 	if mutexDestino != nil {
-		fmt.Println("Intentando bloquear mutexDestino...")
 		mutexDestino.Lock()
-		fmt.Println("MutexDestino bloqueado")
 		defer func() {
 			mutexDestino.Unlock()
-			fmt.Println("MutexDestino desbloqueado")
 		}()
 	}
 
-	// Agregar el proceso a la cola destino
-	Logger.Debug("Agregando el proceso a la cola destino", "proceso", proceso.PID)
-	fmt.Println("Agregando el proceso a la cola destino:", "proceso:", proceso.PID, "estado_destino:", ColaEstados[colaDestino])
 	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
-		fmt.Println("Estado destino encontrado", "estado_destino:", estadoDestino)
 		proceso.Estado = estadoDestino
-		*colaDestino = append(*colaDestino, proceso)
-		fmt.Println("Proceso agregado a la cola destino", "proceso:", proceso.PID, "estado_destino:", ColaEstados[colaDestino])
+		*colaDestino = append(*colaDestino, *proceso)
 	}
 
 	if proceso.Estado != procesoEstadoAnterior {
@@ -259,16 +233,22 @@ func MoverProcesoACola(proceso globals.PCB, colaDestino *[]globals.PCB) {
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
 	}
 
-	Logger.Debug("Proceso movido a la cola destino", "proceso", proceso.PID, "estado_destino", proceso.Estado)
+	fmt.Println("Proceso movido de", procesoEstadoAnterior, " a", proceso.Estado)
 }
 
 func MoverProcesoDeExecABlocked(pid int) {
 
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
+	if pcbDelProceso == nil {
+		Logger.Debug("Proceso no encontrado en ColaExec", "pid", pid)
+		fmt.Println("Proceso no encontrado en ColaExec", "pid", pid)
+		return
+	}
 
-	MoverProcesoACola(*pcbDelProceso, &ColaBlocked)
-
-	IniciarContadorBlocked(*pcbDelProceso, Config_Kernel.SuspensionTime)
+	MoverProcesoACola(pcbDelProceso, &ColaBlocked)
+	if pcbDelProceso.Estado == globals.Blocked {
+		IniciarContadorBlocked(pcbDelProceso, Config_Kernel.SuspensionTime)
+	}
 
 }
 
@@ -314,13 +294,13 @@ func MoverProcesoDeBlockedAReady(pid int) {
 		//! SACAR EL PROCESO DE SWAP
 
 		//Lo muevo a la cola destino
-		MoverProcesoACola(*pcbDelProceso, &ColaSuspReady)
+		MoverProcesoACola(pcbDelProceso, &ColaSuspReady)
 		Logger.Debug("Enviando notificación a LargoNotifier")
 		LargoNotifier <- struct{}{}
 		Logger.Debug("Notificación enviada a LargoNotifier")
 	} else {
 		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
-		MoverProcesoACola(*pcbDelProceso, &ColaReady)
+		MoverProcesoACola(pcbDelProceso, &ColaReady)
 		CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 	}
 
@@ -337,7 +317,7 @@ func TerminarProceso(pid int, colaOrigen *[]globals.PCB) {
 
 	respuestaMemoria := LiberarProcesoEnMemoria(proceso.PID)
 	if respuestaMemoria {
-		MoverProcesoACola(*proceso, &ColaExit)
+		MoverProcesoACola(proceso, &ColaExit)
 		hayEspacioEnMemoria = true
 		LargoNotifier <- struct{}{} // Como se liberó memoria, notificamos al planificador de largo plazo
 	}
@@ -345,26 +325,40 @@ func TerminarProceso(pid int, colaOrigen *[]globals.PCB) {
 	LogFinDeProceso(proceso.PID)
 }
 
-func AnalizarDesalojo(pid int, pc int, motivoDesalojo string) {
+func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
+	fmt.Println("Pidieron un desalojo de CPU")
 
-	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
-	if pcbDelProceso == nil {
-		Logger.Debug("Proceso no encontrado, PID: ", "pid", pid)
-		return
+	for i, cpu := range ListaIdentificadoresCPU {
+		if cpu.CPUID == cpuId {
+			ListaIdentificadoresCPU[i].Ocupado = false
+		}
 	}
-	pcbDelProceso.PC = pc
 
 	MutexCpuLibres.Lock()
+	fmt.Println("Se libero la CPU")
 	CpuLibres = true // Indicamos que hay CPU libres para recibir nuevos procesos
 	MutexCpuLibres.Unlock()
 
+	var pcbDelProceso *globals.PCB
 	switch motivoDesalojo {
 	case "Planificador":
 		LogDesalojoPorSJF_SRT(pid)
+		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaExec)
+		pcbDelProceso.PC = pc
 	case "IO":
 		Logger.Debug("Desalojo por IO", "pid", pid)
+		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaBlocked)
+		if pcbDelProceso == nil {
+			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+		}
+		pcbDelProceso.PC = pc
 	case "DUMP_MEMORY":
 		Logger.Debug("Desalojo por DUMP_MEMORY", "pid", pid)
+		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaBlocked)
+		if pcbDelProceso == nil {
+			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+		}
+		pcbDelProceso.PC = pc
 	case "EXIT":
 		Logger.Debug("Desalojo por EXIT", "pid", pid)
 	default:
@@ -396,6 +390,9 @@ func RegistrarInstanciaIO(nombre string, puerto int, ip string) {
 		}
 	}
 
+	fmt.Println("Dispositivo IO registrado:", nombre, "IP:", ip, "Puerto:", puerto)
+	fmt.Println("Instancias de dispositivo", nombre, ":", len(ListaDispositivosIO[nombre].InstanciasDispositivo))
+
 	Logger.Debug("Dispositivo nuevo", "nombre", nombre, "instancias", len(ListaDispositivosIO[nombre].InstanciasDispositivo))
 }
 
@@ -407,11 +404,15 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 		if instanciaBuscada.IpIO == ipInstancia && instanciaBuscada.PortIO == puertoInstancia {
 
 			// Mandamos al proceso que estaba usando la instancia a Exit
-			MoverProcesoDeBlockedAExit(instanciaBuscada.PID)
-			Logger.Debug("Desconexion de IO, se envia proceso a Exit", "pid", instanciaBuscada.PID)
+			if instanciaBuscada.Estado == "Ocupada" {
+				MoverProcesoDeBlockedAExit(instanciaBuscada.PID)
+				Logger.Debug("Desconexion de IO, se envia proceso a Exit", "pid", instanciaBuscada.PID)
+			}
 
 			// Borramos la instancia de IO de la lista de instancias del dispositivo IO
+			fmt.Println("Desconectando instancia de IO:", nombreDispositivo, "IP:", ipInstancia, "Puerto:", puertoInstancia)
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo = append(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[:pos], ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[pos+1:]...)
+			fmt.Println("Instancias de dispositivo", nombreDispositivo, ":", len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
 
 			// Si la instancia desconectada era la única que quedaba...
 			if len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo) == 0 {
@@ -443,10 +444,9 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 }
 
 func VerificarDispositivo(ioName string) bool {
-	for nombreDispositivo := range ListaDispositivosIO {
-		if nombreDispositivo == ioName {
-			return true
-		}
+	// Verificar si el dispositivo existe en el mapa ListaDispositivosIO
+	if _, existeDispositivo := ListaDispositivosIO[ioName]; existeDispositivo {
+		return true
 	}
 	return false
 }
@@ -474,8 +474,6 @@ func UsarDispositivoDeIO(nombreDispositivo string, pid int, milisegundosDeUso in
 	OcuparInstanciaDeIO(nombreDispositivo, instanciaDeIOLibre, pid)
 	// Enviamos el proceso a la instancia de IO
 	EnviarProcesoAIO(instanciaDeIOLibre, pid, milisegundosDeUso)
-
-	Logger.Debug("Instancias de IO", "nombre", nombreDispositivo, "instancias", len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
 }
 
 func ProcesarFinIO(pid int, nombreDispositivo string) {
@@ -617,9 +615,13 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 		cpu.PID = proceso.PID
 		Logger.Debug("CPU elegida: ", "cpu_id", cpu.CPUID, ", Mandando proceso_pid: ", proceso.PID)
 		EnviarProcesoACPU(cpu.Ip, cpu.Puerto, proceso.PID, proceso.PC)
+
+		fmt.Println("Proceso", proceso.PID, "enviado a la CPU", cpu.CPUID)
+
 		return true
 	} else {
 		Logger.Debug("No hay CPU disponible para el proceso ", "proceso_pid", proceso.PID)
+		fmt.Println("No hay CPU disponible para el proceso", proceso.PID)
 		return false
 	}
 }
@@ -633,14 +635,18 @@ func BuscarCPUporPID(pid int) *IdentificadorCPU {
 	return nil
 }
 
-func IniciarContadorBlocked(pcb globals.PCB, milisegundos int) {
+func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
 	cancel := make(chan struct{})
 	canceladoresBlocked[pcb.PID] = cancel
+
+	Logger.Debug("Iniciando contador de blocked para el proceso", "pid", pcb.PID, "tiempo", milisegundos)
+	fmt.Println("Iniciando contador de blocked para el proceso", "pid", pcb.PID, "tiempo", milisegundos)
 
 	go func() {
 		timer := time.NewTimer(time.Duration(milisegundos) * time.Millisecond)
 		select {
 		case <-timer.C:
+			fmt.Println("Contador de Susp Blocked cumplido")
 			// Verifica que el proceso siga en Blocked
 			if BuscarProcesoEnCola(pcb.PID, &ColaBlocked) != nil {
 				MoverProcesoACola(pcb, &ColaSuspBlocked)
@@ -650,6 +656,7 @@ func IniciarContadorBlocked(pcb globals.PCB, milisegundos int) {
 				Logger.Debug("Notificación enviada a LargoNotifier")
 			}
 		case <-cancel:
+			fmt.Println("Contador de Susp Blocked cancelado para el proceso", pcb.PID)
 			timer.Stop()
 			// El proceso salio de Blocked antes de tiempo
 		}

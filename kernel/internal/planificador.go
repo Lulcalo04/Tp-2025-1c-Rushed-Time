@@ -76,14 +76,13 @@ func PlanificadorLargoPlazo() {
 
 	for {
 		planificadorLargoMutex.Lock()
-		defer planificadorLargoMutex.Unlock()
+
 		Logger.Debug("Planificador de largo plazo: esperando notificación en LargoNotifier")
-		select {
-		case <-LargoNotifier:
-			Logger.Debug("Planificador de largo plazo: notificación recibida en LargoNotifier")
-		default:
-			Logger.Debug("El canal LargoNotifier está vacío, esperando notificación")
-		}
+		fmt.Println("Planificador de largo plazo: esperando notificación en LargoNotifier")
+
+		<-LargoNotifier
+		Logger.Debug("Planificador de largo plazo: notificación recibida en LargoNotifier")
+		fmt.Println("Planificador de largo plazo: notificación recibida en LargoNotifier")
 
 		// Mientras hay
 		for hayEspacioEnMemoria && (len(ColaNew) != 0 || len(ColaSuspReady) != 0) {
@@ -111,7 +110,7 @@ func PlanificadorLargoPlazo() {
 						break                       // Salimos del for para esperar un nuevo proceso en New
 					}
 
-					MoverProcesoACola(ColaSuspReady[0], &ColaReady)
+					MoverProcesoACola(&ColaSuspReady[0], &ColaReady)
 					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 				} else { //Si no hay procesos en SuspReady, ya se que hay en New
 
@@ -127,7 +126,7 @@ func PlanificadorLargoPlazo() {
 						break                       // Salimos del for para esperar un nuevo proceso en New
 					}
 
-					MoverProcesoACola(ColaNew[0], &ColaReady)
+					MoverProcesoACola(&ColaNew[0], &ColaReady)
 					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 					fmt.Println("Planificador de largo plazo le avisa a Planificador de corto plazo")
 				}
@@ -152,7 +151,7 @@ func PlanificadorLargoPlazo() {
 						break                       // Salimos del for para esperar un nuevo proceso en New
 					}
 
-					MoverProcesoACola(ColaSuspReady[pcbMasChico()], &ColaReady)
+					MoverProcesoACola(&ColaSuspReady[pcbMasChico()], &ColaReady)
 					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 				} else {
 					// Pido espacio en memoria para el primer proceso de la cola New
@@ -164,12 +163,13 @@ func PlanificadorLargoPlazo() {
 						break                       // Salimos del for para esperar un nuevo proceso en New
 					}
 
-					MoverProcesoACola(ColaNew[pcbMasChico()], &ColaReady)
+					MoverProcesoACola(&ColaNew[pcbMasChico()], &ColaReady)
 					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 				}
 
 			}
 		}
+		planificadorLargoMutex.Unlock()
 	}
 }
 
@@ -182,7 +182,13 @@ func PlanificadorCortoPlazo() {
 	algoritmo := Config_Kernel.ReadyIngressAlgorithm
 	for {
 		planificadorCortoMutex.Lock()
+
+		Logger.Debug("Planificador de corto plazo: esperando notificación en CortoNotifier")
+		fmt.Println("Planificador de corto plazo: esperando notificación en CortoNotifier")
+
 		<-CortoNotifier
+		Logger.Debug("Planificador de corto plazo: notificación recibida en CortoNotifier")
+		fmt.Println("Planificador de corto plazo: notificación recibida en CortoNotifier")
 
 		for len(ColaReady) != 0 {
 			if algoritmo == "FIFO" && CpuLibres {
@@ -193,10 +199,11 @@ func PlanificadorCortoPlazo() {
 				// Intentamos enviar el proceso a la CPU
 				if ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
 					// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
-					MoverProcesoACola(*ultimoProcesoEnReady, &ColaExec)
+					MoverProcesoACola(ultimoProcesoEnReady, &ColaExec)
 					break // Salimos del for para esperar un nuevo proceso en Ready
 				} else {
 					MutexCpuLibres.Lock()
+					fmt.Println("No se pudo enviar el proceso a la CPU porque no hay CPUs libres")
 					CpuLibres = false // Indicamos que la CPU no está libre
 					MutexCpuLibres.Unlock()
 				}
@@ -221,7 +228,7 @@ func PlanificadorCortoPlazo() {
 
 				if ElegirCpuYMandarProceso(*pcbElegido) {
 					// Movemos el proceso elegido a la cola Exec
-					MoverProcesoACola(*pcbElegido, &ColaExec)
+					MoverProcesoACola(pcbElegido, &ColaExec)
 					break // Salimos del for para esperar un nuevo proceso en Ready
 				} else {
 					// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
@@ -230,7 +237,7 @@ func PlanificadorCortoPlazo() {
 					MutexCpuLibres.Unlock()
 				}
 			}
-			if algoritmo == "SRT" {
+			if algoritmo == "SRT" && CpuLibres {
 				// Recorremos la cola de Ready
 				for i := range ColaReady {
 					// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
@@ -250,7 +257,7 @@ func PlanificadorCortoPlazo() {
 
 				if ElegirCpuYMandarProceso(*pcbElegido) {
 					// Movemos el proceso elegido a la cola Exec
-					MoverProcesoACola(*pcbElegido, &ColaExec)
+					MoverProcesoACola(pcbElegido, &ColaExec)
 					break // Salimos del for para esperar un nuevo proceso en Ready
 				} else {
 					// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
@@ -258,7 +265,7 @@ func PlanificadorCortoPlazo() {
 					CpuLibres = false // Indicamos que la CPU no está libre
 					MutexCpuLibres.Unlock()
 				}
-			} else {
+			} else if algoritmo == "SRT" && !CpuLibres {
 				// Si no hay cpu libres, elegir a victima de SRT, el que tenga mayor tiempo restante en la CPU
 				pcbVictima := buscarTiempoRestanteEnCpuMasAlto()
 				// Agarro el proceso que generó la comparación
@@ -269,13 +276,13 @@ func PlanificadorCortoPlazo() {
 					PeticionDesalojo(pcbVictima.PID, "Planificador")
 
 					// Muevo el proceso víctima a la cola Ready
-					MoverProcesoACola(*pcbVictima, &ColaReady)
+					MoverProcesoACola(pcbVictima, &ColaReady)
 
 					// Intentamos enviar el proceso a la CPU
 					if ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
 
 						// Muevo el proceso que llegó de Ready a la cola Exec
-						MoverProcesoACola(*ultimoProcesoEnReady, &ColaExec)
+						MoverProcesoACola(ultimoProcesoEnReady, &ColaExec)
 
 						break // Salimos del for para esperar un nuevo proceso en Ready
 

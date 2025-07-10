@@ -336,7 +336,7 @@ func PeticionExitKernel(pid int) {
 }
 
 func PeticionDesalojoKernel() {
-
+	fmt.Println("La CPU pidio un desalojo de CPU para el proceso", ProcesoEjecutando.PID)
 	// Declaro la URL a la que me voy a conectar (handler de IO con el puerto del server)
 	url := fmt.Sprintf("http://%s:%d/cpu/desalojo", Config_CPU.IPKernel, Config_CPU.PortKernel)
 
@@ -345,6 +345,7 @@ func PeticionDesalojoKernel() {
 		PID:    ProcesoEjecutando.PID,
 		PC:     ProcesoEjecutando.PC,
 		Motivo: ProcesoEjecutando.MotivoDesalojo,
+		CPUID:  CPUId,
 	}
 
 	// Serializo el body a JSON
@@ -370,8 +371,10 @@ func PeticionDesalojoKernel() {
 
 	if respuestaKernel.Respuesta {
 		Logger.Debug("Kernel aceptó el desalojo", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC)
+		fmt.Println("Desalojo aceptado por el Kernel para el proceso", ProcesoEjecutando.PID)
 	} else {
 		Logger.Debug("No se pudo desalojar el proceso", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC)
+		fmt.Println("No se pudo desalojar el proceso", ProcesoEjecutando.PID, "por el Kernel")
 	}
 }
 

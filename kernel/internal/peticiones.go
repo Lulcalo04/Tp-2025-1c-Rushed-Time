@@ -244,22 +244,25 @@ func EnviarProcesoAIO(instanciaDeIO InstanciaIO, pid int, milisegundosDeUso int)
 		Logger.Debug("Error serializando JSON", "error", err)
 		return
 	}
-	// Hacemos la petición POST al server
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		Logger.Debug("Error conectando con IO", "error", err)
-		return
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		Logger.Debug("Error: StatusCode no es 200 OK", "status_code", resp.StatusCode)
-		return
-	}
 
-	Logger.Debug("Petición de IO enviada",
-		"nombre_dispositivo", instanciaDeIO.NombreIO,
-		"pid", pid,
-		"tiempo", milisegundosDeUso)
+	// Realizamos la petición en un goroutine para no bloquear
+	go func() {
+		resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+		if err != nil {
+			Logger.Debug("Error conectando con IO", "error", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		// Validar el código de estado
+		if resp.StatusCode != http.StatusOK {
+			Logger.Debug("Error: StatusCode no es 200 OK", "status_code", resp.StatusCode)
+			return
+		}
+
+		Logger.Debug("Petición enviada a IO con exito", "pid", pid)
+		fmt.Println("Petición enviada a IO con exito", "pid", pid)
+	}()
 }
 
 func EnviarProcesoACPU(cpuIp string, cpuPuerto int, procesoPID int, procesoPC int) {
@@ -332,8 +335,10 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 
 	if respuestaDesalojo.Respuesta {
 		Logger.Debug("Desalojo exitoso")
+		fmt.Println("Desalojo exitoso para el PID", pid)
 	} else {
 		Logger.Debug("Desalojo fallido")
+		fmt.Println("Desalojo fallido para el PID", pid)
 	}
 
 }

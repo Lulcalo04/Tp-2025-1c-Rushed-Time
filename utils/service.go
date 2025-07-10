@@ -187,6 +187,7 @@ type CPUtoKernelDesalojoRequest struct {
 	PID    int    `json:"pid"`
 	PC     int    `json:"pc"`
 	Motivo string `json:"motivo"`
+	CPUID  string `json:"cpu_id"` // Identificador de la CPU que solicita el desalojo
 }
 
 type CPUtoKernelDesalojoResponse struct {

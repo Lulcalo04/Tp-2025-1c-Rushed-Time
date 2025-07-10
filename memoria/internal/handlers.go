@@ -31,15 +31,14 @@ func IniciarServerMemoria(puerto int) {
 	mux.HandleFunc("/ping", PingHandler)
 	mux.HandleFunc("/espacio/pedir", PidenEspacioHandler)
 	mux.HandleFunc("/espacio/liberar", LiberarEspacioHandler)
-	mux.HandleFunc("/syscall/swappeo", SwappingHandler) // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
+	mux.HandleFunc("/syscall/swappeo", SwappingHandler)    // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
 	mux.HandleFunc("/syscall/restaurar", RestaurarHandler) // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
 	mux.HandleFunc("/cpu/instrucciones", InstruccionesHandler)
 	mux.HandleFunc("/cpu/frame", CalcularFrameHandler) // pedido de frame desde CPU para la traduccion de direcciones
 	mux.HandleFunc("/cpu/write", HacerWriteHandler)
 	mux.HandleFunc("/cpu/read", HacerReadHandler)
 	mux.HandleFunc("/dump", DumpMemoryHandler)
-	mux.HandleFunc("/syscall/actualizarPagina",ActualizarPaginahandler) // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
-	
+	mux.HandleFunc("/syscall/actualizarPagina", ActualizarPaginahandler) // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
 
 	err := http.ListenAndServe(stringPuerto, mux)
 	if err != nil {
@@ -176,13 +175,14 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//El numero de paginas es el mismo que el numero de frames necesarios
-		pi := &InfoPorProceso{
-			Pages:         make([]PageInfo, framesNecesarios),
-			Size:          pedidoRecibido.ProcesoPCB.TamanioEnMemoria,
-			TablaRaiz:     MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID],
-			Instrucciones: listaDeInstrucciones(pedidoRecibido.ProcesoPCB.PID),
-			Metricas: &MetricasPorProceso{}, // Inicializa con el valor cero del tipo adecuado
-		}
+	pi := &InfoPorProceso{
+		Pages:         make([]PageInfo, framesNecesarios),
+		Size:          pedidoRecibido.ProcesoPCB.TamanioEnMemoria,
+		TablaRaiz:     MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID],
+		Instrucciones: listaDeInstrucciones(pedidoRecibido.ProcesoPCB.PID),
+		Metricas:      &MetricasPorProceso{}, // Inicializa con el valor cero del tipo adecuado
+		PathArchivo:   pedidoRecibido.ProcesoPCB.PathArchivoPseudo,
+	}
 	for i, frameID := range framesReservados {
 		pi.Pages[i] = PageInfo{
 			InRAM:   true,
@@ -194,7 +194,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 	if pedidoEnMemoria {
 		// Si el pedido es valido, se hace la concesion de espacio
-		//TODO -- Log Obligatorio 
+		//TODO -- Log Obligatorio
 		LogCreacionDeProceso(pedidoRecibido.ProcesoPCB.PID, pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 		Logger.Debug("Solicitud a Memoria aceptada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 		fmt.Println("Solicitud a Memoria aceptada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
@@ -205,7 +205,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 			Respuesta: true,
 			Mensaje:   fmt.Sprintf("Espacio concedido para PID %d con %d de espacio", pedidoRecibido.ProcesoPCB.PID, pedidoRecibido.ProcesoPCB.TamanioEnMemoria),
 		}
-		
+
 		//& Actualizacion de metricas
 		MemoriaGlobal.infoProc[pedidoRecibido.ProcesoPCB.PID].Metricas.AccesoATablaDePaginas++
 
@@ -265,7 +265,6 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(respuesta)
 	}
 
-	
 }
 
 func (m *Memoria) LiberarProceso(pid int) error {
@@ -341,7 +340,7 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 	if err := os.WriteFile(dumpPath, dump, 0644); err != nil {
 		// Si el pedido es valido, se hace la concesion de espacio
 
-		// TODO -- Log Obligatorio 
+		// TODO -- Log Obligatorio
 		LogMemoryDump(pedidoRecibido.PID)
 
 		//oppcional: Logger.Debug("Solicitud de Dump Memory aceptada", "PID", pedidoRecibido.PID)
@@ -399,7 +398,7 @@ func SwappingHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"modulo": "Memoria", "status": "suspendido",
 	})
-	
+
 	// & Actualizar las métricas del proceso
 	MemoriaGlobal.infoProc[request.PID].Metricas.BajadasASwap++
 
@@ -570,7 +569,7 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	var instrucciones []string
 	if len(pi.Instrucciones) == 0 {
 		// Cargar instrucciones desde archivo por primera vez
-		filename := Config_Memoria.ScriptsPath + request.Path
+		filename := Config_Memoria.ScriptsPath + pi.PathArchivo
 		content, err := os.ReadFile(filename)
 		if err != nil {
 			http.Error(w, "No se encontro el archivo del proceso", http.StatusNotFound)
@@ -596,14 +595,14 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 		InstruccionAEjecutar: instrucciones[request.PC],
 	}
 
-	//& Actualizo metricas: 
+	//& Actualizo metricas:
 	MemoriaGlobal.infoProc[request.PID].Metricas.AccesoATablaDePaginas++
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 
-	// TODO -- log obligatorio 
-	LogObtenerInstruccion(request.PID, request.PC, instrucciones[request.PC] )
+	// TODO -- log obligatorio
+	LogObtenerInstruccion(request.PID, request.PC, instrucciones[request.PC])
 	// opcional : Logger.Debug("Instrucción solicitada", "PID", request.PID, "PC", request.PC, "Instruccion", instrucciones[request.PC])
 }
 
@@ -650,8 +649,6 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-
 	response := globals.SolicitudFrameResponse{
 		Frame: int(frame),
 	}
@@ -660,7 +657,7 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-//--------------Caso CACHE activada -----------------
+// --------------Caso CACHE activada -----------------
 // *Endpoint de actualizar pagina completa = /syscall/actualizarPagina
 func ActualizarPaginahandler(w http.ResponseWriter, r *http.Request) {
 	var request globals.CPUActualizarPaginaEnMemoriaRequest
@@ -693,7 +690,7 @@ func ActualizarPaginahandler(w http.ResponseWriter, r *http.Request) {
 	offset := frameID * Config_Memoria.PageSize
 	copy(MemoriaGlobal.datos[offset:offset+len(request.Data)], request.Data)
 
-	// & Metricas 
+	// & Metricas
 	MemoriaGlobal.infoProc[request.PID].Metricas.AccesoATablaDePaginas++
 	MemoriaGlobal.infoProc[request.PID].Metricas.EscriturasDeMemoria++
 
@@ -723,14 +720,14 @@ func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var direccionFisica = request.DireccionFisica
-	tamanio:= request.Tamanio
+	tamanio := request.Tamanio
 
-	if direccionFisica < 0 || tamanio <=0 || direccionFisica >= len(MemoriaGlobal.datos) {
+	if direccionFisica < 0 || tamanio <= 0 || direccionFisica >= len(MemoriaGlobal.datos) {
 		http.Error(w, "la direccion excede del tamanio direccionable", http.StatusBadRequest)
 		return
 	}
 
-	respuestaRead := MemoriaGlobal.datos[direccionFisica : direccionFisica + tamanio]
+	respuestaRead := MemoriaGlobal.datos[direccionFisica : direccionFisica+tamanio]
 
 	response := globals.CPUReadAMemoriaResponse{
 		Respuesta: true,
@@ -759,7 +756,7 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 	respuestaWrite := false
 
 	tablaRaiz := MemoriaGlobal.tablas[request.PID]
-		if tablaRaiz == nil {
+	if tablaRaiz == nil {
 		http.Error(w, fmt.Sprintf("Proceso con PID %d  no encontrado en memoria", request.PID), http.StatusNotFound)
 		return
 	}
@@ -803,5 +800,4 @@ func calcularEntradasPorNivel(numPagina int, niveles int, IndicePorNivel int) []
 	return entradas
 }
 
-//Informacion de las metricas por proceso 
-
+//Informacion de las metricas por proceso

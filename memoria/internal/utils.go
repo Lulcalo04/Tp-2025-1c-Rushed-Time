@@ -37,6 +37,7 @@ type InstruccionesResponse struct {
 type FrameID int
 
 // EntradaTabla:
+//
 //	– nil  ->  no asignado
 //	– *TablaPags  -> uun puntero a una subtabla de nivel inferior
 //	– FrameID   -> un frame en memoriaPrincipal
@@ -50,13 +51,14 @@ type TablaPags struct {
 
 //-------------------------------------------------------------------------
 
-//type TamanioProcesos map[int]int  // asocia el PID con el tamaño del proceso
+// type TamanioProcesos map[int]int  // asocia el PID con el tamaño del proceso
 type InfoPorProceso struct {
-	Pages         []PageInfo //  slice de información de páginas del proceso
-	Instrucciones []string   //  lista de instrucciones de ese proceso
-	Size          int        // tamaño del proceso en bytes
-	TablaRaiz     *TablaPags // tabla raíz del proceso
-	Metricas *MetricasPorProceso // lista de métricas del proceso
+	Pages         []PageInfo          //  slice de información de páginas del proceso
+	Instrucciones []string            //  lista de instrucciones de ese proceso
+	Size          int                 // tamaño del proceso en bytes
+	TablaRaiz     *TablaPags          // tabla raíz del proceso
+	Metricas      *MetricasPorProceso // lista de métricas del proceso
+	PathArchivo   string              // path al archivo de pseudocodigo del proceso
 }
 
 type PageInfo struct {
@@ -66,10 +68,10 @@ type PageInfo struct {
 }
 
 type MetricasPorProceso struct {
-		AccesoATablaDePaginas int  // cantidad de veces que se accedió a la tabla de páginas	(listo) 
-		InstruccionesSolicitadas int // cantidad de instrucciones solicitadas					(listo)
-		BajadasASwap int // cantidad de veces que se bajó a swap								(listo)
-		SubidasAMemoriaPrincipal int // cantidad de veces que se subió a memoria principal		(listo)
-		LecturasDeMemoria int // cantidad de lecturas de memoria								(Listo)
-		EscriturasDeMemoria int // cantidad de escrituras de memoria							(listo)
+	AccesoATablaDePaginas    int // cantidad de veces que se accedió a la tabla de páginas	(listo)
+	InstruccionesSolicitadas int // cantidad de instrucciones solicitadas					(listo)
+	BajadasASwap             int // cantidad de veces que se bajó a swap								(listo)
+	SubidasAMemoriaPrincipal int // cantidad de veces que se subió a memoria principal		(listo)
+	LecturasDeMemoria        int // cantidad de lecturas de memoria								(Listo)
+	EscriturasDeMemoria      int // cantidad de escrituras de memoria							(listo)
 }

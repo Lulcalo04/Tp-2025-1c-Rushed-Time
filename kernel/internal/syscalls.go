@@ -1,5 +1,7 @@
 package kernel_internal
 
+import "fmt"
+
 /* INIT_PROC, esta syscall recibirá 2 parámetros de la CPU,
 el primero será el nombre del archivo de pseudocódigo que deberá ejecutar el proceso
 y el segundo parámetro es el tamaño del proceso en Memoria.
@@ -8,7 +10,7 @@ por lo que el proceso que llamó a esta syscall, inmediatamente volverá a ejecu
 
 func SyscallInitProc(pid int, nombreArchivo string, tamanioProcesoEnMemoria int) {
 	LogSyscall(pid, "INIT_PROC")
-	
+
 	InicializarPCB(tamanioProcesoEnMemoria, nombreArchivo)
 }
 
@@ -17,6 +19,7 @@ se encargará de finalizar el proceso que la invocó,
 siguiendo lo descrito anteriormente para Finalización de procesos. */
 
 func SyscallExit(pid int) {
+	fmt.Println("Me piden la syscall de EXIT con el PID", pid)
 	LogSyscall(pid, "EXIT")
 
 	//Desalojo el proceso de la CPU
@@ -51,9 +54,11 @@ func SyscallDumpMemory(pid int) {
 }
 
 func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso int) {
+	fmt.Printf("El PID %d pide la syscall de IO con el dispositivo %s\n", pid, nombreDispositivo)
 	LogSyscall(pid, "IO")
 
 	if VerificarDispositivo(nombreDispositivo) {
+		fmt.Println("El dispositivo existe, verificando si está en uso")
 		//& SI EL DISPOSITIVO EXISTE, PERO ESTA EN USO, BLOQUEAR EL PROCESO EN LA COLA DEL DISPOSITIVO
 
 		LogMotivoDeBloqueo(pid, nombreDispositivo)
@@ -66,7 +71,7 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 
 			//Si hay instancias de IO disponibles, se bloquea el proceso por estar usando la IO
 			UsarDispositivoDeIO(nombreDispositivo, pid, milisegundosDeUso)
-			MoverProcesoDeBlockedAReady(pid)
+			fmt.Println("Proceso enviado a IO")
 
 		} else {
 
@@ -75,9 +80,11 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 		}
 	} else {
 		//& NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
+		fmt.Println("El dispositivo no existe, enviando a EXIT")
 
 		PeticionDesalojo(pid, "IO")
 		Logger.Debug("El dispositivo no existe, enviando a EXIT", "pid", pid, "dispositivo", nombreDispositivo)
 		TerminarProceso(pid, &ColaExec)
 	}
+	fmt.Println("Syscall IO realizada", "pid", pid)
 }

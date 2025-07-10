@@ -44,6 +44,7 @@ type PCBdeCPU struct {
 	MotivoDesalojo    string
 }
 
+var CPUId string
 var EstructuraMemoriaDeCPU EstructuraMemoria
 var ProcesoEjecutando PCBdeCPU
 var InstruccionUsaMemoria bool = false
@@ -54,8 +55,8 @@ var mutexProcesoEjecutando sync.Mutex
 func IniciarCPU() {
 
 	//Verifica el identificador de la cpu valido
-	CpuId := VerificarIdentificadorCPU()
-	fmt.Println("CPU inicializada con ID", CpuId)
+	CPUId = VerificarIdentificadorCPU()
+	fmt.Println("CPU inicializada con ID", CPUId)
 
 	//Inicializa la config de cpu
 	fmt.Println("Iniciando configuración de CPU...")
@@ -70,14 +71,14 @@ func IniciarCPU() {
 
 	//Crea el archivo donde se logea cpu con su id
 	fmt.Println("Iniciando logger de CPU...")
-	Logger = ConfigurarLoggerCPU(CpuId, Config_CPU.LogLevel)
+	Logger = ConfigurarLoggerCPU(CPUId, Config_CPU.LogLevel)
 
 	fmt.Println("Iniciando servidor de CPU...")
 	go IniciarServerCPU(Config_CPU.PortCPU)
 
 	//Realizar el handshake con Memoria
 	fmt.Println("Realizando handshake con Memoria...")
-	if !HandshakeConMemoria(CpuId) {
+	if !HandshakeConMemoria(CPUId) {
 		Logger.Debug("Error, no se pudo realizar el handshake con el Memoria")
 		return
 	}
@@ -85,7 +86,7 @@ func IniciarCPU() {
 
 	//Realiza el handshake con el kernel
 	fmt.Println("Realizando handshake con Kernel...")
-	if !HandshakeConKernel(CpuId) {
+	if !HandshakeConKernel(CPUId) {
 		Logger.Debug("Error, no se pudo realizar el handshake con el kernel")
 		return
 	}
@@ -119,6 +120,7 @@ func CicloDeInstruccion() {
 }
 
 func Fetch() {
+	InstruccionUsaMemoria = false // Reseteamos la variable que indica si la instruccion usa memoria
 	SolicitarSiguienteInstruccionMemoria(ProcesoEjecutando.PID, ProcesoEjecutando.PC)
 	LogFetchInstruccion(ProcesoEjecutando.PID, ProcesoEjecutando.PC)
 }
@@ -148,7 +150,7 @@ func Execute() {
 	}
 
 	if InstruccionUsaMemoria {
-
+		fmt.Println("argumentoInstrucciones:", argumentoInstrucciones)
 		//Averiguar la pagina de esa Direccion Logica para saber si la tiene cache
 		numeroDePagina, direccionLogicaInt := CalculoPagina(argumentoInstrucciones[1])
 		var desplazamiento int = direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina

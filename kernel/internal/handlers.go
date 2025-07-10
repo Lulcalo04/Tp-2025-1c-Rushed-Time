@@ -71,7 +71,7 @@ func IoHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RegistrarInstanciaIO(dispositivoIOBody.IPio, dispositivoIOBody.PortIO, dispositivoIOBody.Nombre)
+	RegistrarInstanciaIO(dispositivoIOBody.Nombre, dispositivoIOBody.PortIO, dispositivoIOBody.IPio)
 	Logger.Debug("Handshake con IO realizado", "ip_io", dispositivoIOBody.IPio, "port_io", dispositivoIOBody.PortIO, "nombre", dispositivoIOBody.Nombre)
 }
 
@@ -229,5 +229,5 @@ func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Verifica si se desaloja por: Planificador (SJF CD), IO, o por fin de proceso
 	// Dependiendo el motivo, se enviará el proceso a la cola correspondiente
-	AnalizarDesalojo(respuestaDesalojo.PID, respuestaDesalojo.PC, respuestaDesalojo.Motivo)
+	AnalizarDesalojo(respuestaDesalojo.CPUID, respuestaDesalojo.PID, respuestaDesalojo.PC, respuestaDesalojo.Motivo)
 }
