@@ -36,6 +36,7 @@ func DispatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Guardo el PID y PC del proceso que se va a ejecutar y reseteo iterrupt
+	Logger.Debug("Empiezo a ejecutar el proceso", "PID", ProcesoRequest.PID, "PC", ProcesoRequest.PC)
 	mutexProcesoEjecutando.Lock()
 	ProcesoEjecutando.PID = ProcesoRequest.PID
 	ProcesoEjecutando.PC = ProcesoRequest.PC
@@ -60,6 +61,7 @@ func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Si el PID es el correcto, se marca que hay q interrumpir el ciclo
 	if ProcesoRequest.PID == ProcesoEjecutando.PID {
+		Logger.Debug("Recibí una solicitud de desalojo", "PID", ProcesoRequest.PID, "Motivo", ProcesoRequest.Motivo)
 		mutexProcesoEjecutando.Lock()
 		ProcesoEjecutando.Interrupt = true
 		ProcesoEjecutando.MotivoDesalojo = ProcesoRequest.Motivo

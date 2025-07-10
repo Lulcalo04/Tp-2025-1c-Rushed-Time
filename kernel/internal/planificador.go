@@ -67,7 +67,7 @@ func IniciarPlanificadores() {
 }
 
 var planificadorLargoMutex sync.Mutex // Mutex para evitar doble planificador de largo plazo
-var LargoNotifier = make(chan struct{})
+var LargoNotifier = make(chan struct{}, 999)
 
 func PlanificadorLargoPlazo() {
 	algoritmo := Config_Kernel.SchedulerAlgorithm
@@ -85,53 +85,28 @@ func PlanificadorLargoPlazo() {
 		Logger.Debug("Planificador de largo plazo: notificación recibida en LargoNotifier")
 		fmt.Println("Planificador de largo plazo: notificación recibida en LargoNotifier")
 
-		// Mientras hay
+		// Mientras hay espacio en memoria y procesos en las colas
 		for hayEspacioEnMemoria && (len(ColaNew) != 0 || len(ColaSuspReady) != 0) {
 			Logger.Debug("Estado de las condiciones en el bucle del planificador", "hayEspacioEnMemoria", hayEspacioEnMemoria, "ColaNew", len(ColaNew), "ColaSuspReady", len(ColaSuspReady))
+
 			if algoritmo == "FIFO" {
-				// Si memoria responde...
+				// Verifica conexión con memoria
 				if !PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
 					Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
 					fmt.Println("No se puede conectar con memoria (Ping no devuelto)")
 					break // Salimos del for para esperar un nuevo proceso en New
 				}
 
-				Logger.Debug("Estado antes de llamar a PedirEspacioAMemoria", "hayEspacioEnMemoria", hayEspacioEnMemoria, "ColaNew", len(ColaNew))
-				//! Estaria piola hacer una funcion que resuma todo esto, pero por ahora lo dejo asi
-				//Verifico si hay procesos en la cola SuspReady
+				// Procesa las colas SuspReady o New
 				if len(ColaSuspReady) != 0 {
-
-					// Pido espacio en memoria para el primer proceso de la cola SuspReady
-					respuestaMemoria := PedirEspacioAMemoria(ColaSuspReady[0])
-					Logger.Debug("Resultado de PedirEspacioAMemoria", "respuesta", respuestaMemoria, "proceso", ColaSuspReady[0].PID)
-
-					// Si memoria responde que no hay espacio..
-					if !respuestaMemoria {
-						hayEspacioEnMemoria = false // Seteo la variable del for a false
-						break                       // Salimos del for para esperar un nuevo proceso en New
+					if !procesarCola(&ColaSuspReady) {
+						break
 					}
-
-					MoverProcesoACola(&ColaSuspReady[0], &ColaReady)
-					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
-				} else { //Si no hay procesos en SuspReady, ya se que hay en New
-
-					// Pido espacio en memoria para el primer proceso de la cola New
-					Logger.Debug("Llamando a PedirEspacioAMemoria", "proceso", ColaNew[0].PID)
-					respuestaMemoria := PedirEspacioAMemoria(ColaNew[0])
-					Logger.Debug("Resultado de PedirEspacioAMemoria", "respuesta", respuestaMemoria, "proceso", ColaNew[0].PID)
-					fmt.Println("Resultado de PedirEspacioAMemoria:", respuestaMemoria)
-
-					// Si memoria responde que no hay espacio...
-					if !respuestaMemoria {
-						hayEspacioEnMemoria = false // Seteo la variable del for a false
-						break                       // Salimos del for para esperar un nuevo proceso en New
+				} else {
+					if !procesarCola(&ColaNew) {
+						break
 					}
-					fmt.Println("Quiero ver", ColaNew[0].PID)
-					MoverProcesoACola(&ColaNew[0], &ColaReady)
-					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
-					fmt.Println("Planificador de largo plazo le avisa a Planificador de corto plazo")
 				}
-
 			}
 
 			if algoritmo == "PMCP" {
@@ -171,7 +146,30 @@ func PlanificadorLargoPlazo() {
 			}
 		}
 		planificadorLargoMutex.Unlock()
+		// Drenar señales adicionales en el canal para evitar interrupciones
+		select {
+		case <-LargoNotifier:
+			Logger.Debug("Planificador de largo plazo: señal adicional recibida, procesando en la próxima iteración")
+		default:
+			// No hay más señales, continuar normalmente
+		}
 	}
+}
+
+func procesarCola(cola *[]globals.PCB) bool {
+	// Pide espacio en memoria para el primer proceso de la cola
+	respuestaMemoria := PedirEspacioAMemoria((*cola)[0])
+	Logger.Debug("Resultado de PedirEspacioAMemoria", "respuesta", respuestaMemoria, "proceso", (*cola)[0].PID)
+
+	if !respuestaMemoria {
+		hayEspacioEnMemoria = false
+		return false
+	}
+
+	// Mueve el proceso a la cola Ready y notifica al planificador de corto plazo
+	MoverProcesoACola(&(*cola)[0], &ColaReady)
+	CortoNotifier <- struct{}{}
+	return true
 }
 
 var planificadorCortoMutex sync.Mutex // Mutex para evitar doble planificador de corto plazo
@@ -184,15 +182,16 @@ func PlanificadorCortoPlazo() {
 	for {
 		planificadorCortoMutex.Lock()
 
-		Logger.Debug("Planificador de corto plazo: esperando notificación en CortoNotifier")
+		Logger.Debug("PC: Planificador de corto plazo: esperando notificación en CortoNotifier")
 		fmt.Println("Planificador de corto plazo: esperando notificación en CortoNotifier")
 
 		<-CortoNotifier
-		Logger.Debug("Planificador de corto plazo: notificación recibida en CortoNotifier")
+		Logger.Debug("PC: Planificador de corto plazo: notificación recibida en CortoNotifier")
 		fmt.Println("Planificador de corto plazo: notificación recibida en CortoNotifier")
 
 		for len(ColaReady) != 0 {
 			if algoritmo == "FIFO" && CpuLibres {
+				Logger.Debug("PC: Planificador de corto plazo: Algoritmo FIFO, procesando cola Ready")
 
 				// Sabemos que el proceso que acabamos de mover a Exec es el último de la cola
 				ultimoProcesoEnReady := &ColaReady[len(ColaReady)-1]
@@ -200,10 +199,12 @@ func PlanificadorCortoPlazo() {
 				// Intentamos enviar el proceso a la CPU
 				if ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
 					// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
+					Logger.Debug("PC: Encontramos CPU libre, moviendo proceso a Exec", "PID", ultimoProcesoEnReady.PID)
 					MoverProcesoACola(ultimoProcesoEnReady, &ColaExec)
 					break // Salimos del for para esperar un nuevo proceso en Ready
 				} else {
 					MutexCpuLibres.Lock()
+					Logger.Debug("PC: No se pudo enviar el proceso a la CPU porque no hay CPUs libres del", "PID", ultimoProcesoEnReady.PID)
 					fmt.Println("No se pudo enviar el proceso a la CPU porque no hay CPUs libres")
 					CpuLibres = false // Indicamos que la CPU no está libre
 					MutexCpuLibres.Unlock()

@@ -150,17 +150,12 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 
 	LogCreacionDeProceso(ContadorPID)
 
-	if len(ColaNew) > 0 {
-		fmt.Println("PID", ContadorPID, "Cola antes de mover el proceso", ColaNew[0].PID)
-	}
-	fmt.Println("PCB creado, moviendo proceso a cola New")
 	MoverProcesoACola(&pcb, &ColaNew)
-	fmt.Println("PID", ContadorPID, "Cola despues de mover el proceso", ColaNew[0].PID)
+	fmt.Println("PID", ContadorPID, "Cola despues de mover el proceso", len(ColaNew))
 
 	// Al agregar un nuevo proceso a la cola de New, notificamos al planificador de largo plazo
 	Logger.Debug("Notificando al planificador de largo plazo sobre el nuevo proceso", "pid", ContadorPID)
 	LargoNotifier <- struct{}{}
-	Logger.Debug("Notificación enviada al planificador de largo plazo", "pid", ContadorPID)
 
 }
 

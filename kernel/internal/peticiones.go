@@ -103,8 +103,6 @@ func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
 		return false
 	}
 
-	Logger.Debug("Enviando petición de espacio a Memoria", "url", url, "proceso", pcbDelProceso.PID)
-
 	// Hacemos la petición POST al server
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
 	if err != nil {
@@ -120,7 +118,6 @@ func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
 		Logger.Debug("Error decodificando respuesta JSON", "error", err, "proceso", pcbDelProceso.PID)
 		return false
 	}
-	Logger.Debug("Respuesta de Memoria procesada", "respuesta", respuestaMemoria.Respuesta, "mensaje", respuestaMemoria.Mensaje, "proceso", pcbDelProceso.PID)
 
 	Logger.Debug("Espacio en Memoria concedido",
 		"modulo", respuestaMemoria.Modulo,
@@ -300,6 +297,8 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 		return
 	}
 
+	Logger.Debug("Tratando de desalojar", "PID", pid, "De la CPU", cpuDelPID.CPUID)
+
 	url := fmt.Sprintf("http://%s:%d/desalojo", cpuDelPID.Ip, cpuDelPID.Puerto)
 
 	// Declaro el body de la petición
@@ -334,11 +333,11 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 	}
 
 	if respuestaDesalojo.Respuesta {
-		Logger.Debug("Desalojo exitoso")
-		fmt.Println("Desalojo exitoso para el PID", pid)
+		Logger.Debug("Desalojo exitoso del", "PID", pid, "de la CPU", cpuDelPID.CPUID)
+		fmt.Println("Desalojo exitoso para el PID", pid, "de la CPU", cpuDelPID.CPUID)
 	} else {
-		Logger.Debug("Desalojo fallido")
-		fmt.Println("Desalojo fallido para el PID", pid)
+		Logger.Debug("Desalojo fallido del", "PID", pid, "de la CPU", cpuDelPID.CPUID)
+		fmt.Println("Desalojo fallido para el PID", pid, "de la CPU", cpuDelPID.CPUID)
 	}
 
 }

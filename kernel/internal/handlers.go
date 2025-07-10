@@ -117,6 +117,10 @@ func InitProcHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
+	var respuestaInitProc = globals.InitProcSyscallResponse{
+		Respuesta: true,
+	}
+	json.NewEncoder(w).Encode(respuestaInitProc)
 
 	SyscallInitProc(PeticionSyscall.PID, PeticionSyscall.NombreArchivo, PeticionSyscall.Tamanio)
 }
