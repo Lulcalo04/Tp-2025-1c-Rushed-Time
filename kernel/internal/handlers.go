@@ -136,6 +136,12 @@ func ExitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Respondo a CPU que ser recibió el mensaje correctamente
+	var respuesta = globals.ExitSyscallResponse{
+		Respuesta: true,
+	}
+	json.NewEncoder(w).Encode(respuesta)
+
 	SyscallExit(PeticionSyscall.PID)
 }
 
@@ -150,6 +156,12 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Respondo a CPU que ser recibió el mensaje correctamente
+	var respuesta = globals.DumpMemorySyscallResponse{
+		Respuesta: true,
+	}
+	json.NewEncoder(w).Encode(respuesta)
+
 	SyscallDumpMemory(PeticionSyscall.PID)
 }
 
@@ -163,6 +175,12 @@ func IoHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
+
+	// Respondo a CPU que ser recibió el mensaje correctamente
+	var respuesta = globals.IoSyscallResponse{
+		Respuesta: true,
+	}
+	json.NewEncoder(w).Encode(respuesta)
 
 	SyscallEntradaSalida(PeticionSyscall.PID, PeticionSyscall.NombreDispositivo, PeticionSyscall.Tiempo)
 }
@@ -224,6 +242,7 @@ func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("Desalojo recibido de CPU:", respuestaDesalojo)
 
 	// Respondo a CPU que ser recibió el mensaje correctamente
 	var respuesta = globals.CPUtoKernelDesalojoResponse{

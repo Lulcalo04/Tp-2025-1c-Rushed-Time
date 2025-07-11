@@ -151,7 +151,7 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 	LogCreacionDeProceso(ContadorPID)
 
 	MoverProcesoACola(&pcb, &ColaNew)
-	fmt.Println("PID", ContadorPID, "Cola despues de mover el proceso", len(ColaNew))
+	fmt.Println("PID", ContadorPID, " creado. Procesos en Cola NEW despues de mover el proceso:", len(ColaNew))
 
 	// Al agregar un nuevo proceso a la cola de New, notificamos al planificador de largo plazo
 	Logger.Debug("Notificando al planificador de largo plazo sobre el nuevo proceso", "pid", ContadorPID)
@@ -188,9 +188,18 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 		defer mutexDestino.Unlock()
 	}
 
+	// Cambiar el estado del proceso y añadirlo a la cola de destino
+	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
+		proceso.Estado = estadoDestino
+
+		// Crear una copia del proceso antes de añadirlo a la cola
+		procesoCopia := *proceso
+		*colaDestino = append(*colaDestino, procesoCopia)
+	}
+
 	// Buscar y eliminar el proceso de su cola actual
 	for cola, estado := range ColaEstados {
-		if proceso.Estado == estado {
+		if procesoEstadoAnterior == estado {
 			for i, p := range *cola {
 				if p.PID == proceso.PID {
 					// Eliminar el proceso de la cola actual
@@ -200,15 +209,6 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 			}
 			break
 		}
-	}
-
-	// Cambiar el estado del proceso y añadirlo a la cola de destino
-	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
-		proceso.Estado = estadoDestino
-
-		// Crear una copia del proceso antes de añadirlo a la cola
-		procesoCopia := *proceso
-		*colaDestino = append(*colaDestino, procesoCopia)
 	}
 
 	// Actualizar métricas y tiempos si el estado cambió
@@ -487,8 +487,11 @@ func ProcesarFinIO(pid int, nombreDispositivo string) {
 
 	if len(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos) != 0 {
 		// Si hay procesos esperando en la cola de espera del dispositivo, ocupamos la instancia recientemente liberada
-		OcuparInstanciaDeIO(nombreDispositivo, *instanciaDeIO, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Proceso.PID)
-		UsarDispositivoDeIO(nombreDispositivo, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Proceso.PID, ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0].Tiempo)
+		procesoEsperando := ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0]
+		// Lo eliminamos de la cola de espera
+		ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos = ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[1:] // Eliminamos el primer proceso de la cola de espera
+		// Ocupamos la instancia de IO con el PID del proceso que estaba esperando
+		UsarDispositivoDeIO(nombreDispositivo, procesoEsperando.Proceso.PID, procesoEsperando.Tiempo)
 	}
 
 	LogFinDeIO(pid)
@@ -502,12 +505,12 @@ func OcuparInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO, pid in
 		if instanciaIO == instancia {
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].Estado = "Ocupada"
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].PID = pid
-			Logger.Debug("Instancia de IO ocupada", "nombre", nombreDispositivo, "instancia", instancia.NombreIO, "pid", pid)
+			Logger.Debug("Instancia de IO ocupada", "dispositivo", instancia.NombreIO, "pid", pid)
 			return
 		}
 	}
 
-	Logger.Debug("Error al ocupar la instancia de IO", "nombre", nombreDispositivo, "instancia", instancia.NombreIO, "pid", pid)
+	Logger.Debug("Error al ocupar la instancia de IO", "dispositivo", instancia.NombreIO, "pid", pid)
 }
 
 func LiberarInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO) {
@@ -515,11 +518,11 @@ func LiberarInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO) {
 		if instanciaIO == instancia {
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].Estado = "Libre"
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].PID = -1
-			Logger.Debug("Instancia de IO liberada", "nombre", nombreDispositivo, "instancia", instancia.NombreIO)
+			Logger.Debug("Instancia de IO liberada", "dispositivo", instancia.NombreIO)
 			return
 		}
 	}
-	Logger.Debug("Error al liberar la instancia de IO", "nombre", nombreDispositivo, "instancia", instancia.NombreIO)
+	Logger.Debug("Error al liberar la instancia de IO", "dispositivo", instancia.NombreIO)
 }
 
 func BuscarPrimerInstanciaLibre(nombreDispositivo string) (InstanciaIO, bool) {

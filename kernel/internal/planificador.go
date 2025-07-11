@@ -194,17 +194,17 @@ func PlanificadorCortoPlazo() {
 				Logger.Debug("PC: Planificador de corto plazo: Algoritmo FIFO, procesando cola Ready")
 
 				// Sabemos que el proceso que acabamos de mover a Exec es el último de la cola
-				ultimoProcesoEnReady := &ColaReady[len(ColaReady)-1]
+				primerProcesoEnReady := &ColaReady[0]
 
 				// Intentamos enviar el proceso a la CPU
-				if ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
+				if ElegirCpuYMandarProceso(*primerProcesoEnReady) {
 					// No se pudo enviar el proceso a la CPU, lo devolvemos a la cola Ready
-					Logger.Debug("PC: Encontramos CPU libre, moviendo proceso a Exec", "PID", ultimoProcesoEnReady.PID)
-					MoverProcesoACola(ultimoProcesoEnReady, &ColaExec)
+					Logger.Debug("PC: Encontramos CPU libre, moviendo proceso a Exec", "PID", primerProcesoEnReady.PID)
+					MoverProcesoACola(primerProcesoEnReady, &ColaExec)
 					break // Salimos del for para esperar un nuevo proceso en Ready
 				} else {
 					MutexCpuLibres.Lock()
-					Logger.Debug("PC: No se pudo enviar el proceso a la CPU porque no hay CPUs libres del", "PID", ultimoProcesoEnReady.PID)
+					Logger.Debug("PC: No se pudo enviar el proceso a la CPU porque no hay CPUs libres del", "PID", primerProcesoEnReady.PID)
 					fmt.Println("No se pudo enviar el proceso a la CPU porque no hay CPUs libres")
 					CpuLibres = false // Indicamos que la CPU no está libre
 					MutexCpuLibres.Unlock()
