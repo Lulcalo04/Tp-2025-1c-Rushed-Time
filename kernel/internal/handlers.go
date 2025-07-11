@@ -17,7 +17,6 @@ func IniciarServerKernel(puerto int) {
 	mux := http.NewServeMux()
 
 	//^ Handshakes
-	mux.HandleFunc("/handshake", HandshakeHandler)
 	mux.HandleFunc("/handshake/io", IoHandshakeHandler)
 	mux.HandleFunc("/handshake/cpu", CPUHandshakeHandler)
 
@@ -47,19 +46,6 @@ func IniciarServerKernel(puerto int) {
 
 // &-------------------------------------------Endpoints de Kernel-------------------------------------------------------------
 
-// * Endpoint de handshake = /handshake
-func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
-	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
-	w.Header().Set("Content-Type", "application/json")
-
-	//Se utiliza el encoder para enviar la respuesta en formato JSON
-	json.NewEncoder(w).Encode(
-		map[string]string{
-			"modulo":  "Kernel",
-			"mensaje": "Conexión aceptada desde " + r.RemoteAddr,
-		})
-}
-
 // * Endpoint de handshake IO = /handshake/io
 func IoHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 	//Establecemos el header de la respuesta (Se indica que la respuesta es de tipo JSON)
@@ -70,9 +56,19 @@ func IoHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
+	// Respondo a IO que ser recibió el mensaje correctamente
+	var respuesta = globals.IoHandshakeResponse{
+		Respuesta: true,
+		Mensaje:   "Handshake realizado, dispositivo registrado en KERNEL correctamente.",
+	}
 
-	RegistrarInstanciaIO(dispositivoIOBody.Nombre, dispositivoIOBody.PortIO, dispositivoIOBody.IPio)
-	Logger.Debug("Handshake con IO realizado", "ip_io", dispositivoIOBody.IPio, "port_io", dispositivoIOBody.PortIO, "nombre", dispositivoIOBody.Nombre)
+	json.NewEncoder(w).Encode(respuesta)
+
+	go RegistrarInstanciaIO(dispositivoIOBody.Nombre, dispositivoIOBody.PortIO, dispositivoIOBody.IPio)
+
+	mensajeHandshakeIO := fmt.Sprintf("Handshake con IO realizado: IP %s, Puerto %d, Nombre %s", dispositivoIOBody.IPio, dispositivoIOBody.PortIO, dispositivoIOBody.Nombre)
+	fmt.Println(mensajeHandshakeIO)
+	Logger.Debug(mensajeHandshakeIO)
 }
 
 // * Endpoint de handshake CPU = /handshake/CPU
@@ -89,6 +85,10 @@ func CPUHandshakeHandler(w http.ResponseWriter, r *http.Request) {
 	bodyRespuesta := RegistrarIdentificadorCPU(dispositivoCPUBody.CPUID, dispositivoCPUBody.Puerto, dispositivoCPUBody.Ip)
 
 	json.NewEncoder(w).Encode(bodyRespuesta)
+
+	mensajeHandshakeCPU := fmt.Sprintf("Handshake con CPU realizado: IP %s, Puerto %d, ID %s", dispositivoCPUBody.Ip, dispositivoCPUBody.Puerto, dispositivoCPUBody.CPUID)
+	fmt.Println(mensajeHandshakeCPU)
+	Logger.Debug(mensajeHandshakeCPU)
 }
 
 // * Endpoint de ping = /ping
@@ -197,6 +197,10 @@ func FinIOHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mensajePedidoFinIO := fmt.Sprintf("Fin de IO recibido: Dispositivo %s, PID %d, Respuesta %t", respuestaIO.NombreDispositivo, respuestaIO.PID, respuestaIO.Respuesta)
+	fmt.Println(mensajePedidoFinIO)
+	Logger.Debug(mensajePedidoFinIO)
+
 	Logger.Debug("Finalización de IO recibida",
 		"nombre_dispositivo", respuestaIO.NombreDispositivo,
 		"pid", respuestaIO.PID,
@@ -222,13 +226,12 @@ func DesconexionIOHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Logger.Debug("Desconexion de IO recibida",
-		"nombre_dispositivo", pedidoIO.NombreDispositivo,
-		"ip_instancia", pedidoIO.IpInstancia,
-		"puerto_instancia", pedidoIO.PuertoInstancia)
+	mensajeDesconexion := fmt.Sprintf("Desconexion de IO recibida: Dispositivo %s, IP %s, Puerto %d", pedidoIO.NombreDispositivo, pedidoIO.IpInstancia, pedidoIO.PuertoInstancia)
+	fmt.Println(mensajeDesconexion)
+	Logger.Debug(mensajeDesconexion)
 
 	// Procesar la desconexión de IO
-	DesconectarInstanciaIO(pedidoIO.NombreDispositivo, pedidoIO.IpInstancia, pedidoIO.PuertoInstancia)
+	go DesconectarInstanciaIO(pedidoIO.NombreDispositivo, pedidoIO.IpInstancia, pedidoIO.PuertoInstancia)
 }
 
 // & -------------------------------------------Handlers para CPU-------------------------------------------------------------
@@ -242,7 +245,10 @@ func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
-	fmt.Println("Desalojo recibido de CPU:", respuestaDesalojo)
+
+	mensajeDesalojo := fmt.Sprintf("Desalojo recibido de CPU: ID %s, PID %d, PC %d, Motivo %s", respuestaDesalojo.CPUID, respuestaDesalojo.PID, respuestaDesalojo.PC, respuestaDesalojo.Motivo)
+	fmt.Println(mensajeDesalojo)
+	Logger.Debug(mensajeDesalojo)
 
 	// Respondo a CPU que ser recibió el mensaje correctamente
 	var respuesta = globals.CPUtoKernelDesalojoResponse{

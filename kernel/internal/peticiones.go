@@ -12,8 +12,9 @@ import (
 // &--------------------------------------------Funciones de Cliente-------------------------------------------------------------
 
 func HandshakeConMemoria(ip string, puerto int) {
-	Logger.Debug("Iniciando Handshake con Memoria")
-	fmt.Println("Iniciando Handshake con Memoria")
+	mensajeHandshakeMemoria := fmt.Sprintf("Iniciando Handshake con Memoria en %s:%d", ip, puerto)
+	fmt.Println(mensajeHandshakeMemoria)
+	Logger.Debug(mensajeHandshakeMemoria)
 
 	// Declaro la URL a la que me voy a conectar (handler de handshake con el puerto del server)
 	url := fmt.Sprintf("http://%s:%d/handshake", ip, puerto)
@@ -46,48 +47,44 @@ func HandshakeConMemoria(ip string, puerto int) {
 		Logger.Debug("Error decodificando respuesta JSON", "error", err)
 		os.Exit(1)
 	}
-	fmt.Println("Handshake exitoso")
-	Logger.Debug("Handshake exitoso",
-		"modulo", "Memoria",
-		"ip", respuesta.Ip,
-		"puerto", respuesta.Port,
-		"respuesta", respuesta.Respuesta)
+
+	mensajeHandshakeMemoriaExitoso := fmt.Sprintf("Handshake exitoso con Memoria: IP %s, Puerto %d, Respuesta: %t", respuesta.Ip, respuesta.Port, respuesta.Respuesta)
+	fmt.Println(mensajeHandshakeMemoriaExitoso)
+	Logger.Debug(mensajeHandshakeMemoriaExitoso)
 }
 
-func PingCon(nombre string, ip string, puerto int) (respuestaPing bool) {
-	// Variable para guardar la respuesta del ping
-	respuestaPing = false
-
-	// Declaro la URL a la que me voy a conectar (handler de ping con el puerto del server)
+func PingCon(nombre, ip string, puerto int) bool {
 	url := fmt.Sprintf("http://%s:%d/ping", ip, puerto)
 
-	// Hacemos la petición GET al server
+	// Realizamos la petición GET al servidor
 	resp, err := http.Get(url)
 	if err != nil {
-		Logger.Debug("Error conectando con %s: %v", nombre, err)
-		return respuestaPing // Devuelve false si hay un error de conexión
+		Logger.Debug(fmt.Sprintf("Error conectando con %s", nombre), "error", err)
+		return false // Devuelve false si hay un error de conexión
 	}
 	defer resp.Body.Close() // Cierra la conexión al finalizar la función
 
-	// Decodifico la respuesta JSON del server
-	var respuesta globals.PingResponse
-	if err := json.NewDecoder(resp.Body).Decode(&respuesta); err != nil {
-		Logger.Debug("Error decodificando respuesta JSON", "error", err)
-		return respuestaPing // Devuelve false si hay un error al decodificar
+	// Validar el código de estado antes de intentar decodificar
+	if resp.StatusCode != http.StatusOK {
+		Logger.Debug(fmt.Sprintf("Error: StatusCode no es 200 OK para %s", nombre), "status_code", resp.StatusCode)
+		return false
 	}
 
-	Logger.Debug("Conexión exitosa",
-		"nombre", nombre,
-		"status", resp.Status,
-		"mensaje", respuesta.Mensaje)
+	// Decodifico la respuesta JSON del servidor
+	var respuesta globals.PingResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuesta); err != nil {
+		Logger.Debug(fmt.Sprintf("Error decodificando respuesta JSON de %s", nombre), "error", err)
+		return false
+	}
 
-	respuestaPing = true
-	return respuestaPing
+	mensajePingExitoso := fmt.Sprintf("Ping exitoso a %s, respuesta: %s", nombre, respuesta.Mensaje)
+	fmt.Println(mensajePingExitoso)
+	Logger.Debug(mensajePingExitoso)
+
+	return true
 }
 
 func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
-
-	// Declaro la URL a la que me voy a conectar (handler de Petición de memoria con el puerto del server)
 	url := fmt.Sprintf("http://%s:%d/espacio/pedir", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
 
 	// Declaro el body de la petición
@@ -119,10 +116,9 @@ func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
 		return false
 	}
 
-	Logger.Debug("Espacio en Memoria concedido",
-		"modulo", respuestaMemoria.Modulo,
-		"respuesta", respuestaMemoria.Respuesta,
-		"mensaje", respuestaMemoria.Mensaje)
+	mensajeEspacioConcedido := fmt.Sprintf("Espacio en memoria concedido para el PID %d: %s", pcbDelProceso.PID, respuestaMemoria.Mensaje)
+	fmt.Println(mensajeEspacioConcedido)
+	Logger.Debug(mensajeEspacioConcedido)
 
 	return true
 
@@ -169,10 +165,16 @@ func LiberarProcesoEnMemoria(pid int) bool {
 
 	// Verificar el campo Respuesta en la respuesta
 	if respuestaMemoria.Respuesta {
-		Logger.Debug("Liberación de proceso en memoria exitosa", "PID", pid)
+		mensajeLiberacionExitosa := fmt.Sprintf("Liberación de memoria exitosa para el PID %d", pid)
+		Logger.Debug(mensajeLiberacionExitosa)
+		fmt.Println(mensajeLiberacionExitosa)
+
 		return true
 	} else {
-		Logger.Debug("No se pudo liberar el proceso en memoria", "PID", pid)
+		mensajeLiberacionFallida := fmt.Sprintf("Liberación de memoria fallida para el PID %d", pid)
+		Logger.Debug(mensajeLiberacionFallida)
+		fmt.Println(mensajeLiberacionFallida)
+
 		return false
 	}
 }
@@ -236,7 +238,7 @@ func EnviarProcesoAIO(instanciaDeIO InstanciaIO, pid int, milisegundosDeUso int)
 	}
 
 	// Serializo el body a JSON
-	bodyBytes, err := json.Marshal(pedidoBody)
+	bodyPeticion, err := json.Marshal(pedidoBody)
 	if err != nil {
 		Logger.Debug("Error serializando JSON", "error", err)
 		return
@@ -244,21 +246,23 @@ func EnviarProcesoAIO(instanciaDeIO InstanciaIO, pid int, milisegundosDeUso int)
 
 	// Realizamos la petición en un goroutine para no bloquear
 	go func() {
-		resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+		respuestaIo, err := http.Post(url, "application/json", bytes.NewBuffer(bodyPeticion))
 		if err != nil {
 			Logger.Debug("Error conectando con IO", "error", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer respuestaIo.Body.Close()
 
 		// Validar el código de estado
-		if resp.StatusCode != http.StatusOK {
-			Logger.Debug("Error: StatusCode no es 200 OK", "status_code", resp.StatusCode)
+		if respuestaIo.StatusCode != http.StatusOK {
+			Logger.Debug("Error: StatusCode no es 200 OK", "status_code", respuestaIo.StatusCode)
 			return
 		}
 
-		Logger.Debug("Petición enviada a IO con exito", "pid", pid)
-		fmt.Println("Petición enviada a IO con exito", "pid", pid)
+		mensajePeticionEnviada := fmt.Sprintf("Petición enviada a IO con éxito para el PID %d en el dispositivo %s con puerto %d", pid, instanciaDeIO.NombreIO, instanciaDeIO.PortIO)
+		Logger.Debug(mensajePeticionEnviada)
+		fmt.Println(mensajePeticionEnviada)
+
 	}()
 }
 
@@ -293,11 +297,15 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 
 	cpuDelPID := BuscarCPUporPID(pid)
 	if cpuDelPID == nil {
-		Logger.Debug("No se encontró el CPU que tenga este PID: ", "PID", pid)
+		mensajeCpuNoEncontrada := fmt.Sprintf("No se encontró la CPU que tiene el PID %d, no se puede desalojar", pid)
+		Logger.Debug(mensajeCpuNoEncontrada)
+		fmt.Println(mensajeCpuNoEncontrada)
 		return
 	}
 
-	Logger.Debug("Tratando de desalojar", "PID", pid, "De la CPU", cpuDelPID.CPUID)
+	mensajeIntentoDesalojo := fmt.Sprintf("Intentando desalojar el PID %d de la CPU %s por motivo: %s", pid, cpuDelPID.CPUID, motivoDesalojo)
+	Logger.Debug(mensajeIntentoDesalojo)
+	fmt.Println(mensajeIntentoDesalojo)
 
 	url := fmt.Sprintf("http://%s:%d/desalojo", cpuDelPID.Ip, cpuDelPID.Puerto)
 
@@ -333,11 +341,13 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 	}
 
 	if respuestaDesalojo.Respuesta {
-		Logger.Debug("Desalojo exitoso del", "PID", pid, "de la CPU", cpuDelPID.CPUID)
-		fmt.Println("Desalojo exitoso para el PID", pid, "de la CPU", cpuDelPID.CPUID)
+		mensajeDesalojoExitoso := fmt.Sprintf("Desalojo exitoso del PID %d de la CPU %s", pid, cpuDelPID.CPUID)
+		Logger.Debug(mensajeDesalojoExitoso)
+		fmt.Println(mensajeDesalojoExitoso)
 	} else {
-		Logger.Debug("Desalojo fallido del", "PID", pid, "de la CPU", cpuDelPID.CPUID)
-		fmt.Println("Desalojo fallido para el PID", pid, "de la CPU", cpuDelPID.CPUID)
+		mensajeDesalojoFallido := fmt.Sprintf("Desalojo fallido del PID %d de la CPU %s", pid, cpuDelPID.CPUID)
+		Logger.Debug(mensajeDesalojoFallido)
+		fmt.Println(mensajeDesalojoFallido)
 	}
 
 }

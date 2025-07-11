@@ -17,35 +17,49 @@ Métricas de Estado: “## (<PID>) - Métricas de estado: NEW (NEW_COUNT) (NEW_T
 
 // LogSyscall logs de syscall recibida
 func LogSyscall(pid int, syscallName string) {
-	Logger.Info(fmt.Sprintf("## (%d) - Solicitó syscall: %s", pid, syscallName))
+	message := fmt.Sprintf("## (%d) - Solicitó syscall: %s", pid, syscallName)
+	Logger.Info(message)
+	fmt.Println(message)
 }
 
 func LogCreacionDeProceso(pid int) {
-	Logger.Info(fmt.Sprintf("## (%d) Se crea el proceso - Estado: NEW", pid))
+	message := fmt.Sprintf("## (%d) Se crea el proceso - Estado: NEW", pid)
+	Logger.Info(message)
+	fmt.Println(message)
 }
 
 func LogCambioDeEstado(pid int, estadoAnterior, estadoActual string) {
-	Logger.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado %s", pid, estadoAnterior, estadoActual))
+	message := fmt.Sprintf("## (%d) Pasa del estado %s al estado %s", pid, estadoAnterior, estadoActual)
+	Logger.Info(message)
+	fmt.Println(message)
 }
 
 func LogMotivoDeBloqueo(pid int, ioDevice string) {
-	Logger.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", pid, ioDevice))
+	message := fmt.Sprintf("## (%d) - Bloqueado por IO: %s", pid, ioDevice)
+	Logger.Info(message)
+	fmt.Println(message)
 }
 
 func LogFinDeIO(pid int) {
-	Logger.Info(fmt.Sprintf("## (%d) finalizó IO y pasa a READY", pid))
+	message := fmt.Sprintf("## (%d) finalizó IO y pasa a READY", pid)
+	Logger.Info(message)
+	fmt.Println(message)
 }
 
 func LogDesalojoPorSJF_SRT(pid int) {
-	Logger.Info(fmt.Sprintf("## (%d) - Desalojado por fin de SJF/SRT", pid))
+	message := fmt.Sprintf("## (%d) - Desalojado por fin de SJF/SRT", pid)
+	Logger.Info(message)
+	fmt.Println(message)
 }
 
 func LogFinDeProceso(pid int) {
-	Logger.Info(fmt.Sprintf("## (%d) - Finaliza el proceso", pid))
+	message := fmt.Sprintf("## (%d) - Finaliza el proceso", pid)
+	Logger.Info(message)
+	fmt.Println(message)
 }
 
 func LogMetricasDeEstado(pcb globals.PCB) {
-	Logger.Info(fmt.Sprintf(
+	message := fmt.Sprintf(
 		"## (%d) - Métricas de estado: NEW (%d) (%d), READY (%d) (%d), EXEC (%d) (%d), BLOCKED (%d) (%d), SUSP_BLOCKED (%d) (%d), SUSP_READY (%d) (%d), EXIT (%d) (%d)",
 		pcb.PID,
 		pcb.MetricasDeEstados[globals.New], pcb.MetricasDeTiempos[globals.New],
@@ -55,5 +69,7 @@ func LogMetricasDeEstado(pcb globals.PCB) {
 		pcb.MetricasDeEstados[globals.SuspBlocked], pcb.MetricasDeTiempos[globals.SuspBlocked],
 		pcb.MetricasDeEstados[globals.SuspReady], pcb.MetricasDeTiempos[globals.SuspReady],
 		pcb.MetricasDeEstados[globals.Exit], pcb.MetricasDeTiempos[globals.Exit],
-	))
+	)
+	Logger.Info(message)
+	fmt.Println(message)
 }

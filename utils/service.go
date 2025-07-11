@@ -111,6 +111,11 @@ type IoHandshakeRequest struct {
 	Nombre string `json:"nombre"`
 }
 
+type IoHandshakeResponse struct {
+	Respuesta bool   `json:"respuesta"`
+	Mensaje   string `json:"mensaje"`
+}
+
 type CPUToKernelHandshakeRequest struct {
 	CPUID  string `json:"cpu_id"`
 	Puerto int    `json:"puerto"`

@@ -19,7 +19,6 @@ se encargará de finalizar el proceso que la invocó,
 siguiendo lo descrito anteriormente para Finalización de procesos. */
 
 func SyscallExit(pid int) {
-	fmt.Println("Me piden la syscall de EXIT con el PID", pid)
 	LogSyscall(pid, "EXIT")
 
 	//Desalojo el proceso de la CPU
@@ -54,7 +53,7 @@ func SyscallDumpMemory(pid int) {
 }
 
 func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso int) {
-	fmt.Printf("El PID %d pide la syscall de IO con el dispositivo %s\n", pid, nombreDispositivo)
+	fmt.Printf("IO: El PID %d pide la syscall de IO con el dispositivo %s\n", pid, nombreDispositivo)
 	LogSyscall(pid, "IO")
 
 	if VerificarDispositivo(nombreDispositivo) {
@@ -71,7 +70,7 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 
 			//Si hay instancias de IO disponibles, se bloquea el proceso por estar usando la IO
 			UsarDispositivoDeIO(nombreDispositivo, pid, milisegundosDeUso)
-			fmt.Println("Proceso enviado a IO")
+			fmt.Println("IO: PID", pid, "enviado a IO por", milisegundosDeUso, "ms en", nombreDispositivo)
 
 		} else {
 
@@ -80,11 +79,13 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 		}
 	} else {
 		//& NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
-		fmt.Println("El dispositivo no existe, enviando a EXIT")
+		mensajeDispositivoNoExiste := fmt.Sprintf("IO: El dispositivo %s no existe, enviando a EXIT", nombreDispositivo)
+		fmt.Println(mensajeDispositivoNoExiste)
+		Logger.Debug(mensajeDispositivoNoExiste)
 
+		// Desalojo el proceso de la CPU
 		PeticionDesalojo(pid, "IO")
-		Logger.Debug("El dispositivo no existe, enviando a EXIT", "pid", pid, "dispositivo", nombreDispositivo)
+		// Terminamos el proceso
 		TerminarProceso(pid, &ColaExec)
 	}
-	fmt.Println("Syscall IO realizada", "pid", pid)
 }

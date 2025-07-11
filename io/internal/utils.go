@@ -60,7 +60,6 @@ func IniciarServerIO(puerto int) {
 // & ----------------------------------------------- Handlers ------------------------------------------------------------------//
 
 func RecibirSolicitudIO(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Recibiendo solicitud de IO")
 
 	// Declaro la variable request de tipo IORequest
 	var paqueteKernel globals.IORequest
@@ -71,7 +70,9 @@ func RecibirSolicitudIO(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Logger.Debug("Recibiendo paquete desde Kernel", "nombre_dispositivo", paqueteKernel.NombreDispositivo, "pid", paqueteKernel.PID, "tiempo", paqueteKernel.Tiempo)
+	mensajeSolicitud := fmt.Sprintf("Solicitud de IO recibida: PID %d, Dispositivo %s, Tiempo %d ms", paqueteKernel.PID, paqueteKernel.NombreDispositivo, paqueteKernel.Tiempo)
+	fmt.Println(mensajeSolicitud)
+	Logger.Debug(mensajeSolicitud)
 
 	// Responder al Kernel inmediatamente para que pueda continuar
 	w.WriteHeader(http.StatusOK)
@@ -82,7 +83,9 @@ func RecibirSolicitudIO(w http.ResponseWriter, r *http.Request) {
 
 	time.Sleep(time.Millisecond * time.Duration(paqueteKernel.Tiempo))
 
-	fmt.Println("Fin de la ejecución de IO para el PID", paqueteKernel.PID, "con el dispositivo", paqueteKernel.NombreDispositivo)
+	mensajeFinIO := fmt.Sprintf("Finalizando IO: PID %d, Dispositivo %s, Tiempo: %d ms", paqueteKernel.PID, paqueteKernel.NombreDispositivo, paqueteKernel.Tiempo)
+	fmt.Println(mensajeFinIO)
+	Logger.Debug(mensajeFinIO)
 
 	LogFinalizacionIO(paqueteKernel.PID)
 
@@ -128,7 +131,10 @@ func HandshakeConKernel(ipKernel string, puertoKernel int, nombreIO string) {
 func NotificarFinalizacionIO(pid int, nombreDispositivo string) {
 	url := fmt.Sprintf("http://%s:%d/io/fin", Config_IO.IPKernel, Config_IO.PortKernel)
 
-	fmt.Println("Notificando fin de ejecucion de rafaga a kernel.")
+	mensajeFinIO := fmt.Sprintf("Notificando fin de IO: PID %d, Dispositivo %s", pid, nombreDispositivo)
+	fmt.Println(mensajeFinIO)
+	Logger.Debug(mensajeFinIO)
+
 	respuestaIO := globals.IOResponse{
 		NombreDispositivo: nombreDispositivo,
 		PID:               pid,
@@ -139,8 +145,6 @@ func NotificarFinalizacionIO(pid int, nombreDispositivo string) {
 	if err != nil {
 		Logger.Debug("Error codificando mensajes", "error", err.Error())
 	}
-
-	Logger.Debug("Enviando respuesta al kernel", "nombre_dispositivo", respuestaIO.NombreDispositivo, "pid", respuestaIO.PID, "respuesta", respuestaIO.Respuesta)
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
@@ -181,15 +185,16 @@ func NotificarDesconexionDispositivo(nombreDispositivo string, ipInstancia strin
 }
 
 func EscucharSeñalDesconexion(nombreDispositivo string) {
+
 	canalDeEscucha := make(chan os.Signal, 1)                    // Creamos un canal para escuchar señales
 	signal.Notify(canalDeEscucha, os.Interrupt, syscall.SIGTERM) // Escucha señales de interrupción
 	<-canalDeEscucha                                             // Espera a recibir una señal de interrupción (Ctrl+C o SIGTERM)
 
-	// Antes de salir, notificamos al kernel de la desconexión
+	mensajeDesconexion := fmt.Sprintf("Recibido Ctrl+C, desconectando el dispositivo IO %s de KERNEL", nombreDispositivo)
+	fmt.Println(mensajeDesconexion)
+	Logger.Debug(mensajeDesconexion)
 
 	NotificarDesconexionDispositivo(nombreDispositivo, Config_IO.IPIo, Config_IO.PortIO)
 
-	Logger.Debug("Recibido Ctrl+C, desconectando del kernel...")
-	fmt.Println("Recibido Ctrl+C, desconectando del kernel...")
 	os.Exit(0)
 }

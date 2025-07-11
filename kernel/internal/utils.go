@@ -74,7 +74,7 @@ func IniciarKernel() {
 	Logger = globals.ConfigurarLogger("kernel", Config_Kernel.LogLevel)
 
 	//Prende el server de kernel en un hilo aparte
-	fmt.Println("Iniciando el servidor de Kernel en el puerto", Config_Kernel.PortKernel)
+	fmt.Println("Iniciando servidor de KERNEL, en el puerto:", Config_Kernel.PortKernel)
 	go IniciarServerKernel(Config_Kernel.PortKernel)
 
 	//Realiza el handshake con memoria
@@ -126,16 +126,16 @@ func BuscarProcesoEnCola(pid int, cola *[]globals.PCB) *globals.PCB {
 }
 
 func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
-	Logger.Debug("Inicializando PCB",
-		"tamanio_en_memoria", tamanioEnMemoria,
-		"nombre_archivo_pseudo", nombreArchivoPseudo)
+	mensajeInicializandoPCB := "Inicializando PCB" + " tamanio_en_memoria=" + strconv.Itoa(tamanioEnMemoria) + ", nombre_archivo_pseudo=" + nombreArchivoPseudo
+	Logger.Debug(mensajeInicializandoPCB)
+	fmt.Println(mensajeInicializandoPCB)
 
 	ContadorPID++
 
 	pcb := globals.PCB{
 		PID:                ContadorPID,
 		PC:                 0,
-		Estado:             globals.Null,
+		Estado:             globals.New,
 		PathArchivoPseudo:  nombreArchivoPseudo,
 		InicioEstadoActual: time.Now(),
 		MetricasDeEstados:  make(map[globals.Estado]int),
@@ -148,20 +148,22 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 		TiempoDeUltimaRafaga: 0,
 	}
 
+	// Bloquear el mutex de la cola de New
+	ColaMutexes[&ColaNew].Lock()
+	// Agregar el proceso a la cola de New
+	ColaNew = append(ColaNew, pcb)
+	// Desbloquear el mutex de la cola de New
+	ColaMutexes[&ColaNew].Unlock()
+
+	//fmt.Println("PID", ContadorPID, " creado. Procesos en Cola NEW despues de mover el proceso:", len(ColaNew))
 	LogCreacionDeProceso(ContadorPID)
 
-	MoverProcesoACola(&pcb, &ColaNew)
-	fmt.Println("PID", ContadorPID, " creado. Procesos en Cola NEW despues de mover el proceso:", len(ColaNew))
-
 	// Al agregar un nuevo proceso a la cola de New, notificamos al planificador de largo plazo
-	Logger.Debug("Notificando al planificador de largo plazo sobre el nuevo proceso", "pid", ContadorPID)
 	LargoNotifier <- struct{}{}
 
 }
 
 func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
-	Logger.Debug("Iniciando MoverProcesoACola", "proceso", proceso.PID, "estado_actual", proceso.Estado)
-	fmt.Println("Iniciando MoverProcesoACola", "proceso", proceso.PID, "estado_actual", proceso.Estado)
 
 	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
@@ -230,8 +232,6 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
 	}
-
-	fmt.Println("Proceso movido de", procesoEstadoAnterior, "a", proceso.Estado, "PID del proceso movido", proceso.PID)
 }
 
 func MoverProcesoDeExecABlocked(pid int) {
@@ -324,7 +324,9 @@ func TerminarProceso(pid int, colaOrigen *[]globals.PCB) {
 }
 
 func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
-	fmt.Println("Pidieron un desalojo de CPU")
+	mensajePedidoDesalojo := fmt.Sprintf("Analizando desalojo de CPU: ID %s, PID %d, PC %d, Motivo %s", cpuId, pid, pc, motivoDesalojo)
+	fmt.Println(mensajePedidoDesalojo)
+	Logger.Debug(mensajePedidoDesalojo)
 
 	for i, cpu := range ListaIdentificadoresCPU {
 		if cpu.CPUID == cpuId {
@@ -333,9 +335,12 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 	}
 
 	MutexCpuLibres.Lock()
-	fmt.Println("Se libero la CPU")
 	CpuLibres = true // Indicamos que hay CPU libres para recibir nuevos procesos
 	MutexCpuLibres.Unlock()
+
+	mensajeCpuLiberada := fmt.Sprintf("Se liberó la CPU con ID: %s", cpuId)
+	fmt.Println(mensajeCpuLiberada)
+	Logger.Debug(mensajeCpuLiberada)
 
 	var pcbDelProceso *globals.PCB
 	switch motivoDesalojo {
@@ -388,10 +393,14 @@ func RegistrarInstanciaIO(nombre string, puerto int, ip string) {
 		}
 	}
 
-	fmt.Println("Dispositivo IO registrado:", nombre, "IP:", ip, "Puerto:", puerto)
-	fmt.Println("Instancias de dispositivo", nombre, ":", len(ListaDispositivosIO[nombre].InstanciasDispositivo))
+	mensajeRegistro := fmt.Sprintf("Dispositivo IO registrado: Nombre %s, IP %s, Puerto %d", nombre, ip, puerto)
+	fmt.Println(mensajeRegistro)
+	Logger.Debug(mensajeRegistro)
 
-	Logger.Debug("Dispositivo nuevo", "nombre", nombre, "instancias", len(ListaDispositivosIO[nombre].InstanciasDispositivo))
+	mensajeNumeroInstancias := fmt.Sprintf("Número de instancias del dispositivo %s: %d", nombre, len(ListaDispositivosIO[nombre].InstanciasDispositivo))
+	fmt.Println(mensajeNumeroInstancias)
+	Logger.Debug(mensajeNumeroInstancias)
+
 }
 
 func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puertoInstancia int) {
@@ -403,14 +412,23 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 
 			// Mandamos al proceso que estaba usando la instancia a Exit
 			if instanciaBuscada.Estado == "Ocupada" {
+				mensajeDesconexionDuranteEjecucion := fmt.Sprintf("Desconexion de IO durante ejecucion, se envia proceso a Exit: PID %d, Dispositivo %s", instanciaBuscada.PID, nombreDispositivo)
+				fmt.Println(mensajeDesconexionDuranteEjecucion)
+				Logger.Debug(mensajeDesconexionDuranteEjecucion)
+
 				MoverProcesoDeBlockedAExit(instanciaBuscada.PID)
-				Logger.Debug("Desconexion de IO, se envia proceso a Exit", "pid", instanciaBuscada.PID)
 			}
 
+			mensajeDesconectandoInstancia := fmt.Sprintf("Desconectando instancia de IO Dispositivo %s, IP %s, Puerto %d", nombreDispositivo, ipInstancia, puertoInstancia)
+			fmt.Println(mensajeDesconectandoInstancia)
+			Logger.Debug(mensajeDesconectandoInstancia)
+
 			// Borramos la instancia de IO de la lista de instancias del dispositivo IO
-			fmt.Println("Desconectando instancia de IO:", nombreDispositivo, "IP:", ipInstancia, "Puerto:", puertoInstancia)
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo = append(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[:pos], ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[pos+1:]...)
-			fmt.Println("Instancias de dispositivo", nombreDispositivo, ":", len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
+
+			mensajeInstanciasRestantes := fmt.Sprintf("Instancias del dispositivo %s: %d", nombreDispositivo, len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
+			fmt.Println(mensajeInstanciasRestantes)
+			Logger.Debug(mensajeInstanciasRestantes)
 
 			// Si la instancia desconectada era la única que quedaba...
 			if len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo) == 0 {
@@ -420,8 +438,11 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 
 					// Recorro la lista de procesos bloqueados por la IO y los mando a Exit
 					for _, procesoEnEspera := range ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos {
+						mensajeDesconexionDuranteEjecucion := fmt.Sprintf("Desconexion de IO durante ejecucion, se envia proceso a Exit: PID %d, Dispositivo %s", procesoEnEspera.Proceso.PID, nombreDispositivo)
+						fmt.Println(mensajeDesconexionDuranteEjecucion)
+						Logger.Debug(mensajeDesconexionDuranteEjecucion)
+
 						MoverProcesoDeBlockedAExit(procesoEnEspera.Proceso.PID)
-						Logger.Debug("Desconexion de IO, se envia proceso a Exit", "pid", procesoEnEspera.Proceso.PID)
 					}
 				}
 
@@ -429,13 +450,19 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 				delete(ListaDispositivosIO, nombreDispositivo)
 
 			} else {
-				Logger.Debug("Instancias disponibles", "nombre", nombreDispositivo, "instancias", len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
+				mensajeInstanciasRestantes := fmt.Sprintf("Instancias del dispositivo %s: %d", nombreDispositivo, len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
+				fmt.Println(mensajeInstanciasRestantes)
+				Logger.Debug(mensajeInstanciasRestantes)
 			}
 
-			Logger.Debug("Instancia de IO desconectada", "nombre", nombreDispositivo, "ip", ipInstancia, "puerto", puertoInstancia)
+			mensajeInstanciaDesconectada := fmt.Sprintf("Instancia de IO desconectada: Dispositivo %s, IP %s, Puerto %d", nombreDispositivo, ipInstancia, puertoInstancia)
+			fmt.Println(mensajeInstanciaDesconectada)
+			Logger.Debug(mensajeInstanciaDesconectada)
 
 		} else {
-			Logger.Debug("Instancia de IO no encontrada", "nombre", nombreDispositivo, "ip", ipInstancia, "puerto", puertoInstancia)
+			mensajeInstanciaNoEncontrada := fmt.Sprintf("Instancia de IO no encontrada: Dispositivo %s, IP %s, Puerto %d", nombreDispositivo, ipInstancia, puertoInstancia)
+			fmt.Println(mensajeInstanciaNoEncontrada)
+			Logger.Debug(mensajeInstanciaNoEncontrada)
 		}
 	}
 
@@ -505,12 +532,18 @@ func OcuparInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO, pid in
 		if instanciaIO == instancia {
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].Estado = "Ocupada"
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].PID = pid
-			Logger.Debug("Instancia de IO ocupada", "dispositivo", instancia.NombreIO, "pid", pid)
+
+			mensajeOcupacionInstancia := fmt.Sprintf("Instancia de IO ocupada: Dispositivo %s, PID %d", instancia.NombreIO, pid)
+			fmt.Println(mensajeOcupacionInstancia)
+			Logger.Debug(mensajeOcupacionInstancia)
+
 			return
 		}
 	}
 
-	Logger.Debug("Error al ocupar la instancia de IO", "dispositivo", instancia.NombreIO, "pid", pid)
+	mensajeErrorOcupacion := fmt.Sprintf("Error al ocupar la instancia de IO: Dispositivo %s, PID %d", instancia.NombreIO, pid)
+	fmt.Println(mensajeErrorOcupacion)
+	Logger.Debug(mensajeErrorOcupacion)
 }
 
 func LiberarInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO) {
@@ -528,10 +561,18 @@ func LiberarInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO) {
 func BuscarPrimerInstanciaLibre(nombreDispositivo string) (InstanciaIO, bool) {
 	for _, instancia := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
 		if instancia.Estado == "Libre" {
+			mensajeInstanciaLibre := fmt.Sprintf("Instancia de IO libre encontrada: Dispositivo %s, IP %s, Puerto %d", instancia.NombreIO, instancia.IpIO, instancia.PortIO)
+			fmt.Println(mensajeInstanciaLibre)
+			Logger.Debug(mensajeInstanciaLibre)
+
 			return instancia, true
 		}
 	}
-	Logger.Debug("No hay instancias libres", "nombre", nombreDispositivo)
+
+	mensajeNoHayInstancias := fmt.Sprintf("No hay instancias libres del dispositivo IO: %s", nombreDispositivo)
+	fmt.Println(mensajeNoHayInstancias)
+	Logger.Debug(mensajeNoHayInstancias)
+
 	return InstanciaIO{}, false
 }
 
@@ -647,7 +688,7 @@ func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
 		timer := time.NewTimer(time.Duration(milisegundos) * time.Millisecond)
 		select {
 		case <-timer.C:
-			fmt.Println("Contador de Susp Blocked cumplido")
+			fmt.Println("Contador de Susp Blocked cumplido para el proceso", pcb.PID)
 			// Verifica que el proceso siga en Blocked
 			if BuscarProcesoEnCola(pcb.PID, &ColaBlocked) != nil {
 				MoverProcesoACola(pcb, &ColaSuspBlocked)

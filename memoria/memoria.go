@@ -20,7 +20,7 @@ func main() {
 	memoria_internal.NuevaMemoria()
 
 	//Prende el server de memoria
-	fmt.Println("Iniciando servidor de memoria en el puerto:", memoria_internal.Config_Memoria.PortMemory)
+	fmt.Println("Iniciando servidor de MEMORIA, en el puerto:", memoria_internal.Config_Memoria.PortMemory)
 	go memoria_internal.IniciarServerMemoria(memoria_internal.Config_Memoria.PortMemory)
 
 	fmt.Println("Memoria funcionando.")

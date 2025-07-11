@@ -12,7 +12,6 @@ import (
 type Estado string
 
 const (
-	Null        Estado = "NULL"
 	New         Estado = "NEW"
 	Ready       Estado = "READY"
 	Exec        Estado = "EXEC"

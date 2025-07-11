@@ -73,7 +73,7 @@ func IniciarCPU() {
 	fmt.Println("Iniciando logger de CPU...")
 	Logger = ConfigurarLoggerCPU(CPUId, Config_CPU.LogLevel)
 
-	fmt.Println("Iniciando servidor de CPU...")
+	fmt.Println("Iniciando servidor de CPU, en el puerto:", Config_CPU.PortCPU)
 	go IniciarServerCPU(Config_CPU.PortCPU)
 
 	//Realizar el handshake con Memoria

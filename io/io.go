@@ -20,7 +20,7 @@ func main() {
 	io_internal.Logger = globals.ConfigurarLogger("io", io_internal.Config_IO.LogLevel)
 
 	// PRIMERO levantar el servidor HTTP de IO en un hilo aparte para que no se bloquee el main
-	fmt.Println("Iniciando servidor IO, en el puerto:", io_internal.Config_IO.PortIO)
+	fmt.Println("Iniciando servidor de IO, en el puerto:", io_internal.Config_IO.PortIO)
 	go io_internal.IniciarServerIO(io_internal.Config_IO.PortIO)
 
 	// Hacemos handshake con el kernel
