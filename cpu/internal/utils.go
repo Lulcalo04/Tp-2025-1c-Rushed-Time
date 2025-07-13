@@ -129,7 +129,8 @@ func Decode() {
 
 	// Devuelve en un slice de strings las palabras de la instruccion actual separadas por espacios
 	argumentoInstrucciones = strings.Fields(ProcesoEjecutando.InstruccionActual)
-	fmt.Println(argumentoInstrucciones)
+
+	fmt.Printf("PID: %d - %s\n", ProcesoEjecutando.PID, argumentoInstrucciones)
 
 	if (argumentoInstrucciones[0] == "WRITE") || (argumentoInstrucciones[0] == "READ") || (argumentoInstrucciones[0] == "GOTO") {
 		// Si la instruccion es WRITE READ O GOTO, Se tiene que utilizar la MMU para traducir la direccion logica a fisica

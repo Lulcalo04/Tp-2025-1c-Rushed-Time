@@ -75,7 +75,7 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 		} else {
 
 			//Si no hay instancias de IO disponibles, se bloquea el proceso en la cola del dispositivo
-			BloquearProcesoPorIO(nombreDispositivo, pid, milisegundosDeUso) //* FUNCION A DESARROLLAR
+			BloquearProcesoPorIO(nombreDispositivo, pid, milisegundosDeUso)
 		}
 	} else {
 		//& NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
@@ -84,7 +84,7 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 		Logger.Debug(mensajeDispositivoNoExiste)
 
 		// Desalojo el proceso de la CPU
-		PeticionDesalojo(pid, "IO")
+		PeticionDesalojo(pid, "EXIT")
 		// Terminamos el proceso
 		TerminarProceso(pid, &ColaExec)
 	}

@@ -202,8 +202,6 @@ func PlanificadorCortoPlazo() {
 					Logger.Debug("P.CP: Encontramos CPU libre, moviendo proceso a Exec", "PID", primerProcesoEnReady.PID)
 					fmt.Println("P.CP: Encontramos CPU libre, moviendo proceso a Exec", "PID", primerProcesoEnReady.PID)
 
-					// Movemos el proceso a la cola Exec
-					MoverProcesoACola(primerProcesoEnReady, &ColaExec)
 					break // Salimos del for para esperar un nuevo proceso en Ready
 				} else {
 					Logger.Debug("P.CP: No se pudo enviar el proceso a la CPU porque no hay CPUs libres del", "PID", primerProcesoEnReady.PID)
@@ -234,8 +232,6 @@ func PlanificadorCortoPlazo() {
 				pcbElegido.EstimacionDeRafaga.YaCalculado = false
 
 				if ElegirCpuYMandarProceso(*pcbElegido) {
-					// Movemos el proceso elegido a la cola Exec
-					MoverProcesoACola(pcbElegido, &ColaExec)
 					break // Salimos del for para esperar un nuevo proceso en Ready
 				} else {
 					// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
@@ -263,8 +259,6 @@ func PlanificadorCortoPlazo() {
 				pcbElegido.EstimacionDeRafaga.YaCalculado = false
 
 				if ElegirCpuYMandarProceso(*pcbElegido) {
-					// Movemos el proceso elegido a la cola Exec
-					MoverProcesoACola(pcbElegido, &ColaExec)
 					break // Salimos del for para esperar un nuevo proceso en Ready
 				} else {
 					// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
@@ -287,12 +281,7 @@ func PlanificadorCortoPlazo() {
 
 					// Intentamos enviar el proceso a la CPU
 					if ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
-
-						// Muevo el proceso que llegó de Ready a la cola Exec
-						MoverProcesoACola(ultimoProcesoEnReady, &ColaExec)
-
 						break // Salimos del for para esperar un nuevo proceso en Ready
-
 					} else {
 						// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
 						MutexCpuLibres.Lock()

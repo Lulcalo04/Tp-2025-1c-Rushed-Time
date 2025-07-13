@@ -60,15 +60,15 @@ func LogFinDeProceso(pid int) {
 
 func LogMetricasDeEstado(pcb globals.PCB) {
 	message := fmt.Sprintf(
-		"## (%d) - Métricas de estado: NEW (%d) (%d), READY (%d) (%d), EXEC (%d) (%d), BLOCKED (%d) (%d), SUSP_BLOCKED (%d) (%d), SUSP_READY (%d) (%d), EXIT (%d) (%d)",
+		"## (%d) - Métricas de estado: NEW (%d) (%dms), READY (%d) (%dms), EXEC (%d) (%dms), BLOCKED (%d) (%dms), SUSP_BLOCKED (%d) (%dms), SUSP_READY (%dms) (%d), EXIT (%d) (%dms)",
 		pcb.PID,
-		pcb.MetricasDeEstados[globals.New], pcb.MetricasDeTiempos[globals.New],
-		pcb.MetricasDeEstados[globals.Ready], pcb.MetricasDeTiempos[globals.Ready],
-		pcb.MetricasDeEstados[globals.Exec], pcb.MetricasDeTiempos[globals.Exec],
-		pcb.MetricasDeEstados[globals.Blocked], pcb.MetricasDeTiempos[globals.Blocked],
-		pcb.MetricasDeEstados[globals.SuspBlocked], pcb.MetricasDeTiempos[globals.SuspBlocked],
-		pcb.MetricasDeEstados[globals.SuspReady], pcb.MetricasDeTiempos[globals.SuspReady],
-		pcb.MetricasDeEstados[globals.Exit], pcb.MetricasDeTiempos[globals.Exit],
+		pcb.MetricasDeEstados[globals.New], pcb.MetricasDeTiempos[globals.New].Milliseconds(),
+		pcb.MetricasDeEstados[globals.Ready], pcb.MetricasDeTiempos[globals.Ready].Milliseconds(),
+		pcb.MetricasDeEstados[globals.Exec], pcb.MetricasDeTiempos[globals.Exec].Milliseconds(),
+		pcb.MetricasDeEstados[globals.Blocked], pcb.MetricasDeTiempos[globals.Blocked].Milliseconds(),
+		pcb.MetricasDeEstados[globals.SuspBlocked], pcb.MetricasDeTiempos[globals.SuspBlocked].Milliseconds(),
+		pcb.MetricasDeEstados[globals.SuspReady], pcb.MetricasDeTiempos[globals.SuspReady].Milliseconds(),
+		pcb.MetricasDeEstados[globals.Exit], pcb.MetricasDeTiempos[globals.Exit].Milliseconds(),
 	)
 	Logger.Info(message)
 	fmt.Println(message)
