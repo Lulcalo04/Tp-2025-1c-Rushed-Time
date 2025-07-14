@@ -1,13 +1,13 @@
 {
     "port_memory": 8002,
-    "memory_size": 2048,
+    "memory_size": 512,
     "page_size": 32,
-    "entries_per_page": 4,
-    "number_of_levels": 3,
+    "entries_per_page": 32,
+    "number_of_levels": 1,
     "memory_delay": 500,
     "swapfile_path": "/home/utnso/swapfile.bin",
-    "swap_delay": 5000,
+    "swap_delay": 2500,
     "log_level": "INFO",
     "dump_path": "/home/utnso/dump_files/",
-    "scripts_path": "/home/utnso/scripts/"
+    "scripts_path": "utils/scripts/"
 }

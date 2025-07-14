@@ -6,11 +6,14 @@ import (
 
 func main() {
 
+	//*Toma los parámetros recibidos por consola
+	nombreArchivoConfiguracion, nombreArchivoPseudocodigo, tamanioProceso := kernel_internal.RecibirParametrosConfiguracion()
+
 	//*Inicia las funcionalidades principales de kernel
-	kernel_internal.IniciarKernel()
+	kernel_internal.IniciarKernel(nombreArchivoConfiguracion)
 
 	//*Inicializa el proceso cero
-	kernel_internal.InicializarProcesoCero()
+	kernel_internal.InicializarProcesoCero(tamanioProceso, nombreArchivoPseudocodigo)
 
 	select {}
 }

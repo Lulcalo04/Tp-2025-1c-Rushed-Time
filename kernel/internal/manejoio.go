@@ -102,12 +102,12 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 				if len(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos) != 0 {
 
 					// Recorro la lista de procesos bloqueados por la IO y los mando a Exit
-					for _, procesoEnEspera := range ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos {
+					for i, procesoEnEspera := range ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos {
 						mensajeDesconexionDuranteEjecucion := fmt.Sprintf("Desconexion de IO durante ejecucion, se envia proceso esperando al dispositivo a Exit: PID %d, Dispositivo %s", procesoEnEspera.Proceso.PID, nombreDispositivo)
 						fmt.Println(mensajeDesconexionDuranteEjecucion)
 						Logger.Debug(mensajeDesconexionDuranteEjecucion)
 
-						MoverProcesoDeBlockedAExit(procesoEnEspera.Proceso.PID)
+						MoverProcesoDeBlockedAExit(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[i].Proceso.PID)
 					}
 				}
 

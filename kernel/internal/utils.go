@@ -41,13 +41,37 @@ var Logger *slog.Logger
 var ContadorPID int = -1
 
 var canceladoresBlocked = make(map[int]chan struct{})
+var mutexCanceladoresBlocked sync.Mutex
 
 // &-------------------------------------------Funciones de Kernel-------------------------------------------------------------
 
-func IniciarKernel() {
+func RecibirParametrosConfiguracion() (string, string, int) {
+	if len(os.Args) < 4 {
+		fmt.Println("Error, mal escrito usa: .kernel/kernel.go [archivo_configuracion] [archivo_pseudocodigo] [tamanio_proceso]")
+		os.Exit(1)
+	}
+
+	// Leer y cargar la configuración del archivo de configuración
+	nombreArchivoConfiguracion := os.Args[1]
+
+	// Leer el nombre del archivo de pseudocódigo
+	nombreArchivoPseudocodigo := os.Args[2]
+
+	// Leer y convertir el tamaño del proceso a entero
+	tamanioProceso, err := strconv.Atoi(os.Args[3])
+	if err != nil {
+		fmt.Println("Error: el tamaño del proceso debe ser un número entero.", "valor_recibido", os.Args[3])
+		os.Exit(1)
+	}
+
+	return nombreArchivoConfiguracion, nombreArchivoPseudocodigo, tamanioProceso
+}
+
+func IniciarKernel(nombreArchivoConfiguracion string) {
 	//Inicializa la config de kernel
-	fmt.Println("Iniciando configuración...")
-	globals.IniciarConfiguracion("kernel/config.json", &Config_Kernel)
+	fmt.Println("Iniciando configuración " + nombreArchivoConfiguracion + " de kernel...")
+
+	globals.IniciarConfiguracion("utils/configs/"+nombreArchivoConfiguracion+".json", &Config_Kernel)
 
 	//Crea el archivo donde se logea kernel
 	fmt.Println("Iniciando logger...")
@@ -58,35 +82,14 @@ func IniciarKernel() {
 	go IniciarServerKernel(Config_Kernel.PortKernel)
 
 	//Realiza el handshake con memoria
-
 	HandshakeConMemoria(Config_Kernel.IPMemory, Config_Kernel.PortMemory)
-
-	//Realizar el handshake con Memoria
-	/* if !HandshakeCon(CpuId) {
-		Logger.Debug("Error, no se pudo realizar el handshake con el Memoria")
-		return
-	} */
 
 	//Inicia los planificadores
 	IniciarPlanificadores()
 	fmt.Println("Kernel iniciado correctamente.")
 }
 
-func InicializarProcesoCero() {
-	if len(os.Args) < 3 {
-		Logger.Debug("Error, mal escrito usa: .kernel/kernel.go [archivo_pseudocodigo] [tamanio_proceso]")
-		os.Exit(1)
-	}
-
-	// Leer el nombre del archivo de pseudocódigo
-	nombreArchivoPseudocodigo := os.Args[1]
-
-	// Leer y convertir el tamaño del proceso a entero
-	tamanioProceso, err := strconv.Atoi(os.Args[2])
-	if err != nil {
-		Logger.Debug("Error: el tamaño del proceso debe ser un número entero.", "valor_recibido", os.Args[2])
-		os.Exit(1)
-	}
+func InicializarProcesoCero(tamanioProceso int, nombreArchivoPseudocodigo string) {
 
 	Logger.Debug("Inicializando Proceso Cero",
 		"tamanio_proceso", tamanioProceso,
@@ -152,6 +155,9 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
 
+	fmt.Printf("1*) PID: %d ESTADO: %s\n", proceso.PID, proceso.Estado)
+	Logger.Debug("1*)", "PID", proceso.PID, "ESTADO", proceso.Estado)
+
 	// Obtener el mutex de la cola de origen
 	var mutexOrigen *sync.Mutex
 	for colaOrigen, estado := range ColaEstados {
@@ -174,21 +180,32 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 		defer mutexDestino.Unlock()
 	}
 
+	// Verificar si el proceso ya está en la cola destino
+	for _, p := range *colaDestino {
+		if p.PID == proceso.PID {
+			fmt.Printf("El proceso ya está en la cola destino: PID %d\n", proceso.PID)
+			return
+		}
+	}
+
 	// Cambiar el estado del proceso y añadirlo a la cola de destino
 	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
 		proceso.Estado = estadoDestino
-
-		// Crear una copia del proceso antes de añadirlo a la cola
 		procesoCopia := *proceso
 		*colaDestino = append(*colaDestino, procesoCopia)
 	}
 
+	fmt.Printf("2*) PID: %d ESTADO: %s\n", proceso.PID, proceso.Estado)
+	Logger.Debug("2*)", "PID", proceso.PID, "ESTADO", proceso.Estado)
+
+	procesoCopia := *proceso
+
 	// Buscar y eliminar el proceso de su cola actual
 	for cola, estado := range ColaEstados {
 		if procesoEstadoAnterior == estado {
-			for i, p := range *cola {
-				if p.PID == proceso.PID {
-					// Eliminar el proceso de la cola actual
+			for i := range *cola {
+				if (*cola)[i].PID == proceso.PID {
+					fmt.Printf("Eliminando proceso de la cola origen: PID %d, Estado %s\n", proceso.PID, procesoEstadoAnterior)
 					*cola = append((*cola)[:i], (*cola)[i+1:]...)
 					break
 				}
@@ -197,8 +214,10 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 		}
 	}
 
-	//Probar esto
-	//!proceso = BuscarProcesoEnCola(proceso.PID, colaDestino)
+	proceso = &procesoCopia
+
+	fmt.Printf("3*) PID: %d ESTADO: %s\n", proceso.PID, proceso.Estado)
+	Logger.Debug("3*)", "PID", proceso.PID, "ESTADO", proceso.Estado)
 
 	// Actualizar métricas y tiempos si el estado cambió
 	if proceso.Estado != procesoEstadoAnterior {
@@ -223,9 +242,12 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
 	} else {
-		Logger.Debug("$$$$$) El proceso ya estaba en el estado destino", "pid", proceso.PID, "estado", proceso.Estado)
-		fmt.Println("$$$$$) El proceso ya estaba en el estado destino", "pid", proceso.PID, "estado", proceso.Estado)
+		Logger.Debug("El proceso ya estaba en el estado destino", "pid", proceso.PID, "estado", proceso.Estado)
+		fmt.Println("El proceso ya estaba en el estado destino", "pid", proceso.PID, "estado", proceso.Estado)
 	}
+
+	fmt.Printf("4*) PID: %d ESTADO: %s\n", proceso.PID, proceso.Estado)
+	Logger.Debug("4*)", "PID", proceso.PID, "ESTADO", proceso.Estado)
 }
 
 func MoverProcesoDeExecABlocked(pid int) {
@@ -248,15 +270,10 @@ func MoverProcesoDeBlockedAExit(pid int) {
 
 	CancelarContadorBlocked(pid)
 
-	//Busco el PCB del proceso actualizado en la cola de blocked
-	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
-
 	// Si no se encuentra el PCB del proceso en la cola de blocked, xq el plani de mediano plazo lo movió a SuspBlocked
-	if pcbDelProceso == nil {
+	if BuscarProcesoEnCola(pid, &ColaBlocked) == nil {
 		Logger.Debug("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
-
-		// Busco el PCB del proceso en la cola de SuspBlocked
-		//pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+		fmt.Println("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
 
 		//! BORRAR EL PROCESO DE SWAP Y LIBERAR LA MEMORIA
 
@@ -307,9 +324,6 @@ func TerminarProceso(pid int, colaOrigen *[]globals.PCB) {
 
 	proceso := BuscarProcesoEnCola(pid, colaOrigen)
 
-	fmt.Println("Terminando proceso con PID:", pid)
-	fmt.Println("1)Encontre el proceso:", proceso.PID)
-
 	if !PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
 		Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
 		return
@@ -318,14 +332,19 @@ func TerminarProceso(pid int, colaOrigen *[]globals.PCB) {
 	respuestaMemoria := LiberarProcesoEnMemoria(pid)
 
 	if respuestaMemoria {
+
 		MoverProcesoACola(proceso, &ColaExit)
-		hayEspacioEnMemoria = true
+
+		MutexHayEspacioEnMemoria.Lock()
+		HayEspacioEnMemoria = true
+		MutexHayEspacioEnMemoria.Unlock()
+
 		LargoNotifier <- struct{}{} // Como se liberó memoria, notificamos al planificador de largo plazo
+	} else {
+		fmt.Println("Error al liberar memoria del proceso:", pid)
 	}
 
 	proceso = BuscarProcesoEnCola(pid, &ColaExit)
-
-	fmt.Println("2)Encontre el proceso:", proceso.PID)
 
 	LogFinDeProceso(proceso.PID)
 	LogMetricasDeEstado(*proceso)
@@ -380,40 +399,45 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 
 func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
 	cancel := make(chan struct{})
+
+	// Bloquea el acceso al mapa antes de modificarlo
+	mutexCanceladoresBlocked.Lock()
 	canceladoresBlocked[pcb.PID] = cancel
+	mutexCanceladoresBlocked.Unlock()
 
-	Logger.Debug("Iniciando contador de blocked para el proceso", "pid", pcb.PID, "tiempo", milisegundos)
-	fmt.Println("Iniciando contador de blocked para el proceso", "pid", pcb.PID, "tiempo", milisegundos)
+	pid := pcb.PID // Captura el valor de PID localmente
 
-	go func() {
+	go func(pidLocal int, cancel chan struct{}) {
+		Logger.Debug("Iniciando contador de blocked para el proceso", "pid", pidLocal, "tiempo", milisegundos)
+		fmt.Println("Iniciando contador de blocked para el proceso", "pid", pidLocal, "tiempo", milisegundos)
+
 		timer := time.NewTimer(time.Duration(milisegundos) * time.Millisecond)
 		select {
 		case <-timer.C:
-			fmt.Println("Contador de Susp Blocked cumplido para el proceso", pcb.PID)
-			// Verifica que el proceso siga en Blocked
-			if BuscarProcesoEnCola(pcb.PID, &ColaBlocked) != nil {
-
+			fmt.Println("Contador de Susp Blocked cumplido para el proceso", pidLocal)
+			if BuscarProcesoEnCola(pidLocal, &ColaBlocked) != nil {
 				MoverProcesoACola(pcb, &ColaSuspBlocked)
 
-				//! PEDIR A MEMORIA QUE HAGA EL SWAP
+				//! ENVIAR PROCESO A SWAP
 
 				Logger.Debug("Enviando notificación a LargoNotifier")
 				LargoNotifier <- struct{}{}
-				Logger.Debug("Notificación enviada a LargoNotifier")
 			}
 		case <-cancel:
-			fmt.Println("Contador de Susp Blocked cancelado para el proceso", pcb.PID)
+			fmt.Println("Contador de Susp Blocked cancelado para el proceso", pidLocal)
 			timer.Stop()
-			// El proceso salio de Blocked antes de tiempo
 		}
-		delete(canceladoresBlocked, pcb.PID)
-	}()
+	}(pid, cancel) // Pasa el PID y el canal como argumentos a la goroutine
 }
 
-// Llama a esto cuando el proceso salga de Blocked por otro motivo
 func CancelarContadorBlocked(pid int) {
+	mutexCanceladoresBlocked.Lock()
 	if cancel, ok := canceladoresBlocked[pid]; ok {
+		fmt.Println("Cancelando contador para PID:", pid)
 		close(cancel)
 		delete(canceladoresBlocked, pid)
+	} else {
+		fmt.Println("No se encontró un contador para PID:", pid)
 	}
+	mutexCanceladoresBlocked.Unlock()
 }

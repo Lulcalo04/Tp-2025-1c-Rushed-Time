@@ -1,6 +1,10 @@
 package memoria_internal
 
-import "log/slog"
+import (
+	"fmt"
+	"log/slog"
+	"os"
+)
 
 type ConfigMemoria struct {
 	PortMemory     int    `json:"port_memory"`
@@ -74,4 +78,53 @@ type MetricasPorProceso struct {
 	SubidasAMemoriaPrincipal int // cantidad de veces que se subió a memoria principal		(listo)
 	LecturasDeMemoria        int // cantidad de lecturas de memoria								(Listo)
 	EscriturasDeMemoria      int // cantidad de escrituras de memoria							(listo)
+}
+
+func RecibirParametrosConfiguracion() string {
+	if len(os.Args) < 2 {
+		fmt.Println("Error, mal escrito usa: .memoria/memoria.go [archivo_configuracion]")
+		os.Exit(1)
+	}
+
+	// Leer y cargar la configuración del archivo de configuración
+	nombreArchivoConfiguracion := os.Args[1]
+
+	return nombreArchivoConfiguracion
+}
+
+func NuevaMemoria() {
+	// 1) Crear el slice de bytes de tamaño memorySize
+	datos := make([]byte, Config_Memoria.MemorySize)
+
+	// 2) Calcular cuántos frames caben en esos bytes
+	totalFrames := Config_Memoria.MemorySize / Config_Memoria.PageSize
+
+	// 3) Inicializar el bitmap de frames libres
+	listaDeFrames := make([]bool, totalFrames)
+	for i := range listaDeFrames {
+		listaDeFrames[i] = true
+	}
+
+	// 4) Inicializar el mapa de tablas multinivel
+	tablas := make(map[int]*TablaPags)
+
+	// 5) Inicializar el archivo de swap
+	f, err := os.OpenFile(Config_Memoria.SwapfilePath,
+		os.O_CREATE|os.O_RDWR, 0666)
+	if err != nil {
+		panic(fmt.Sprintf("No puedo abrir swapfile: %v", err))
+	}
+
+	// 6) Inicializar la memoria global
+	MemoriaGlobal = &Memoria{
+		datos:           datos,
+		pageSize:        Config_Memoria.PageSize,
+		totalFrames:     totalFrames,
+		listaDeFrames:   listaDeFrames,
+		tablas:          tablas,
+		infoProc:        make(map[int]*InfoPorProceso), // Inicializamos el mapa de info de procesos
+		swapFile:        f,
+		freeSwapOffsets: make([]int64, 0), // Inicializamos con un slice
+		nextSwapOffset:  0,                // Inicializamos el offset de swap
+	}
 }

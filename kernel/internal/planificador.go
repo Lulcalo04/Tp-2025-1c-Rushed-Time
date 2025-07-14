@@ -10,12 +10,19 @@ import (
 )
 
 var ColaNew = make([]globals.PCB, 0)
+var MutexNew sync.Mutex
 var ColaReady = make([]globals.PCB, 0)
+var MutexReady sync.Mutex
 var ColaExec = make([]globals.PCB, 0)
+var MutexExec sync.Mutex
 var ColaBlocked = make([]globals.PCB, 0)
+var MutexBlocked sync.Mutex
 var ColaSuspReady = make([]globals.PCB, 0)
+var MutexSuspReady sync.Mutex
 var ColaSuspBlocked = make([]globals.PCB, 0)
+var MutexSuspBlocked sync.Mutex
 var ColaExit = make([]globals.PCB, 0)
+var MutexExit sync.Mutex
 
 var ColaEstados = map[*[]globals.PCB]globals.Estado{
 	&ColaNew:         globals.Estado("NEW"),
@@ -27,25 +34,19 @@ var ColaEstados = map[*[]globals.PCB]globals.Estado{
 	&ColaExit:        globals.Estado("EXIT"),
 }
 
-var mutexNew sync.Mutex
-var mutexReady sync.Mutex
-var mutexExec sync.Mutex
-var mutexBlocked sync.Mutex
-var mutexSuspReady sync.Mutex
-var mutexSuspBlocked sync.Mutex
-var mutexExit sync.Mutex
-
 var ColaMutexes = map[*[]globals.PCB]*sync.Mutex{
-	&ColaNew:         &mutexNew,
-	&ColaReady:       &mutexReady,
-	&ColaExec:        &mutexExec,
-	&ColaBlocked:     &mutexBlocked,
-	&ColaSuspReady:   &mutexSuspReady,
-	&ColaSuspBlocked: &mutexSuspBlocked,
-	&ColaExit:        &mutexExit,
+	&ColaNew:         &MutexNew,
+	&ColaReady:       &MutexReady,
+	&ColaExec:        &MutexExec,
+	&ColaBlocked:     &MutexBlocked,
+	&ColaSuspReady:   &MutexSuspReady,
+	&ColaSuspBlocked: &MutexSuspBlocked,
+	&ColaExit:        &MutexExit,
 }
 
-var hayEspacioEnMemoria bool = true
+var HayEspacioEnMemoria bool = true
+var MutexHayEspacioEnMemoria sync.Mutex
+
 var MutexCpuLibres sync.Mutex
 var CpuLibres bool = true
 
@@ -66,7 +67,7 @@ func IniciarPlanificadores() {
 	fmt.Println("Planificadores iniciados")
 }
 
-var planificadorLargoMutex sync.Mutex // Mutex para evitar doble planificador de largo plazo
+var MutexPlanificadorLargo sync.Mutex // Mutex para evitar doble planificador de largo plazo
 var LargoNotifier = make(chan struct{}, 999)
 
 func PlanificadorLargoPlazo() {
@@ -75,18 +76,11 @@ func PlanificadorLargoPlazo() {
 	Logger.Debug("Planificador de largo plazo iniciado", "algoritmo", algoritmo)
 
 	for {
-
-		Logger.Debug("P.LP: esperando notificación en LargoNotifier")
-		fmt.Println("P.LP: esperando notificación en LargoNotifier")
-
 		<-LargoNotifier
-		planificadorLargoMutex.Lock()
-
-		Logger.Debug("P.LP: notificación recibida en LargoNotifier")
-		fmt.Println("P.LP: notificación recibida en LargoNotifier")
+		MutexPlanificadorLargo.Lock()
 
 		// Mientras hay espacio en memoria y procesos en las colas
-		for hayEspacioEnMemoria && (len(ColaNew) != 0 || len(ColaSuspReady) != 0) {
+		for HayEspacioEnMemoria && (len(ColaNew) != 0 || len(ColaSuspReady) != 0) {
 
 			if algoritmo == "FIFO" {
 				// Verifica conexión con memoria
@@ -122,8 +116,10 @@ func PlanificadorLargoPlazo() {
 
 					// Si memoria responde que no hay espacio...
 					if !respuestaMemoria {
-						hayEspacioEnMemoria = false // Seteo la variable del for a false
-						break                       // Salimos del for para esperar un nuevo proceso en New
+						MutexHayEspacioEnMemoria.Lock()
+						HayEspacioEnMemoria = false // Seteo la variable del for a false
+						MutexHayEspacioEnMemoria.Unlock()
+						break // Salimos del for para esperar un nuevo proceso en New
 					}
 
 					MoverProcesoACola(&ColaSuspReady[pcbMasChico()], &ColaReady)
@@ -134,8 +130,10 @@ func PlanificadorLargoPlazo() {
 
 					// Si memoria responde que no hay espacio...
 					if !respuestaMemoria {
-						hayEspacioEnMemoria = false // Seteo la variable del for a false
-						break                       // Salimos del for para esperar un nuevo proceso en New
+						MutexHayEspacioEnMemoria.Lock()
+						HayEspacioEnMemoria = false // Seteo la variable del for a false
+						MutexHayEspacioEnMemoria.Unlock()
+						break // Salimos del for para esperar un nuevo proceso en New
 					}
 
 					MoverProcesoACola(&ColaNew[pcbMasChico()], &ColaReady)
@@ -144,7 +142,7 @@ func PlanificadorLargoPlazo() {
 
 			}
 		}
-		planificadorLargoMutex.Unlock()
+		MutexPlanificadorLargo.Unlock()
 		// Drenar señales adicionales en el canal para evitar interrupciones
 		select {
 		case <-LargoNotifier:
@@ -161,7 +159,9 @@ func procesarCola(cola *[]globals.PCB) bool {
 	respuestaMemoria := PedirEspacioAMemoria((*cola)[0])
 
 	if !respuestaMemoria {
-		hayEspacioEnMemoria = false
+		MutexHayEspacioEnMemoria.Lock()
+		HayEspacioEnMemoria = false
+		MutexHayEspacioEnMemoria.Unlock()
 		return false
 	}
 
@@ -171,7 +171,7 @@ func procesarCola(cola *[]globals.PCB) bool {
 	return true
 }
 
-var planificadorCortoMutex sync.Mutex // Mutex para evitar doble planificador de corto plazo
+var MutexPlanificadorCorto sync.Mutex // Mutex para evitar doble planificador de corto plazo
 var CortoNotifier = make(chan struct{})
 
 func PlanificadorCortoPlazo() {
@@ -181,14 +181,8 @@ func PlanificadorCortoPlazo() {
 	Logger.Debug("Planificador de corto plazo iniciado", "algoritmo", algoritmo)
 
 	for {
-		planificadorCortoMutex.Lock()
-
-		Logger.Debug("P.CP: esperando notificación en CortoNotifier")
-		fmt.Println("P.CP: esperando notificación en CortoNotifier")
-
 		<-CortoNotifier
-		Logger.Debug("P.CP: notificación recibida en CortoNotifier")
-		fmt.Println("P.CP: notificación recibida en CortoNotifier")
+		MutexPlanificadorCorto.Lock()
 
 		for len(ColaReady) != 0 {
 			if algoritmo == "FIFO" && CpuLibres {
@@ -292,7 +286,7 @@ func PlanificadorCortoPlazo() {
 				}
 			}
 		}
-		planificadorCortoMutex.Unlock()
+		MutexPlanificadorCorto.Unlock()
 	}
 }
 
