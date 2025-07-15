@@ -52,22 +52,33 @@ var argumentoInstrucciones []string
 
 var mutexProcesoEjecutando sync.Mutex
 
-func IniciarCPU() {
+// &-------------------------------------------Funciones de inicialización de CPU-------------------------------------------
 
-	//Verifica el identificador de la cpu valido
-	CPUId = VerificarIdentificadorCPU()
+func RecibirParametrosConfiguracion() string {
+
+	if len(os.Args) < 3 {
+		fmt.Println("Error, mal escrito usa: ./cpu.go [archivo_configuracion] [identificador]")
+		os.Exit(1)
+	}
+
+	nombreArchivoConfiguracion := os.Args[1]
+	CPUId = os.Args[2]
+
+	return nombreArchivoConfiguracion
+}
+
+func IniciarCPU(nombreArchivoConfiguracion string) {
 	fmt.Println("CPU inicializada con ID", CPUId)
 
 	//Inicializa la config de cpu
 	fmt.Println("Iniciando configuración de CPU...")
-	globals.IniciarConfiguracion("cpu/config.json", &Config_CPU)
+	globals.IniciarConfiguracion("utils/configs/"+nombreArchivoConfiguracion+".json", &Config_CPU)
 
 	//Declaro algoritmo de reemplazo de TLB y cantidad de entradas
-
-	//InicializarTLB()
+	InicializarTLB()
 
 	//Declaro algoritmo de reemplazo de Cache y cantidad de entradas
-	//InicializarCache()
+	InicializarCache()
 
 	//Crea el archivo donde se logea cpu con su id
 	fmt.Println("Iniciando logger de CPU...")
@@ -91,20 +102,9 @@ func IniciarCPU() {
 		return
 	}
 	fmt.Println("Handshake con Kernel realizado correctamente")
-
-	select {}
 }
 
-func VerificarIdentificadorCPU() string {
-
-	if len(os.Args) < 2 {
-		fmt.Println("Error, mal escrito usa: ./cpu.go [identificador]")
-		os.Exit(1)
-	}
-	CpuId := os.Args[1]
-
-	return CpuId
-}
+//& -------------------------------------------Funciones del ciclo de instrucción-------------------------------------------
 
 func CicloDeInstruccion() {
 

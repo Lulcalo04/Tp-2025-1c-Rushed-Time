@@ -27,14 +27,36 @@ var Logger *slog.Logger
 
 //-------------------------------------------------------------------------------------------------------------//
 
-func InicializarIO() string {
-	if len(os.Args) < 2 {
-		fmt.Println("Error, mal escrito usa: ./io.go [nombreio]")
+func RecibirParametrosConfiguracion() (string, string) {
+	if len(os.Args) < 3 {
+		fmt.Println("Error, mal escrito usa: ./io.go [archivo_configuracion] [nombre_dispositivo]")
 		os.Exit(1)
 	}
-	ioName := os.Args[1]
 
-	return ioName
+	nombreArchivoConfiguracion := os.Args[1]
+	ioName := os.Args[2]
+
+	return nombreArchivoConfiguracion, ioName
+}
+
+func IniciarIO(nombreArchivoConfiguracion string, ioName string) {
+
+	// Inicializar configuración
+	fmt.Println("Inicializando configuración de IO...")
+	globals.IniciarConfiguracion("utils/configs/"+nombreArchivoConfiguracion+".json", &Config_IO)
+
+	// Crear el logger
+	fmt.Println("Inicializando logger de IO...")
+	Logger = globals.ConfigurarLogger("io", Config_IO.LogLevel)
+
+	// PRIMERO levantar el servidor HTTP de IO en un hilo aparte para que no se bloquee el main
+	fmt.Println("Iniciando servidor de IO, en el puerto:", Config_IO.PortIO)
+	go IniciarServerIO(Config_IO.PortIO)
+
+	// Hacemos handshake con el kernel
+	fmt.Println("Haciendo handshake con el kernel...")
+	HandshakeConKernel(Config_IO.IPKernel, Config_IO.PortKernel, ioName)
+
 }
 
 // & -------------------------------- Server de IO -------------------------------------//

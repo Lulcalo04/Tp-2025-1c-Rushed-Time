@@ -4,6 +4,11 @@ import cpu_internal "cpu/internal"
 
 func main() {
 
-	cpu_internal.IniciarCPU()
+	//*Toma los parámetros recibidos por consola
+	nombreArchivoConfiguracion := cpu_internal.RecibirParametrosConfiguracion()
 
+	//*Inicia las funcionalidades principales de CPU
+	cpu_internal.IniciarCPU(nombreArchivoConfiguracion)
+
+	select {}
 }

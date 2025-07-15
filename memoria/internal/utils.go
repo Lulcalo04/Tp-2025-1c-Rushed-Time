@@ -2,6 +2,7 @@ package memoria_internal
 
 import (
 	"fmt"
+	"globals"
 	"log/slog"
 	"os"
 )
@@ -90,6 +91,26 @@ func RecibirParametrosConfiguracion() string {
 	nombreArchivoConfiguracion := os.Args[1]
 
 	return nombreArchivoConfiguracion
+}
+
+func IniciarMemoria(nombreArchivoConfiguracion string) {
+	//*Inicializa la config de memoria
+	fmt.Println("Iniciando configuracion " + nombreArchivoConfiguracion + " de memoria...")
+	globals.IniciarConfiguracion("utils/configs/"+nombreArchivoConfiguracion+".json", &Config_Memoria)
+
+	//*Crea el archivo donde se logea memoria
+	fmt.Println("Iniciando logger de memoria...")
+	Logger = globals.ConfigurarLogger("memoria", Config_Memoria.LogLevel)
+
+	//*Levanta la memoria con su configuración
+	fmt.Println("Levantando memoria...")
+	NuevaMemoria()
+
+	//*Prende el server de memoria
+	fmt.Println("Iniciando servidor de MEMORIA, en el puerto:", Config_Memoria.PortMemory)
+	go IniciarServerMemoria(Config_Memoria.PortMemory)
+
+	fmt.Println("Memoria funcionando.")
 }
 
 func NuevaMemoria() {
