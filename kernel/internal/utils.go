@@ -99,10 +99,10 @@ func InicializarProcesoCero(tamanioProceso int, nombreArchivoPseudocodigo string
 
 }
 
-func BuscarProcesoEnCola(pid int, cola *[]globals.PCB) *globals.PCB {
+func BuscarProcesoEnCola(pid int, cola *[]*globals.PCB) *globals.PCB {
 	for i, proceso := range *cola {
 		if proceso.PID == pid {
-			return &(*cola)[i]
+			return (*cola)[i]
 		}
 	}
 	return nil
@@ -137,7 +137,7 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 	// Agregar el proceso a la cola de New
 	pcb.MetricasDeEstados[globals.New] = 1
 	pcb.MetricasDeTiempos[globals.New] = time.Since(pcb.InicioEstadoActual)
-	ColaNew = append(ColaNew, pcb)
+	ColaNew = append(ColaNew, &pcb)
 
 	// Desbloquear el mutex de la cola de New
 	ColaMutexes[&ColaNew].Unlock()
@@ -150,13 +150,13 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 
 }
 
-func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
+func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 
 	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
 
-	fmt.Printf("1*) PID: %d ESTADO: %s\n", proceso.PID, proceso.Estado)
-	Logger.Debug("1*)", "PID", proceso.PID, "ESTADO", proceso.Estado)
+	fmt.Printf("1*) PID: %d ESTADO: %s Estado Anterior: %s\n", proceso.PID, proceso.Estado, procesoEstadoAnterior)
+	Logger.Debug("1*)", "PID", proceso.PID, "ESTADO", proceso.Estado, "Estado Anterior", procesoEstadoAnterior)
 
 	// Obtener el mutex de la cola de origen
 	var mutexOrigen *sync.Mutex
@@ -191,14 +191,11 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 	// Cambiar el estado del proceso y añadirlo a la cola de destino
 	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
 		proceso.Estado = estadoDestino
-		procesoCopia := *proceso
-		*colaDestino = append(*colaDestino, procesoCopia)
+		*colaDestino = append(*colaDestino, proceso)
 	}
 
 	fmt.Printf("2*) PID: %d ESTADO: %s\n", proceso.PID, proceso.Estado)
 	Logger.Debug("2*)", "PID", proceso.PID, "ESTADO", proceso.Estado)
-
-	procesoCopia := *proceso
 
 	// Buscar y eliminar el proceso de su cola actual
 	for cola, estado := range ColaEstados {
@@ -214,10 +211,8 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 		}
 	}
 
-	proceso = &procesoCopia
-
-	fmt.Printf("3*) PID: %d ESTADO: %s\n", proceso.PID, proceso.Estado)
-	Logger.Debug("3*)", "PID", proceso.PID, "ESTADO", proceso.Estado)
+	fmt.Printf("3*) PID: %d ESTADO: %s Estado Anterior: %s\n", proceso.PID, proceso.Estado, procesoEstadoAnterior)
+	Logger.Debug("3*)", "PID", proceso.PID, "ESTADO", proceso.Estado, "EstadoAnterior", procesoEstadoAnterior)
 
 	// Actualizar métricas y tiempos si el estado cambió
 	if proceso.Estado != procesoEstadoAnterior {
@@ -227,7 +222,7 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 
 		// Si el proceso estaba en Exec, guardar el tiempo de la última ráfaga
 		if procesoEstadoAnterior == globals.Exec {
-			proceso.TiempoDeUltimaRafaga = time.Duration(time.Since(proceso.InicioEjecucion).Milliseconds())
+			proceso.TiempoDeUltimaRafaga = time.Since(proceso.InicioEjecucion)
 			Logger.Debug("$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga.Milliseconds())
 			fmt.Println("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga.Milliseconds())
 		}
@@ -326,7 +321,7 @@ func MoverProcesoDeBlockedAReady(pid int) {
 
 }
 
-func TerminarProceso(pid int, colaOrigen *[]globals.PCB) {
+func TerminarProceso(pid int, colaOrigen *[]*globals.PCB) {
 
 	proceso := BuscarProcesoEnCola(pid, colaOrigen)
 

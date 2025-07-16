@@ -63,6 +63,8 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 
 		// Movemos el proceso a la cola Exec
 		MoverProcesoACola(&proceso, &ColaExec)
+		Logger.Debug("Proceso movido a cola Exec", "proceso_pid", proceso.PID, "Inicio de ejecución", proceso.InicioEjecucion)
+		fmt.Println("Proceso", proceso.PID, "movido a la cola Exec", "Inicio de ejecución:", proceso.InicioEjecucion)
 
 		Logger.Debug("CPU elegida: ", "cpu_id", cpu.CPUID, ", Mandando proceso_pid: ", proceso.PID)
 		EnviarProcesoACPU(cpu.Ip, cpu.Puerto, proceso.PID, proceso.PC)

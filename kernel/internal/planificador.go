@@ -9,22 +9,22 @@ import (
 	"time"
 )
 
-var ColaNew = make([]globals.PCB, 0)
+var ColaNew = make([]*globals.PCB, 0)
 var MutexNew sync.Mutex
-var ColaReady = make([]globals.PCB, 0)
+var ColaReady = make([]*globals.PCB, 0)
 var MutexReady sync.Mutex
-var ColaExec = make([]globals.PCB, 0)
+var ColaExec = make([]*globals.PCB, 0)
 var MutexExec sync.Mutex
-var ColaBlocked = make([]globals.PCB, 0)
+var ColaBlocked = make([]*globals.PCB, 0)
 var MutexBlocked sync.Mutex
-var ColaSuspReady = make([]globals.PCB, 0)
+var ColaSuspReady = make([]*globals.PCB, 0)
 var MutexSuspReady sync.Mutex
-var ColaSuspBlocked = make([]globals.PCB, 0)
+var ColaSuspBlocked = make([]*globals.PCB, 0)
 var MutexSuspBlocked sync.Mutex
-var ColaExit = make([]globals.PCB, 0)
+var ColaExit = make([]*globals.PCB, 0)
 var MutexExit sync.Mutex
 
-var ColaEstados = map[*[]globals.PCB]globals.Estado{
+var ColaEstados = map[*[]*globals.PCB]globals.Estado{
 	&ColaNew:         globals.Estado("NEW"),
 	&ColaReady:       globals.Estado("READY"),
 	&ColaExec:        globals.Estado("EXEC"),
@@ -34,7 +34,7 @@ var ColaEstados = map[*[]globals.PCB]globals.Estado{
 	&ColaExit:        globals.Estado("EXIT"),
 }
 
-var ColaMutexes = map[*[]globals.PCB]*sync.Mutex{
+var ColaMutexes = map[*[]*globals.PCB]*sync.Mutex{
 	&ColaNew:         &MutexNew,
 	&ColaReady:       &MutexReady,
 	&ColaExec:        &MutexExec,
@@ -92,11 +92,11 @@ func PlanificadorLargoPlazo() {
 
 				// Procesa las colas SuspReady o New
 				if len(ColaSuspReady) != 0 {
-					if !procesarCola(&ColaSuspReady) {
+					if !procesarCola(ColaSuspReady) {
 						break
 					}
 				} else {
-					if !procesarCola(&ColaNew) {
+					if !procesarCola(ColaNew) {
 						break
 					}
 				}
@@ -112,7 +112,7 @@ func PlanificadorLargoPlazo() {
 				//Verifico si hay procesos en la cola SuspReady
 				if len(ColaSuspReady) != 0 {
 					// Pido espacio en memoria para el primer proceso de la cola New
-					respuestaMemoria := PedirEspacioAMemoria(ColaSuspReady[pcbMasChico()])
+					respuestaMemoria := PedirEspacioAMemoria(*ColaSuspReady[pcbMasChico()])
 
 					// Si memoria responde que no hay espacio...
 					if !respuestaMemoria {
@@ -122,11 +122,11 @@ func PlanificadorLargoPlazo() {
 						break // Salimos del for para esperar un nuevo proceso en New
 					}
 
-					MoverProcesoACola(&ColaSuspReady[pcbMasChico()], &ColaReady)
+					MoverProcesoACola(ColaSuspReady[pcbMasChico()], &ColaReady)
 					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 				} else {
 					// Pido espacio en memoria para el primer proceso de la cola New
-					respuestaMemoria := PedirEspacioAMemoria(ColaNew[pcbMasChico()])
+					respuestaMemoria := PedirEspacioAMemoria(*ColaNew[pcbMasChico()])
 
 					// Si memoria responde que no hay espacio...
 					if !respuestaMemoria {
@@ -136,7 +136,7 @@ func PlanificadorLargoPlazo() {
 						break // Salimos del for para esperar un nuevo proceso en New
 					}
 
-					MoverProcesoACola(&ColaNew[pcbMasChico()], &ColaReady)
+					MoverProcesoACola(ColaNew[pcbMasChico()], &ColaReady)
 					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 				}
 
@@ -154,9 +154,9 @@ func PlanificadorLargoPlazo() {
 	}
 }
 
-func procesarCola(cola *[]globals.PCB) bool {
+func procesarCola(cola []*globals.PCB) bool {
 	// Pide espacio en memoria para el primer proceso de la cola
-	respuestaMemoria := PedirEspacioAMemoria((*cola)[0])
+	respuestaMemoria := PedirEspacioAMemoria(*cola[0])
 
 	if !respuestaMemoria {
 		MutexHayEspacioEnMemoria.Lock()
@@ -166,7 +166,7 @@ func procesarCola(cola *[]globals.PCB) bool {
 	}
 
 	// Mueve el proceso a la cola Ready y notifica al planificador de corto plazo
-	MoverProcesoACola(&(*cola)[0], &ColaReady)
+	MoverProcesoACola(cola[0], &ColaReady)
 	CortoNotifier <- struct{}{}
 	return true
 }
@@ -188,7 +188,7 @@ func PlanificadorCortoPlazo() {
 			if algoritmo == "FIFO" && CpuLibres {
 
 				// Sabemos que el proceso que acabamos de mover a Exec es el último de la cola
-				primerProcesoEnReady := &ColaReady[0]
+				primerProcesoEnReady := ColaReady[0]
 
 				// Intentamos enviar el proceso a la CPU
 				if ElegirCpuYMandarProceso(*primerProcesoEnReady) {
@@ -270,7 +270,7 @@ func PlanificadorCortoPlazo() {
 				// Si no hay cpu libres, elegir a victima de SRT, el que tenga mayor tiempo restante en la CPU
 				pcbVictima := buscarTiempoRestanteEnCpuMasAlto()
 				// Agarro el proceso que generó la comparación
-				ultimoProcesoEnReady := &ColaReady[len(ColaReady)-1]
+				ultimoProcesoEnReady := ColaReady[len(ColaReady)-1]
 
 				if ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga < tiempoRestanteEnCpu(*pcbVictima) {
 					// Pido el desalojo a la CPU del proceso víctima
@@ -330,7 +330,7 @@ func elegirPcbConEstimacionMasChica() *globals.PCB {
 			minIdx = i
 		}
 	}
-	return &ColaReady[minIdx]
+	return ColaReady[minIdx]
 
 }
 
@@ -340,11 +340,11 @@ func buscarTiempoRestanteEnCpuMasAlto() *globals.PCB {
 	}
 	maxIdx := 0
 	for i := 1; i < len(ColaExec); i++ {
-		if tiempoRestanteEnCpu(ColaExec[i]) > tiempoRestanteEnCpu(ColaExec[maxIdx]) {
+		if tiempoRestanteEnCpu(*ColaExec[i]) > tiempoRestanteEnCpu(*ColaExec[maxIdx]) {
 			maxIdx = i
 		}
 	}
-	return &ColaExec[maxIdx]
+	return ColaExec[maxIdx]
 }
 
 func tiempoRestanteEnCpu(pcb globals.PCB) float64 {
