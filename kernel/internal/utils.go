@@ -129,6 +129,7 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 			YaCalculado:    true,
 		},
 		TiempoDeUltimaRafaga: 0,
+		InicioEjecucion:      time.Time{},
 	}
 
 	// Bloquear el mutex de la cola de New
@@ -341,6 +342,7 @@ func TerminarProceso(pid int, colaOrigen *[]*globals.PCB) {
 		MutexHayEspacioEnMemoria.Unlock()
 
 		LargoNotifier <- struct{}{} // Como se liberó memoria, notificamos al planificador de largo plazo
+		CortoNotifier <- struct{}{} // Notificamos al planificador de corto plazo
 	} else {
 		fmt.Println("Error al liberar memoria del proceso:", pid)
 	}

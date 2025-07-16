@@ -344,6 +344,7 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 		mensajeDesalojoExitoso := fmt.Sprintf("Desalojo exitoso del PID %d de la CPU %s", pid, cpuDelPID.CPUID)
 		Logger.Debug(mensajeDesalojoExitoso)
 		fmt.Println(mensajeDesalojoExitoso)
+		CortoNotifier <- struct{}{} // Notificamos al planificador de corto plazo que se ha desalojado un proceso
 	} else {
 		mensajeDesalojoFallido := fmt.Sprintf("Desalojo fallido del PID %d de la CPU %s", pid, cpuDelPID.CPUID)
 		Logger.Debug(mensajeDesalojoFallido)

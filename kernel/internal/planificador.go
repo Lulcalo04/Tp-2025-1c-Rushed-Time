@@ -172,7 +172,7 @@ func procesarCola(cola []*globals.PCB) bool {
 }
 
 var MutexPlanificadorCorto sync.Mutex // Mutex para evitar doble planificador de corto plazo
-var CortoNotifier = make(chan struct{})
+var CortoNotifier = make(chan struct{}, 999)
 
 func PlanificadorCortoPlazo() {
 	algoritmo := Config_Kernel.ReadyIngressAlgorithm
@@ -268,11 +268,54 @@ func PlanificadorCortoPlazo() {
 				}
 			} else if algoritmo == "SRT" && !CpuLibres {
 				// Si no hay cpu libres, elegir a victima de SRT, el que tenga mayor tiempo restante en la CPU
+				MutexReady.Lock()
+				for i := range ColaReady {
+					// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
+					if ColaReady[i].MetricasDeEstados[globals.Exec] != 0 && !ColaReady[i].EstimacionDeRafaga.YaCalculado {
+						//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
+						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * float64(ColaReady[i].TiempoDeUltimaRafaga.Milliseconds())) +
+							(1-Config_Kernel.Alpha)*ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga
+						ColaReady[i].EstimacionDeRafaga.YaCalculado = true
+						fmt.Println("Estimacion de rafaga del ", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+						Logger.Debug("Estimacion de rafaga del ", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+					}
+				}
+				MutexReady.Unlock()
+
 				pcbVictima := buscarTiempoRestanteEnCpuMasAlto()
+				//Logger.Debug("P.CP: Buscando víctima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima))
+				//fmt.Println("P.CP: Buscando víctima de SRT, PID:", pcbVictima.PID, "con tiempo restante en CPU:", tiempoRestanteEnCpu(*pcbVictima))
+
 				// Agarro el proceso que generó la comparación
 				ultimoProcesoEnReady := ColaReady[len(ColaReady)-1]
+				//Logger.Debug("P.CP: Último proceso en Ready", "PID", ultimoProcesoEnReady.PID, "Estimación de ráfaga", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
+				//fmt.Println("P.CP: Último proceso en Ready, PID:", ultimoProcesoEnReady.PID, "Estimación de ráfaga:", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
 
-				if ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga < tiempoRestanteEnCpu(*pcbVictima) {
+				/* for i := range ColaExec {
+					//fmt.Println("Cola de EXEC: ", ColaExec[i].PID)
+					Logger.Debug("Cola de EXEC", "PID", ColaExec[i].PID)
+				} */
+
+				if pcbVictima == nil {
+					/* fmt.Println("No hay procesos en Exec para comparar")
+					Logger.Debug("No hay procesos en Exec para comparar")
+					if ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
+						break // Salimos del for para esperar un nuevo proceso en Ready
+					} else {
+						// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
+						MutexCpuLibres.Lock()
+						CpuLibres = false // Indicamos que la CPU no está libre
+						MutexCpuLibres.Unlock()
+					} */
+					continue
+				}
+				fmt.Println("P.CP: Buscando víctima de SRT, PID:", pcbVictima.PID, "con tiempo restante en CPU:", tiempoRestanteEnCpu(*pcbVictima), "y estimación de ráfaga del último en Ready:", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
+				Logger.Debug("P.CP: Buscando víctima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
+
+				if tiempoRestanteEnCpu(*pcbVictima) > ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga {
+
+					Logger.Debug("Quiero desalojar a la victima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
+					fmt.Println("Quiero desalojar a la victima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
 					// Pido el desalojo a la CPU del proceso víctima
 					PeticionDesalojo(pcbVictima.PID, "Planificador")
 
@@ -290,9 +333,18 @@ func PlanificadorCortoPlazo() {
 					}
 
 				}
+				break
 			}
 		}
 		MutexPlanificadorCorto.Unlock()
+		// Drenar señales adicionales en el canal para evitar interrupciones
+		select {
+		case <-CortoNotifier:
+			Logger.Debug("P.CP: señal recibida, acumulada para una proxima iteración")
+			fmt.Println("P.CP: señal recibida, acumulada para una proxima iteración")
+		default:
+			// No hay más señales, continuar normalmente
+		}
 	}
 }
 

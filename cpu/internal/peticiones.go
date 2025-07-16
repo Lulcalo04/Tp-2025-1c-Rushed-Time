@@ -368,8 +368,8 @@ func PeticionDesalojoKernel() {
 	}
 
 	if respuestaKernel.Respuesta {
-		Logger.Debug("Kernel aceptó el desalojo", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la cpuid", CPUId)
-		fmt.Println("Desalojo aceptado por el Kernel para el proceso", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la CPU", CPUId)
+		Logger.Debug("Se desalojo a ", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la cpuid", CPUId, "por el motivo", ProcesoEjecutando.MotivoDesalojo)
+		fmt.Println("Se desalojo a ", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la cpuid", CPUId, "por el motivo", ProcesoEjecutando.MotivoDesalojo)
 	} else {
 		Logger.Debug("No se pudo desalojar el proceso", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la cpuid", CPUId)
 		fmt.Println("No se pudo desalojar el proceso", ProcesoEjecutando.PID, "por el Kernel", "pc", ProcesoEjecutando.PC, "de la CPU", CPUId)
