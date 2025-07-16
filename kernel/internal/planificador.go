@@ -215,12 +215,18 @@ func PlanificadorCortoPlazo() {
 						//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
 						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * float64(ColaReady[i].TiempoDeUltimaRafaga.Milliseconds())) +
 							(1-Config_Kernel.Alpha)*ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga
+						Logger.Debug("Estimacion de rafaga del ", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+						fmt.Println("Estimacion de rafaga del ", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+						// Marcamos que ya calculamos la estimación de ráfaga
 						ColaReady[i].EstimacionDeRafaga.YaCalculado = true
 					}
 				}
 
 				// Una vez que calculamos las estimaciones de ráfaga, elegimos el proceso con la estimación más pequeña
 				pcbElegido := elegirPcbConEstimacionMasChica()
+
+				Logger.Debug("Proceso elegido ", "PID", pcbElegido.PID, "con estimación de ráfaga:", pcbElegido.EstimacionDeRafaga.TiempoDeRafaga)
+				fmt.Println("Proceso elegido ", "PID", pcbElegido.PID, "con estimación de ráfaga:", pcbElegido.EstimacionDeRafaga.TiempoDeRafaga)
 
 				// Cambiamos el boolean de YaCalculado a false para que se vuelva a calcular en la próxima iteración
 				pcbElegido.EstimacionDeRafaga.YaCalculado = false
@@ -306,11 +312,20 @@ func pcbMasChico() int {
 
 func elegirPcbConEstimacionMasChica() *globals.PCB {
 
+	Logger.Debug("## BUSCANDO PCB CON MENOR ESTIMACION DE RAFAGA ##")
+	fmt.Println("## BUSCANDO PCB CON MENOR ESTIMACION DE RAFAGA ##")
+
 	if len(ColaReady) == 0 {
+		Logger.Debug("No hay procesos en la cola Ready")
+		fmt.Println("No hay procesos en la cola Ready")
 		return nil
 	}
 	minIdx := 0
 	for i := 1; i < len(ColaReady); i++ {
+
+		Logger.Debug("Estimacion de rafaga del ", "PID", ColaReady[i].PID, ":", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+		fmt.Println("Estimacion de rafaga del ", "PID", ColaReady[i].PID, ":", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+
 		if ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga < ColaReady[minIdx].EstimacionDeRafaga.TiempoDeRafaga {
 			minIdx = i
 		}

@@ -590,6 +590,7 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
 	// Preparar y enviar respuesta
 	resp := globals.InstruccionAMemoriaResponse{
 		InstruccionAEjecutar: instrucciones[request.PC],

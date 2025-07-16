@@ -227,7 +227,13 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]globals.PCB) {
 
 		// Si el proceso estaba en Exec, guardar el tiempo de la última ráfaga
 		if procesoEstadoAnterior == globals.Exec {
-			proceso.TiempoDeUltimaRafaga = time.Since(proceso.InicioEstadoActual)
+			proceso.TiempoDeUltimaRafaga = time.Duration(time.Since(proceso.InicioEjecucion).Milliseconds())
+			Logger.Debug("$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga.Milliseconds())
+			fmt.Println("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga.Milliseconds())
+		}
+
+		if proceso.Estado == globals.Exec {
+			proceso.InicioEjecucion = time.Now()
 		}
 
 		// Actualizar la métrica de tiempo por estado del proceso
