@@ -272,17 +272,18 @@ func MoverProcesoDeBlockedAReady(pid int) {
 
 	// Si no se encuentra el PCB del proceso en la cola de blocked, xq el plani de mediano plazo lo movió a SuspBlocked
 	if pcbDelProceso == nil {
-		Logger.Debug("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
-		fmt.Println("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
+		Logger.Debug("No se encontro al buscar el PCB del proceso en la cola de blocked", "pid", pid)
+		fmt.Println("No se encontro al buscar el PCB del proceso en la cola de blocked", "pid", pid)
 
 		// Busco el PCB del proceso en la cola de SuspBlocked
 		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
 		if pcbDelProceso == nil {
-			Logger.Debug("Error al buscar el PCB del proceso en la cola de SuspBlocked", "pid", pid)
-			fmt.Println("Error al buscar el PCB del proceso en la cola de SuspBlocked", "pid", pid)
+			Logger.Debug("No se encontro al buscar el PCB del proceso en la cola de SuspBlocked", "pid", pid)
+			fmt.Println("No se encontro al buscar el PCB del proceso en la cola de SuspBlocked", "pid", pid)
 		}
 
-		//! SACAR EL PROCESO DE SWAP
+		// SACAMOS EL PROCESO DE SWAP
+		PedirLiberacionDeSwap(pid)
 
 		//Lo muevo a la cola destino
 		MoverProcesoACola(pcbDelProceso, &ColaSuspReady)
@@ -411,7 +412,10 @@ func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
 			if BuscarProcesoEnCola(pidLocal, &ColaBlocked) != nil {
 				MoverProcesoACola(pcb, &ColaSuspBlocked)
 
-				//! ENVIAR PROCESO A SWAP
+				// ENVIAMOS EL PROCESO A SWAP
+				PedirSwapping(pcb.PID)
+
+				HayEspacioEnMemoria = true // Indicamos que hay espacio en memoria
 
 				Logger.Debug("Enviando notificación a LargoNotifier")
 				LargoNotifier <- struct{}{}

@@ -116,11 +116,17 @@ func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
 		return false
 	}
 
-	mensajeEspacioConcedido := fmt.Sprintf("Espacio en memoria concedido para el PID %d: %s", pcbDelProceso.PID, respuestaMemoria.Mensaje)
-	fmt.Println(mensajeEspacioConcedido)
-	Logger.Debug(mensajeEspacioConcedido)
-
-	return true
+	if respuestaMemoria.Respuesta {
+		mensajeEspacioConcedido := fmt.Sprintf("Espacio en memoria concedido para el PID %d: %s", pcbDelProceso.PID, respuestaMemoria.Mensaje)
+		fmt.Println(mensajeEspacioConcedido)
+		Logger.Debug(mensajeEspacioConcedido)
+		return true
+	} else {
+		mensajeEspacioNoConcedido := fmt.Sprintf("Espacio en memoria NO concedido para el PID %d: %s", pcbDelProceso.PID, respuestaMemoria.Mensaje)
+		fmt.Println(mensajeEspacioNoConcedido)
+		Logger.Debug(mensajeEspacioNoConcedido)
+		return false
+	}
 
 }
 
@@ -225,6 +231,86 @@ func PedirDumpMemory(pid int) bool {
 		return false
 	}
 
+}
+
+func PedirSwapping(pid int) bool {
+	// Declaro la URL a la que me voy a conectar (handler de swappeo con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/espacio/entrarASwap", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.SwappingRequest{
+		PID: pid,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return false
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	var respuestaMemoria globals.SwappingResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return false
+	}
+
+	if respuestaMemoria.Respuesta {
+		Logger.Debug("Swapping Exitoso", "PID", pid)
+		return true
+	} else {
+		Logger.Debug("No se pudo hacer el Swapping", "PID", pid)
+		return false
+	}
+}
+
+func PedirLiberacionDeSwap(pid int) bool {
+	// Declaro la URL a la que me voy a conectar (handler de liberación de swap con el puerto del server)
+	url := fmt.Sprintf("http://%s:%d/espacio/volverDeSwap", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
+
+	// Declaro el body de la petición
+	pedidoBody := globals.SwappingRequest{
+		PID: pid,
+	}
+
+	// Serializo el body a JSON
+	bodyBytes, err := json.Marshal(pedidoBody)
+	if err != nil {
+		Logger.Debug("Error serializando JSON", "error", err)
+		return false
+	}
+
+	// Hacemos la petición POST al server
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		Logger.Debug("Error conectando con Memoria", "error", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	var respuestaMemoria globals.SwappingResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respuestaMemoria); err != nil {
+		Logger.Debug("Error decodificando respuesta JSON", "error", err)
+		return false
+	}
+
+	if respuestaMemoria.Respuesta {
+		Logger.Debug("Liberación de Swap Exitosa", "PID", pid)
+		fmt.Println("Liberación de Swap Exitosa", "PID", pid)
+		return true
+	} else {
+		Logger.Debug("No se pudo liberar el Swap", "PID", pid)
+		fmt.Println("No se pudo liberar el Swap", "PID", pid)
+		return false
+	}
 }
 
 func EnviarProcesoAIO(instanciaDeIO InstanciaIO, pid int, milisegundosDeUso int) {

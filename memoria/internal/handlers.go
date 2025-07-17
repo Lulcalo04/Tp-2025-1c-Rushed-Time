@@ -31,8 +31,8 @@ func IniciarServerMemoria(puerto int) {
 	mux.HandleFunc("/ping", PingHandler)
 	mux.HandleFunc("/espacio/pedir", PidenEspacioHandler)
 	mux.HandleFunc("/espacio/liberar", LiberarEspacioHandler)
-	mux.HandleFunc("/syscall/swappeo", SwappingHandler)    // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
-	mux.HandleFunc("/syscall/restaurar", RestaurarHandler) // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
+	mux.HandleFunc("/espacio/entrarASwap", EntrarASwap)
+	mux.HandleFunc("/espacio/volverDeSwap", VolverDeSwap)
 	mux.HandleFunc("/cpu/instrucciones", InstruccionesHandler)
 	mux.HandleFunc("/cpu/frame", CalcularFrameHandler) // pedido de frame desde CPU para la traduccion de direcciones
 	mux.HandleFunc("/cpu/write", HacerWriteHandler)
@@ -365,80 +365,84 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 
 // -----------------------------------------------Funciones de Swappeo-------------------------------------------------------------
 
-// * Endpoint de swappeo = /syscall/swappeo
-func SwappingHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
-		return
-	}
-	var request struct {
-		PID int `json:"pid"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "JSON inválido", http.StatusBadRequest)
+// * Endpoint de swappeo = /espacio/entrarASwap
+func EntrarASwap(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// Decodificar el body
+	var requestSwap globals.SwappingRequest
+	if err := json.NewDecoder(r.Body).Decode(&requestSwap); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
 
-	pi, ok := MemoriaGlobal.infoProc[request.PID]
+	var responseSwap = globals.SwappingResponse{
+		Respuesta: true,
+	}
+
+	pi, ok := MemoriaGlobal.infoProc[requestSwap.PID]
 	if !ok {
 		http.Error(w, "Proceso no existe", http.StatusNotFound)
+		responseSwap.Respuesta = false
+		json.NewEncoder(w).Encode(responseSwap)
 		return
 	}
 
 	// Suspender todas sus páginas
 	for i := range pi.Pages {
-		if err := MemoriaGlobal.SuspenderPagina(request.PID, i); err != nil {
+		if err := MemoriaGlobal.SuspenderPagina(requestSwap.PID, i); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			responseSwap.Respuesta = false
+			json.NewEncoder(w).Encode(responseSwap)
 			return
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
-	json.NewEncoder(w).Encode(map[string]string{
-		"modulo": "Memoria", "status": "suspendido",
-	})
+	json.NewEncoder(w).Encode(responseSwap)
 
 	// & Actualizar las métricas del proceso
-	MemoriaGlobal.infoProc[request.PID].Metricas.BajadasASwap++
+	MemoriaGlobal.infoProc[requestSwap.PID].Metricas.BajadasASwap++
 
-	Logger.Debug("Proceso swappeado exitosamente", "PID", request.PID)
+	Logger.Debug("Proceso swappeado exitosamente", "PID", requestSwap.PID)
 }
 
-// *Endpoint de restauracion = /syscall/restaurar
-func RestaurarHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+// *Endpoint de restauracion = /espacio/volverDeSwap
+func VolverDeSwap(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Decodificar el body
+	var requestSwap globals.SwappingRequest
+	if err := json.NewDecoder(r.Body).Decode(&requestSwap); err != nil {
+		http.Error(w, "Error al decodificar JSON", http.StatusBadRequest)
 		return
 	}
 
-	var req struct {
-		PID int `json:"pid"`
+	var responseSwap = globals.SwappingResponse{
+		Respuesta: true,
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "JSON inválido", http.StatusBadRequest)
-		return
-	}
-
-	pi, ok := MemoriaGlobal.infoProc[req.PID]
+	pi, ok := MemoriaGlobal.infoProc[requestSwap.PID]
 	if !ok {
 		http.Error(w, "Proceso no existe", http.StatusNotFound)
+		responseSwap.Respuesta = false
+		json.NewEncoder(w).Encode(responseSwap)
 		return
 	}
 
 	for i := range pi.Pages {
-		if err := MemoriaGlobal.RestaurarPagina(req.PID, i); err != nil {
+		if err := MemoriaGlobal.RestaurarPagina(requestSwap.PID, i); err != nil {
 			http.Error(w, err.Error(), http.StatusInsufficientStorage)
+			responseSwap.Respuesta = false
+			json.NewEncoder(w).Encode(responseSwap)
 			return
 		}
 	}
-	json.NewEncoder(w).Encode(map[string]string{
-		"modulo": "Memoria", "status": "resumido",
-	})
+
+	json.NewEncoder(w).Encode(responseSwap)
 
 	//& Metricas por proceso
-	MemoriaGlobal.infoProc[req.PID].Metricas.SubidasAMemoriaPrincipal++
+	MemoriaGlobal.infoProc[requestSwap.PID].Metricas.SubidasAMemoriaPrincipal++
 }
 
 // SuspenderPagina guarda la página en swap y libera el frame en RAM. (funcion Auxiliar)
