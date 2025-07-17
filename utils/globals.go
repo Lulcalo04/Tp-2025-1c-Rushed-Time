@@ -22,7 +22,7 @@ const (
 )
 
 type EstructuraRafaga struct {
-	TiempoDeRafaga float64
+	TiempoDeRafaga time.Duration
 	YaCalculado    bool
 }
 

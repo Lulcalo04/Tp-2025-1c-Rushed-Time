@@ -597,7 +597,7 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//& Actualizo metricas:
-	MemoriaGlobal.infoProc[request.PID].Metricas.AccesoATablaDePaginas++
+	MemoriaGlobal.infoProc[request.PID].Metricas.InstruccionesSolicitadas++
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)

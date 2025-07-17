@@ -43,44 +43,55 @@ func ConfigurarLoggerCPU(cpuId string, logLevelModulo string) *slog.Logger {
 
 func LogFetchInstruccion(pid int, programCounter int) {
 	Logger.Info(fmt.Sprintf("## PID: %d - FETCH - Program Counter: %d", pid, programCounter))
+	fmt.Printf("## PID: %d - FETCH - Program Counter: %d\n", pid, programCounter)
 }
 
 func LogInterrupcionRecibida() {
 	Logger.Info("## Llega interrupción al puerto Interrupt")
+	fmt.Println("## Llega interrupción al puerto Interrupt")
 }
 
 func LogInstruccionEjecutada(pid int, instruccion string, parametros string) {
 	Logger.Info(fmt.Sprintf("## PID: %d - Ejecutando: %s - %s", pid, instruccion, parametros))
+	fmt.Printf("## PID: %d - Ejecutando: %s - %s\n", pid, instruccion, parametros)
 }
 
 func LogLecturaEscrituraMemoria(pid int, accion string, direccionFisica int, valor string) {
 	Logger.Info(fmt.Sprintf("PID: %d - Acción: %s - Dirección Física: %d - Valor: %s", pid, accion, direccionFisica, valor))
+	fmt.Printf("PID: %d - Acción: %s - Dirección Física: %d - Valor: %s\n", pid, accion, direccionFisica, valor)
 }
 
 func LogObtenerMarco(pid int, numeroPagina int, numeroMarco int) {
 	Logger.Info(fmt.Sprintf("PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid, numeroPagina, numeroMarco))
+	fmt.Printf("PID: %d - OBTENER MARCO - Página: %d - Marco: %d\n", pid, numeroPagina, numeroMarco)
 }
 
 func LogTLBHit(pid int, numeroPagina int) {
 	Logger.Info(fmt.Sprintf("PID: %d - TLB HIT - Pagina: %d", pid, numeroPagina))
+	fmt.Printf("PID: %d - TLB HIT - Pagina: %d\n", pid, numeroPagina)
 }
 
 func LogTLBMiss(pid int, numeroPagina int) {
 	Logger.Info(fmt.Sprintf("PID: %d - TLB MISS - Pagina: %d", pid, numeroPagina))
+	fmt.Printf("PID: %d - TLB MISS - Pagina: %d\n", pid, numeroPagina)
 }
 
 func LogPaginaEncontradaEnCache(pid int, numeroPagina int) {
 	Logger.Info(fmt.Sprintf("PID: %d - Cache Hit - Pagina: %d", pid, numeroPagina))
+	fmt.Printf("PID: %d - Cache Hit - Pagina: %d\n", pid, numeroPagina)
 }
 
 func LogPaginaFaltanteEnCache(pid int, numeroPagina int) {
 	Logger.Info(fmt.Sprintf("PID: %d - Cache Miss - Pagina: %d", pid, numeroPagina))
+	fmt.Printf("PID: %d - Cache Miss - Pagina: %d\n", pid, numeroPagina)
 }
 
 func LogPaginaIngresadaEnCache(pid int, numeroPagina int) {
 	Logger.Info(fmt.Sprintf("PID: %d - Cache Add - Pagina: %d", pid, numeroPagina))
+	fmt.Printf("PID: %d - Cache Add - Pagina: %d\n", pid, numeroPagina)
 }
 
 func LogPaginaActualizadaDeCacheAMemoria(pid int, numeroPagina int, frameEnMemoriaPrincipal int) {
 	Logger.Info(fmt.Sprintf("PID: %d - Memory Update - Página: %d - Frame: %d", pid, numeroPagina, frameEnMemoriaPrincipal))
+	fmt.Printf("PID: %d - Memory Update - Página: %d - Frame: %d\n", pid, numeroPagina, frameEnMemoriaPrincipal)
 }

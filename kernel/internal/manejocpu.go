@@ -67,9 +67,8 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 		fmt.Println("Proceso", proceso.PID, "movido a la cola Exec", "Inicio de ejecución:", proceso.InicioEjecucion)
 
 		Logger.Debug("CPU elegida: ", "cpu_id", cpu.CPUID, ", Mandando proceso_pid: ", proceso.PID)
+		fmt.Println("CPU elegida:", cpu.CPUID, ", Mandando proceso PID:", proceso.PID)
 		EnviarProcesoACPU(cpu.Ip, cpu.Puerto, proceso.PID, proceso.PC)
-
-		fmt.Println("Proceso", proceso.PID, "enviado a la CPU", cpu.CPUID)
 
 		return true
 	} else {

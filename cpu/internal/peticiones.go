@@ -125,7 +125,9 @@ func SolicitarSiguienteInstruccionMemoria(pid int, pc int) {
 		return
 	}
 
+	mutexProcesoEjecutando.Lock()
 	ProcesoEjecutando.InstruccionActual = respuestaMemoria.InstruccionAEjecutar
+	mutexProcesoEjecutando.Unlock()
 }
 
 func PeticionFrameAMemoria(entradasPorNivel []int, pid int) int {
@@ -335,16 +337,18 @@ func PeticionExitKernel(pid int) {
 }
 
 func PeticionDesalojoKernel() {
-	// Declaro la URL a la que me voy a conectar (handler de IO con el puerto del server)
+	// Declaro la URL a la que me voy a conectar (handler de desalojo con el puerto del server)
 	url := fmt.Sprintf("http://%s:%d/cpu/desalojo", Config_CPU.IPKernel, Config_CPU.PortKernel)
 
 	// Declaro el body de la petición
+	mutexProcesoEjecutando.Lock()
 	pedidoBody := globals.CPUtoKernelDesalojoRequest{
 		PID:    ProcesoEjecutando.PID,
 		PC:     ProcesoEjecutando.PC,
 		Motivo: ProcesoEjecutando.MotivoDesalojo,
 		CPUID:  CPUId,
 	}
+	mutexProcesoEjecutando.Unlock()
 
 	// Serializo el body a JSON
 	bodyBytes, err := json.Marshal(pedidoBody)
@@ -368,11 +372,15 @@ func PeticionDesalojoKernel() {
 	}
 
 	if respuestaKernel.Respuesta {
+		mutexProcesoEjecutando.Lock()
 		Logger.Debug("Se desalojo a ", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la cpuid", CPUId, "por el motivo", ProcesoEjecutando.MotivoDesalojo)
 		fmt.Println("Se desalojo a ", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la cpuid", CPUId, "por el motivo", ProcesoEjecutando.MotivoDesalojo)
+		mutexProcesoEjecutando.Unlock()
 	} else {
+		mutexProcesoEjecutando.Lock()
 		Logger.Debug("No se pudo desalojar el proceso", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la cpuid", CPUId)
 		fmt.Println("No se pudo desalojar el proceso", ProcesoEjecutando.PID, "por el Kernel", "pc", ProcesoEjecutando.PC, "de la CPU", CPUId)
+		mutexProcesoEjecutando.Unlock()
 	}
 }
 

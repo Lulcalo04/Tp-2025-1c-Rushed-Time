@@ -52,6 +52,8 @@ var argumentoInstrucciones []string
 
 var mutexProcesoEjecutando sync.Mutex
 
+var mutexCicloDeInstruccion sync.Mutex
+
 // &-------------------------------------------Funciones de inicialización de CPU-------------------------------------------
 
 func RecibirParametrosConfiguracion() string {
@@ -130,10 +132,8 @@ func Decode() {
 	// Devuelve en un slice de strings las palabras de la instruccion actual separadas por espacios
 	argumentoInstrucciones = strings.Fields(ProcesoEjecutando.InstruccionActual)
 
-	fmt.Printf("PID: %d - %s\n", ProcesoEjecutando.PID, argumentoInstrucciones)
-
-	if (argumentoInstrucciones[0] == "WRITE") || (argumentoInstrucciones[0] == "READ") || (argumentoInstrucciones[0] == "GOTO") {
-		// Si la instruccion es WRITE READ O GOTO, Se tiene que utilizar la MMU para traducir la direccion logica a fisica
+	if (argumentoInstrucciones[0] == "WRITE") || (argumentoInstrucciones[0] == "READ") {
+		// Si la instruccion es WRITE o READ, Se tiene que utilizar la MMU para traducir la direccion logica a fisica
 		InstruccionUsaMemoria = true
 	}
 
@@ -151,7 +151,6 @@ func Execute() {
 	}
 
 	if InstruccionUsaMemoria {
-		fmt.Println("argumentoInstrucciones:", argumentoInstrucciones)
 		//Averiguar la pagina de esa Direccion Logica para saber si la tiene cache
 		numeroDePagina, direccionLogicaInt := CalculoPagina(argumentoInstrucciones[1])
 		var desplazamiento int = direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina
@@ -219,11 +218,6 @@ func CheckInterrupt() bool {
 
 	//Si hay interrupcion por atender..
 	if ProcesoEjecutando.Interrupt {
-		//Mutex para evitar condiciones de carrera
-		//Marcamos que la interrupcion fue atendida
-		mutexProcesoEjecutando.Lock()
-		ProcesoEjecutando.Interrupt = false
-		mutexProcesoEjecutando.Unlock()
 
 		if TLBHabilitada {
 			// Liberamos las entradas de la TLB usadas por el proceso.
@@ -238,7 +232,14 @@ func CheckInterrupt() bool {
 		//Le avisamos a kernel que desalojamos
 		PeticionDesalojoKernel()
 
+		//Marcamos que la interrupcion fue atendida
+		mutexProcesoEjecutando.Lock()
+		ProcesoEjecutando.Interrupt = false
+		ProcesoEjecutando.MotivoDesalojo = ""
+		mutexProcesoEjecutando.Unlock()
+
 		//Cortamos bucle de ciclo de instruccion
+		mutexCicloDeInstruccion.Unlock()
 		return true
 	}
 

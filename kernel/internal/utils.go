@@ -125,7 +125,7 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 		MetricasDeTiempos:  make(map[globals.Estado]time.Duration),
 		TamanioEnMemoria:   tamanioEnMemoria,
 		EstimacionDeRafaga: globals.EstructuraRafaga{
-			TiempoDeRafaga: float64(Config_Kernel.InitialEstimate),
+			TiempoDeRafaga: time.Duration(Config_Kernel.InitialEstimate) * time.Millisecond,
 			YaCalculado:    true,
 		},
 		TiempoDeUltimaRafaga: 0,
@@ -155,9 +155,6 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 
 	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
-
-	fmt.Printf("1*) PID: %d ESTADO: %s Estado Anterior: %s\n", proceso.PID, proceso.Estado, procesoEstadoAnterior)
-	Logger.Debug("1*)", "PID", proceso.PID, "ESTADO", proceso.Estado, "Estado Anterior", procesoEstadoAnterior)
 
 	// Obtener el mutex de la cola de origen
 	var mutexOrigen *sync.Mutex
@@ -195,9 +192,6 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 		*colaDestino = append(*colaDestino, proceso)
 	}
 
-	fmt.Printf("2*) PID: %d ESTADO: %s\n", proceso.PID, proceso.Estado)
-	Logger.Debug("2*)", "PID", proceso.PID, "ESTADO", proceso.Estado)
-
 	// Buscar y eliminar el proceso de su cola actual
 	for cola, estado := range ColaEstados {
 		if procesoEstadoAnterior == estado {
@@ -212,19 +206,13 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 		}
 	}
 
-	fmt.Printf("3*) PID: %d ESTADO: %s Estado Anterior: %s\n", proceso.PID, proceso.Estado, procesoEstadoAnterior)
-	Logger.Debug("3*)", "PID", proceso.PID, "ESTADO", proceso.Estado, "EstadoAnterior", procesoEstadoAnterior)
-
 	// Actualizar métricas y tiempos si el estado cambió
 	if proceso.Estado != procesoEstadoAnterior {
-
-		fmt.Printf("Sume 1 al estado %s del proceso %d\n", proceso.Estado, proceso.PID)
-		Logger.Debug("Sume 1 al estado", "estado", proceso.Estado, "pid", proceso.PID)
 
 		// Si el proceso estaba en Exec, guardar el tiempo de la última ráfaga
 		if procesoEstadoAnterior == globals.Exec {
 			proceso.TiempoDeUltimaRafaga = time.Since(proceso.InicioEjecucion)
-			Logger.Debug("$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga.Milliseconds())
+			Logger.Debug("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga.Milliseconds())
 			fmt.Println("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga.Milliseconds())
 		}
 
@@ -247,9 +235,6 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 		Logger.Debug("El proceso ya estaba en el estado destino", "pid", proceso.PID, "estado", proceso.Estado)
 		fmt.Println("El proceso ya estaba en el estado destino", "pid", proceso.PID, "estado", proceso.Estado)
 	}
-
-	fmt.Printf("4*) PID: %d ESTADO: %s\n", proceso.PID, proceso.Estado)
-	Logger.Debug("4*)", "PID", proceso.PID, "ESTADO", proceso.Estado)
 }
 
 func MoverProcesoDeExecABlocked(pid int) {
@@ -325,24 +310,28 @@ func MoverProcesoDeBlockedAReady(pid int) {
 func TerminarProceso(pid int, colaOrigen *[]*globals.PCB) {
 
 	proceso := BuscarProcesoEnCola(pid, colaOrigen)
+	if proceso == nil {
+		Logger.Debug("Proceso no encontrado en la cola de origen al terminar proceso", "pid", pid)
+		fmt.Println("Proceso no encontrado en la cola de origen al terminar proceso", "pid", pid)
+		return
+	}
 
 	if !PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
 		Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
 		return
 	}
 
+	MoverProcesoACola(proceso, &ColaExit)
+
 	respuestaMemoria := LiberarProcesoEnMemoria(pid)
 
 	if respuestaMemoria {
-
-		MoverProcesoACola(proceso, &ColaExit)
 
 		MutexHayEspacioEnMemoria.Lock()
 		HayEspacioEnMemoria = true
 		MutexHayEspacioEnMemoria.Unlock()
 
 		LargoNotifier <- struct{}{} // Como se liberó memoria, notificamos al planificador de largo plazo
-		CortoNotifier <- struct{}{} // Notificamos al planificador de corto plazo
 	} else {
 		fmt.Println("Error al liberar memoria del proceso:", pid)
 	}
@@ -353,30 +342,19 @@ func TerminarProceso(pid int, colaOrigen *[]*globals.PCB) {
 	LogMetricasDeEstado(*proceso)
 }
 
+var CpuLiberada bool = true // Variable para indicar si la CPU fue liberada por el proceso que estaba ejecutando
+var MutexCpuLiberada sync.Mutex
+
 func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 	mensajePedidoDesalojo := fmt.Sprintf("Analizando desalojo de CPU: ID %s, PID %d, PC %d, Motivo %s", cpuId, pid, pc, motivoDesalojo)
 	fmt.Println(mensajePedidoDesalojo)
 	Logger.Debug(mensajePedidoDesalojo)
 
-	for i, cpu := range ListaIdentificadoresCPU {
-		if cpu.CPUID == cpuId {
-			ListaIdentificadoresCPU[i].Ocupado = false
-		}
-	}
-
-	MutexCpuLibres.Lock()
-	CpuLibres = true // Indicamos que hay CPU libres para recibir nuevos procesos
-	MutexCpuLibres.Unlock()
-
-	mensajeCpuLiberada := fmt.Sprintf("Se liberó la CPU con ID: %s", cpuId)
-	fmt.Println(mensajeCpuLiberada)
-	Logger.Debug(mensajeCpuLiberada)
-
 	var pcbDelProceso *globals.PCB
 	switch motivoDesalojo {
 	case "Planificador":
 		LogDesalojoPorSJF_SRT(pid)
-		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaExec)
+		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaReady)
 		pcbDelProceso.PC = pc
 	case "IO":
 		Logger.Debug("Desalojo por IO", "pid", pid)
@@ -398,6 +376,27 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 		Logger.Debug("Error, motivo de desalojo no válido", "motivo", motivoDesalojo)
 		return
 	}
+
+	for i, cpu := range ListaIdentificadoresCPU {
+		if cpu.CPUID == cpuId {
+
+			ListaIdentificadoresCPU[i].Ocupado = false
+
+			MutexCpuLibres.Lock()
+			CpuLibres = true // Indicamos que hay CPU libres para recibir nuevos procesos
+			MutexCpuLibres.Unlock()
+
+			MutexCpuLiberada.Lock()
+			CpuLiberada = true // Variable para indicar si la CPU fue liberada por el proceso que estaba ejecutando
+			MutexCpuLiberada.Unlock()
+		}
+	}
+
+	mensajeCpuLiberada := fmt.Sprintf("Se liberó la CPU con ID: %s", cpuId)
+	fmt.Println(mensajeCpuLiberada)
+	Logger.Debug(mensajeCpuLiberada)
+
+	CortoNotifier <- struct{}{} // Notificamos al planificador de corto plazo que se ha desalojado un proceso
 }
 
 func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
