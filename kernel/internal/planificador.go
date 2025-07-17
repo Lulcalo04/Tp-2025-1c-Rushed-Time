@@ -215,11 +215,11 @@ func PlanificadorCortoPlazo() {
 					if ColaReady[i].MetricasDeEstados[globals.Exec] != 0 && !ColaReady[i].EstimacionDeRafaga.YaCalculado {
 
 						//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
-						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = time.Duration((Config_Kernel.Alpha * float64(ColaReady[i].TiempoDeUltimaRafaga.Milliseconds())) +
-							(1-Config_Kernel.Alpha)*float64(ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds()))
+						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * ColaReady[i].TiempoDeUltimaRafaga) +
+							(1-Config_Kernel.Alpha)*ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga
 
-						Logger.Debug("Estimacion de rafaga del ", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
-						fmt.Println("Estimacion de rafaga del ", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
+						Logger.Debug("Estimacion de rafaga del ", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+						fmt.Println("Estimacion de rafaga del ", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
 
 						// Marcamos que ya calculamos la estimación de ráfaga
 						ColaReady[i].EstimacionDeRafaga.YaCalculado = true
@@ -230,8 +230,8 @@ func PlanificadorCortoPlazo() {
 				// Una vez que calculamos las estimaciones de ráfaga, elegimos el proceso con la estimación más pequeña
 				pcbElegido := elegirPcbConEstimacionMasChica()
 
-				Logger.Debug("Proceso elegido ", "PID", pcbElegido.PID, "con estimación de ráfaga:", pcbElegido.EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
-				fmt.Println("Proceso elegido ", "PID", pcbElegido.PID, "con estimación de ráfaga:", pcbElegido.EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
+				Logger.Debug("Proceso elegido ", "PID", pcbElegido.PID, "con estimación de ráfaga:", pcbElegido.EstimacionDeRafaga.TiempoDeRafaga)
+				fmt.Println("Proceso elegido ", "PID", pcbElegido.PID, "con estimación de ráfaga:", pcbElegido.EstimacionDeRafaga.TiempoDeRafaga)
 
 				// Cambiamos el boolean de YaCalculado a false para que se vuelva a calcular en la próxima iteración
 				pcbElegido.EstimacionDeRafaga.YaCalculado = false
@@ -253,8 +253,8 @@ func PlanificadorCortoPlazo() {
 					if ColaReady[i].MetricasDeEstados[globals.Exec] != 0 && !ColaReady[i].EstimacionDeRafaga.YaCalculado {
 
 						//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
-						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = time.Duration((Config_Kernel.Alpha * float64(ColaReady[i].TiempoDeUltimaRafaga.Milliseconds())) +
-							(1-Config_Kernel.Alpha)*float64(ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds()))
+						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * ColaReady[i].TiempoDeUltimaRafaga) +
+							(1-Config_Kernel.Alpha)*ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga
 
 						ColaReady[i].EstimacionDeRafaga.YaCalculado = true
 					}
@@ -282,17 +282,17 @@ func PlanificadorCortoPlazo() {
 					// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
 					if ColaReady[i].MetricasDeEstados[globals.Exec] != 0 && !ColaReady[i].EstimacionDeRafaga.YaCalculado {
 
-						fmt.Println("1!) Estimacion de rafaga", "PID", ColaReady[i].PID, "sin calcular:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
-						Logger.Debug("1!) Estimacion de rafaga", "PID", ColaReady[i].PID, "sin calcular:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
+						fmt.Println("1!) Estimacion de rafaga", "PID", ColaReady[i].PID, "sin calcular:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+						Logger.Debug("1!) Estimacion de rafaga", "PID", ColaReady[i].PID, "sin calcular:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
 
 						//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
-						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = time.Duration((Config_Kernel.Alpha * float64(ColaReady[i].TiempoDeUltimaRafaga.Milliseconds())) +
-							(1-Config_Kernel.Alpha)*float64(ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds()))
+						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * ColaReady[i].TiempoDeUltimaRafaga) +
+							(1-Config_Kernel.Alpha)*ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga
 
 						ColaReady[i].EstimacionDeRafaga.YaCalculado = true
 
-						fmt.Println("2!) Estimacion de rafaga", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
-						Logger.Debug("2!) Estimacion de rafaga", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
+						fmt.Println("2!) Estimacion de rafaga", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+						Logger.Debug("2!) Estimacion de rafaga", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
 					}
 				}
 				MutexReady.Unlock()
@@ -305,13 +305,13 @@ func PlanificadorCortoPlazo() {
 				if pcbVictima == nil {
 					continue
 				}
-				fmt.Println("P.CP: Buscando víctima de SRT, PID:", pcbVictima.PID, "con tiempo restante en CPU:", tiempoRestanteEnCpu(*pcbVictima).Milliseconds(), "y estimación de ráfaga del último en Ready:", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
-				Logger.Debug("P.CP: Buscando víctima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima).Milliseconds(), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
+				fmt.Println("P.CP: Buscando víctima de SRT, PID:", pcbVictima.PID, "con tiempo restante en CPU:", tiempoRestanteEnCpu(*pcbVictima), "y estimación de ráfaga del último en Ready:", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
+				Logger.Debug("P.CP: Buscando víctima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
 
 				if tiempoRestanteEnCpu(*pcbVictima) > ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga && pcbVictima.PID != ultimoProcesoEnReady.PID {
 
-					Logger.Debug("Quiero desalojar a la victima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima).Milliseconds(), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
-					fmt.Println("Quiero desalojar a la victima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima).Milliseconds(), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
+					Logger.Debug("Quiero desalojar a la victima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
+					fmt.Println("Quiero desalojar a la victima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
 					// Pido el desalojo a la CPU del proceso víctima
 
 					for i := range ColaExec {
@@ -389,8 +389,8 @@ func elegirPcbConEstimacionMasChica() *globals.PCB {
 	minIdx := 0
 	for i := 1; i < len(ColaReady); i++ {
 
-		Logger.Debug("Estimacion de rafaga del ", "PID", ColaReady[i].PID, ":", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
-		fmt.Println("Estimacion de rafaga del ", "PID", ColaReady[i].PID, ":", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga.Milliseconds())
+		Logger.Debug("Estimacion de rafaga del ", "PID", ColaReady[i].PID, ":", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+		fmt.Println("Estimacion de rafaga del ", "PID", ColaReady[i].PID, ":", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
 
 		if ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga < ColaReady[minIdx].EstimacionDeRafaga.TiempoDeRafaga {
 			minIdx = i
@@ -413,9 +413,9 @@ func buscarTiempoRestanteEnCpuMasAlto() *globals.PCB {
 	return ColaExec[maxIdx]
 }
 
-func tiempoRestanteEnCpu(pcb globals.PCB) time.Duration {
+func tiempoRestanteEnCpu(pcb globals.PCB) float64 {
 	//& Esta función calcula el tiempo restante en la CPU para un PCB dado.
 
-	return pcb.EstimacionDeRafaga.TiempoDeRafaga - time.Since(pcb.InicioEstadoActual)
+	return pcb.EstimacionDeRafaga.TiempoDeRafaga - float64(time.Since(pcb.InicioEstadoActual).Milliseconds())
 
 }

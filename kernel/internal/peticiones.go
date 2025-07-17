@@ -303,6 +303,13 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 		return
 	}
 
+	if !cpuDelPID.DesalojoSolicitado {
+		cpuDelPID.DesalojoSolicitado = true
+	} else {
+		Logger.Debug("Ya se ha solicitado un desalojo para el PID", "pid", pid, "cpu_id", cpuDelPID.CPUID)
+		return
+	}
+
 	mensajeIntentoDesalojo := fmt.Sprintf("Intentando desalojar el PID %d de la CPU %s por motivo: %s", pid, cpuDelPID.CPUID, motivoDesalojo)
 	Logger.Debug(mensajeIntentoDesalojo)
 	fmt.Println(mensajeIntentoDesalojo)

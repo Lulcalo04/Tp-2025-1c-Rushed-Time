@@ -5,6 +5,17 @@ import (
 	"globals"
 )
 
+type IdentificadorCPU struct {
+	CPUID              string
+	Puerto             int
+	Ip                 string
+	Ocupado            bool
+	DesalojoSolicitado bool
+	PID                int
+}
+
+var ListaIdentificadoresCPU []IdentificadorCPU = make([]IdentificadorCPU, 0)
+
 // &-------------------------------------------Funciones de CPU-------------------------------------------------------------
 
 func VerificarIdentificadorCPU(cpuID string) bool {
@@ -31,10 +42,11 @@ func RegistrarIdentificadorCPU(cpuID string, puerto int, ip string) globals.CPUT
 
 	//Creamos un nuevo identificador CPU
 	identificadorCPU := IdentificadorCPU{
-		CPUID:   cpuID,
-		Puerto:  puerto,
-		Ip:      ip,
-		Ocupado: false,
+		CPUID:              cpuID,
+		Puerto:             puerto,
+		Ip:                 ip,
+		Ocupado:            false,
+		DesalojoSolicitado: false,
 	}
 	//Lo agregamos a la lista de identificadores CPU
 	ListaIdentificadoresCPU = append(ListaIdentificadoresCPU, identificadorCPU)

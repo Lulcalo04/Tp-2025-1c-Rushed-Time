@@ -216,6 +216,13 @@ func Execute() {
 
 func CheckInterrupt() bool {
 
+	if ProcesoEjecutando.MotivoDesalojo == "Planificador" && (argumentoInstrucciones[0] == "IO" || argumentoInstrucciones[0] == "DUMP_MEMORY" || argumentoInstrucciones[0] == "EXIT") {
+		// Despues
+		mutexProcesoEjecutando.Lock()
+		ProcesoEjecutando.MotivoDesalojo = argumentoInstrucciones[0]
+		mutexProcesoEjecutando.Unlock()
+	}
+
 	//Si hay interrupcion por atender..
 	if ProcesoEjecutando.Interrupt {
 

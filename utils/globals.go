@@ -22,7 +22,7 @@ const (
 )
 
 type EstructuraRafaga struct {
-	TiempoDeRafaga time.Duration
+	TiempoDeRafaga float64
 	YaCalculado    bool
 }
 
@@ -37,7 +37,7 @@ type PCB struct {
 	MetricasDeTiempos    map[Estado]time.Duration `json:"metricas_de_tiempos"`     // Contador de tiempo que el proceso estuvo en cada estado
 	TamanioEnMemoria     int                      `json:"tamanio_en_memoria"`      // Tamaño del proceso en memoria, en bytes
 	EstimacionDeRafaga   EstructuraRafaga         `json:"estimacion_de_rafaga"`    // Estimación de la duración de la próxima ráfaga de CPU del proceso
-	TiempoDeUltimaRafaga time.Duration            `json:"tiempo_de_ultima_rafaga"` // Marca el tiempo que duró su última ráfaga de CPU
+	TiempoDeUltimaRafaga float64                  `json:"tiempo_de_ultima_rafaga"` // Marca el tiempo que duró su última ráfaga de CPU
 	InicioEjecucion      time.Time                `json:"inicio_ejecucion"`        // Marca el tiempo en que el proceso comenzó a ejecutarse
 }
 

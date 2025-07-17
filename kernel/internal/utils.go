@@ -24,16 +24,6 @@ type ConfigKernel struct {
 	LogLevel              string  `json:"log_level"`
 }
 
-type IdentificadorCPU struct {
-	CPUID   string
-	Puerto  int
-	Ip      string
-	Ocupado bool
-	PID     int
-}
-
-var ListaIdentificadoresCPU []IdentificadorCPU = make([]IdentificadorCPU, 0)
-
 var Config_Kernel *ConfigKernel
 
 var Logger *slog.Logger
@@ -125,7 +115,7 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 		MetricasDeTiempos:  make(map[globals.Estado]time.Duration),
 		TamanioEnMemoria:   tamanioEnMemoria,
 		EstimacionDeRafaga: globals.EstructuraRafaga{
-			TiempoDeRafaga: time.Duration(Config_Kernel.InitialEstimate) * time.Millisecond,
+			TiempoDeRafaga: float64(Config_Kernel.InitialEstimate),
 			YaCalculado:    true,
 		},
 		TiempoDeUltimaRafaga: 0,
@@ -211,9 +201,9 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 
 		// Si el proceso estaba en Exec, guardar el tiempo de la última ráfaga
 		if procesoEstadoAnterior == globals.Exec {
-			proceso.TiempoDeUltimaRafaga = time.Since(proceso.InicioEjecucion)
-			Logger.Debug("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga.Milliseconds())
-			fmt.Println("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga.Milliseconds())
+			proceso.TiempoDeUltimaRafaga = float64(time.Since(proceso.InicioEjecucion))
+			Logger.Debug("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
+			fmt.Println("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
 		}
 
 		if proceso.Estado == globals.Exec {
@@ -381,6 +371,7 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 		if cpu.CPUID == cpuId {
 
 			ListaIdentificadoresCPU[i].Ocupado = false
+			ListaIdentificadoresCPU[i].DesalojoSolicitado = false
 
 			MutexCpuLibres.Lock()
 			CpuLibres = true // Indicamos que hay CPU libres para recibir nuevos procesos

@@ -67,6 +67,9 @@ func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
 		Logger.Debug("Recibí una solicitud de desalojo", "PID", ProcesoRequest.PID, "Motivo", ProcesoRequest.Motivo)
 		fmt.Printf("Recibí una solicitud de desalojo para el PID %d con motivo: %s\n", ProcesoRequest.PID, ProcesoRequest.Motivo)
 
+		
+		
+
 		mutexProcesoEjecutando.Lock()
 		ProcesoEjecutando.Interrupt = true
 		ProcesoEjecutando.MotivoDesalojo = ProcesoRequest.Motivo
