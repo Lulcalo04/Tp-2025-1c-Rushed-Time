@@ -282,14 +282,12 @@ func MoverProcesoDeBlockedAReady(pid int) {
 			fmt.Println("No se encontro al buscar el PCB del proceso en la cola de SuspBlocked", "pid", pid)
 		}
 
-		// SACAMOS EL PROCESO DE SWAP
-		PedirLiberacionDeSwap(pid)
-
-		//Lo muevo a la cola destino
+		//Si el DesSwap fue bien Lo muevo a la cola SuspReady
 		MoverProcesoACola(pcbDelProceso, &ColaSuspReady)
 		Logger.Debug("Enviando notificación a LargoNotifier")
 		LargoNotifier <- struct{}{}
 		Logger.Debug("Notificación enviada a LargoNotifier")
+
 	} else {
 		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
 		MoverProcesoACola(pcbDelProceso, &ColaReady)
@@ -317,11 +315,6 @@ func TerminarProceso(pid int, colaOrigen *[]*globals.PCB) {
 	respuestaMemoria := LiberarProcesoEnMemoria(pid)
 
 	if respuestaMemoria {
-
-		MutexHayEspacioEnMemoria.Lock()
-		HayEspacioEnMemoria = true
-		MutexHayEspacioEnMemoria.Unlock()
-
 		LargoNotifier <- struct{}{} // Como se liberó memoria, notificamos al planificador de largo plazo
 	} else {
 		fmt.Println("Error al liberar memoria del proceso:", pid)
@@ -414,8 +407,6 @@ func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
 
 				// ENVIAMOS EL PROCESO A SWAP
 				PedirSwapping(pcb.PID)
-
-				HayEspacioEnMemoria = true // Indicamos que hay espacio en memoria
 
 				Logger.Debug("Enviando notificación a LargoNotifier")
 				LargoNotifier <- struct{}{}

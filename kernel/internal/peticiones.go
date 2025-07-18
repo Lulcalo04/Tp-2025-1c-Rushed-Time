@@ -122,9 +122,8 @@ func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
 		Logger.Debug(mensajeEspacioConcedido)
 		return true
 	} else {
-		mensajeEspacioNoConcedido := fmt.Sprintf("Espacio en memoria NO concedido para el PID %d: %s", pcbDelProceso.PID, respuestaMemoria.Mensaje)
-		fmt.Println(mensajeEspacioNoConcedido)
-		Logger.Debug(mensajeEspacioNoConcedido)
+		fmt.Printf("Espacio en memoria NO concedido para el PID %d: %s\n", pcbDelProceso.PID, respuestaMemoria.Mensaje)
+		Logger.Debug("Espacio en memoria NO concedido", "mensaje", respuestaMemoria.Mensaje, "pid", pcbDelProceso.PID)
 		return false
 	}
 

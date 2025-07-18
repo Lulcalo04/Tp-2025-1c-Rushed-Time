@@ -44,9 +44,6 @@ var ColaMutexes = map[*[]*globals.PCB]*sync.Mutex{
 	&ColaExit:        &MutexExit,
 }
 
-var HayEspacioEnMemoria bool = true
-var MutexHayEspacioEnMemoria sync.Mutex
-
 var MutexCpuLibres sync.Mutex
 var CpuLibres bool = true
 
@@ -67,11 +64,32 @@ func IniciarPlanificadores() {
 	fmt.Println("Planificadores iniciados")
 }
 
+func SumarTamaniosProcesos() int {
+	total := 0
+
+	// Sumar tamaños en ColaSuspReady
+	for _, pcb := range ColaSuspReady {
+		total += pcb.TamanioEnMemoria
+	}
+
+	// Sumar tamaños en ColaReady
+	for _, pcb := range ColaReady {
+		total += pcb.TamanioEnMemoria
+	}
+
+	// Sumar tamaños en ColaExec
+	for _, pcb := range ColaExec {
+		total += pcb.TamanioEnMemoria
+	}
+
+	return total
+}
+
 var MutexPlanificadorLargo sync.Mutex // Mutex para evitar doble planificador de largo plazo
 var LargoNotifier = make(chan struct{}, 999)
 
 func PlanificadorLargoPlazo() {
-	algoritmo := Config_Kernel.SchedulerAlgorithm
+	algoritmo := Config_Kernel.ReadyIngressAlgorithm
 	fmt.Println("Planificador de largo plazo iniciado (algoritmo:", algoritmo, ")")
 	Logger.Debug("Planificador de largo plazo iniciado", "algoritmo", algoritmo)
 
@@ -79,8 +97,11 @@ func PlanificadorLargoPlazo() {
 		<-LargoNotifier
 		MutexPlanificadorLargo.Lock()
 
+		fmt.Println("P.LP: Planificador de largo plazo ejecutando y entro al mutex, Procesos en New:", len(ColaNew), "Procesos en SuspReady:", len(ColaSuspReady))
+		Logger.Debug("Planificador de largo plazo ejecutando y entro al mutex", "ProcesosEnNew", len(ColaNew), "ProcesosEnSuspReady", len(ColaSuspReady))
 		// Mientras hay espacio en memoria y procesos en las colas
-		for HayEspacioEnMemoria && (len(ColaNew) != 0 || len(ColaSuspReady) != 0) {
+
+		for len(ColaNew) != 0 || len(ColaSuspReady) != 0 {
 
 			if algoritmo == "FIFO" {
 				// Verifica conexión con memoria
@@ -92,13 +113,32 @@ func PlanificadorLargoPlazo() {
 
 				// Procesa las colas SuspReady o New
 				if len(ColaSuspReady) != 0 {
-					if !procesarCola(ColaSuspReady) {
-						break
+
+					// Pedimos la liberación de swap del primer proceso de la cola SuspReady
+					respuestaMemoria := PedirLiberacionDeSwap(ColaSuspReady[0].PID)
+
+					if !respuestaMemoria {
+						fmt.Println("P.LP: No hay espacio en memoria, rompiendo el for")
+						Logger.Debug("No hay espacio en memoria, rompiendo el for")
+						break // Salimos del for para esperar un nuevo proceso en New
 					}
+
+					// Mueve el proceso a la cola Ready y notifica al planificador de corto plazo
+					MoverProcesoACola(ColaSuspReady[0], &ColaReady)
+					CortoNotifier <- struct{}{}
 				} else {
-					if !procesarCola(ColaNew) {
+
+					respuestaMemoria := PedirEspacioAMemoria(*ColaNew[0])
+
+					if !respuestaMemoria {
+						fmt.Println("P.LP: No hay espacio en memoria, rompiendo el for")
+						Logger.Debug("No hay espacio en memoria, rompiendo el for")
 						break
 					}
+
+					// Mueve el proceso a la cola Ready y notifica al planificador de corto plazo
+					MoverProcesoACola(ColaNew[0], &ColaReady)
+					CortoNotifier <- struct{}{}
 				}
 			}
 
@@ -111,14 +151,13 @@ func PlanificadorLargoPlazo() {
 
 				//Verifico si hay procesos en la cola SuspReady
 				if len(ColaSuspReady) != 0 {
-					// Pido espacio en memoria para el primer proceso de la cola New
-					respuestaMemoria := PedirEspacioAMemoria(*ColaSuspReady[pcbMasChico()])
 
-					// Si memoria responde que no hay espacio...
+					// Pido la liberación de swap del proceso mas chico de la cola SuspReady
+					respuestaMemoria := PedirLiberacionDeSwap(ColaSuspReady[pcbMasChico()].PID)
+
 					if !respuestaMemoria {
-						MutexHayEspacioEnMemoria.Lock()
-						HayEspacioEnMemoria = false // Seteo la variable del for a false
-						MutexHayEspacioEnMemoria.Unlock()
+						fmt.Println("P.LP: No hay espacio en memoria, rompiendo el for")
+						Logger.Debug("No hay espacio en memoria, rompiendo el for")
 						break // Salimos del for para esperar un nuevo proceso en New
 					}
 
@@ -126,13 +165,16 @@ func PlanificadorLargoPlazo() {
 					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 				} else {
 					// Pido espacio en memoria para el primer proceso de la cola New
+
+					fmt.Println("P.LP: Procesando cola New")
+					Logger.Debug("Procesando cola New")
+
 					respuestaMemoria := PedirEspacioAMemoria(*ColaNew[pcbMasChico()])
 
 					// Si memoria responde que no hay espacio...
 					if !respuestaMemoria {
-						MutexHayEspacioEnMemoria.Lock()
-						HayEspacioEnMemoria = false // Seteo la variable del for a false
-						MutexHayEspacioEnMemoria.Unlock()
+						fmt.Println("P.LP: No hay espacio en memoria, rompiendo el for")
+						Logger.Debug("No hay espacio en memoria, rompiendo el for")
 						break // Salimos del for para esperar un nuevo proceso en New
 					}
 
@@ -154,28 +196,11 @@ func PlanificadorLargoPlazo() {
 	}
 }
 
-func procesarCola(cola []*globals.PCB) bool {
-	// Pide espacio en memoria para el primer proceso de la cola
-	respuestaMemoria := PedirEspacioAMemoria(*cola[0])
-
-	if !respuestaMemoria {
-		MutexHayEspacioEnMemoria.Lock()
-		HayEspacioEnMemoria = false
-		MutexHayEspacioEnMemoria.Unlock()
-		return false
-	}
-
-	// Mueve el proceso a la cola Ready y notifica al planificador de corto plazo
-	MoverProcesoACola(cola[0], &ColaReady)
-	CortoNotifier <- struct{}{}
-	return true
-}
-
 var MutexPlanificadorCorto sync.Mutex // Mutex para evitar doble planificador de corto plazo
 var CortoNotifier = make(chan struct{}, 999)
 
 func PlanificadorCortoPlazo() {
-	algoritmo := Config_Kernel.ReadyIngressAlgorithm
+	algoritmo := Config_Kernel.SchedulerAlgorithm
 
 	fmt.Println("Planificador de corto plazo iniciado (algoritmo:", algoritmo, ")")
 	Logger.Debug("Planificador de corto plazo iniciado", "algoritmo", algoritmo)
@@ -363,9 +388,6 @@ func PlanificadorCortoPlazo() {
 }
 
 func pcbMasChico() int {
-	//& Esta función es un ejemplo de cómo se podría implementar el algoritmo PMCP (Proceso Más Chiquito Primero)
-	//& que se basa en el tamaño del PCB para decidir cuál proceso mover a la cola Ready.
-
 	// Encontrar el PCB más chico
 	minIndex := 0
 	for i := 1; i < len(ColaNew); i++ {

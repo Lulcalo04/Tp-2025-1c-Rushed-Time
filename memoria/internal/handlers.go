@@ -169,7 +169,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		pedidoEnMemoria = false
-		Logger.Debug("Solicitud a Memoria rechazada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.PID)
+		Logger.Debug("Solicitud a Memoria rechazada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 		http.Error(w, "No hay suficiente espacio en memoria", http.StatusInsufficientStorage)
 		return
 	}
@@ -424,7 +424,6 @@ func VolverDeSwap(w http.ResponseWriter, r *http.Request) {
 
 	pi, ok := MemoriaGlobal.infoProc[requestSwap.PID]
 	if !ok {
-		http.Error(w, "Proceso no existe", http.StatusNotFound)
 		responseSwap.Respuesta = false
 		json.NewEncoder(w).Encode(responseSwap)
 		return
@@ -432,7 +431,6 @@ func VolverDeSwap(w http.ResponseWriter, r *http.Request) {
 
 	for i := range pi.Pages {
 		if err := MemoriaGlobal.RestaurarPagina(requestSwap.PID, i); err != nil {
-			http.Error(w, err.Error(), http.StatusInsufficientStorage)
 			responseSwap.Respuesta = false
 			json.NewEncoder(w).Encode(responseSwap)
 			return
@@ -443,6 +441,7 @@ func VolverDeSwap(w http.ResponseWriter, r *http.Request) {
 
 	//& Metricas por proceso
 	MemoriaGlobal.infoProc[requestSwap.PID].Metricas.SubidasAMemoriaPrincipal++
+
 }
 
 // SuspenderPagina guarda la página en swap y libera el frame en RAM. (funcion Auxiliar)
@@ -517,6 +516,8 @@ func (mp *Memoria) RestaurarPagina(pid, pagina int) error {
 	//1) Reservar frame libre
 	frameID, err := mp.obtenerFrameLibre()
 	if err != nil {
+		fmt.Println("no hay frames libres para restaurar página: %w", err)
+		Logger.Debug("No hay frames libres para restaurar página", "PID", pid, "Pagina", pagina)
 		return fmt.Errorf("no hay frames libres para restaurar página: %w", err)
 	}
 
@@ -524,6 +525,8 @@ func (mp *Memoria) RestaurarPagina(pid, pagina int) error {
 	buffer := make([]byte, Config_Memoria.PageSize)
 	if _, err := mp.swapFile.ReadAt(buffer, info.Offset); err != nil {
 		mp.liberarFrame(frameID)
+		fmt.Println("error leyendo swap: %w", err)
+		Logger.Debug("Error leyendo swap", "PID", pid, "Pagina", pagina, "Offset", info.Offset)
 		return fmt.Errorf("error leyendo swap: %w", err)
 	}
 
