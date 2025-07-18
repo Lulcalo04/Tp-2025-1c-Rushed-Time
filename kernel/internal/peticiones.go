@@ -85,7 +85,7 @@ func PingCon(nombre, ip string, puerto int) bool {
 }
 
 func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
-	url := fmt.Sprintf("http://%s:%d/espacio/pedir", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
+	url := fmt.Sprintf("http://%s:%d/kernel/espacio/pedir", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.PeticionMemoriaRequest{
@@ -132,7 +132,7 @@ func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
 func LiberarProcesoEnMemoria(pid int) bool {
 
 	// Declaro la URL a la que me voy a conectar (handler de liberación de memoria con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/espacio/liberar", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
+	url := fmt.Sprintf("http://%s:%d/kernel/espacio/liberar", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.LiberacionMemoriaRequest{
@@ -186,7 +186,7 @@ func LiberarProcesoEnMemoria(pid int) bool {
 
 func PedirDumpMemory(pid int) bool {
 	// Declaro la URL a la que me voy a conectar (handler de liberación de memoria con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/dump", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
+	url := fmt.Sprintf("http://%s:%d/kernel/dumpMemory", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.DumpMemoryRequest{
@@ -234,7 +234,7 @@ func PedirDumpMemory(pid int) bool {
 
 func PedirSwapping(pid int) bool {
 	// Declaro la URL a la que me voy a conectar (handler de swappeo con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/espacio/entrarASwap", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
+	url := fmt.Sprintf("http://%s:%d/kernel/espacio/entrarASwap", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.SwappingRequest{
@@ -273,7 +273,7 @@ func PedirSwapping(pid int) bool {
 
 func PedirLiberacionDeSwap(pid int) bool {
 	// Declaro la URL a la que me voy a conectar (handler de liberación de swap con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/espacio/volverDeSwap", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
+	url := fmt.Sprintf("http://%s:%d/kernel/espacio/volverDeSwap", Config_Kernel.IPMemory, Config_Kernel.PortMemory)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.SwappingRequest{

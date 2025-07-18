@@ -27,8 +27,6 @@ var Config_Memoria *ConfigMemoria
 
 var Logger *slog.Logger
 
-var TamaniosProcesos = make(map[int]int)
-
 type InstruccionesRequest struct {
 	PID int `json:"pid"`
 }

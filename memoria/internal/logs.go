@@ -29,8 +29,7 @@ func LogObtenerInstruccion(pid int, pc int, instruccion string, args ...string) 
 }
 
 func LogOperacionEnEspacioUsuario(pid int, operacion string, direccionFisica int, size int) {
-	Logger.Info(fmt.Sprintf("## PID: %d - %s - Dir. Física: %d - Tamaño: %d",
-		pid, operacion, direccionFisica, size))
+	Logger.Info(fmt.Sprintf("## PID: %d - %s - Dir. Física: %d - Tamaño: %d", pid, operacion, direccionFisica, size))
 	fmt.Printf("\n## PID: %d - %s - Dir. Física: %d - Tamaño: %d", pid, operacion, direccionFisica, size)
 }
 

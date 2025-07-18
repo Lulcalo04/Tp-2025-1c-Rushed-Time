@@ -349,9 +349,9 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 		pcbDelProceso.PC = pc
 	case "DUMP_MEMORY":
 		Logger.Debug("Desalojo por DUMP_MEMORY", "pid", pid)
-		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaBlocked)
+		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaReady)
 		if pcbDelProceso == nil {
-			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaExit)
 		}
 		pcbDelProceso.PC = pc
 	case "EXIT":

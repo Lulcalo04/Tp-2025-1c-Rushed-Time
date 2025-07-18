@@ -26,20 +26,28 @@ func IniciarServerMemoria(puerto int) {
 	mux := http.NewServeMux()
 
 	//Declaro los handlers para el server
+
+	//^ Handshakes
 	mux.HandleFunc("/handshake", HandshakeHandler)
 	mux.HandleFunc("/handshake/cpu", HandshakeConCPU)
+
+	//^ Ping
 	mux.HandleFunc("/ping", PingHandler)
-	mux.HandleFunc("/espacio/pedir", PidenEspacioHandler)
-	mux.HandleFunc("/espacio/liberar", LiberarEspacioHandler)
-	mux.HandleFunc("/espacio/entrarASwap", EntrarASwap)
-	mux.HandleFunc("/espacio/volverDeSwap", VolverDeSwap)
+
+	//^ Handlers para kernel
+	mux.HandleFunc("/kernel/espacio/pedir", PidenEspacioHandler)
+	mux.HandleFunc("/kernel/espacio/liberar", LiberarEspacioHandler)
+	mux.HandleFunc("/kernel/espacio/entrarASwap", EntrarASwap)
+	mux.HandleFunc("/kernel/espacio/volverDeSwap", VolverDeSwap)
+	mux.HandleFunc("/kernel/dumpMemory", DumpMemoryHandler)
+
+	//^ Handlers para CPU
 	mux.HandleFunc("/cpu/instrucciones", InstruccionesHandler)
 	mux.HandleFunc("/cpu/frame", CalcularFrameHandler) // pedido de frame desde CPU para la traduccion de direcciones
-	mux.HandleFunc("/cpu/write", HacerWriteHandler)
-	mux.HandleFunc("/cpu/read", HacerReadHandler)
-	mux.HandleFunc("/dump", DumpMemoryHandler)
-	mux.HandleFunc("/syscall/actualizarPagina", ActualizarPaginahandler) // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
-
+	mux.HandleFunc("/cpu/pagina/escribir", HacerWriteHandler)
+	mux.HandleFunc("/cpu/pagina/leer", HacerReadHandler)
+	mux.HandleFunc("/cpu/pagina/actualizar", ActualizarPaginahandler) // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
+	// ! mux.HandleFunc("/cpu/pagina/pedir", PedirPaginaHandler)
 	err := http.ListenAndServe(stringPuerto, mux)
 	if err != nil {
 		panic(err)
@@ -312,10 +320,20 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 	//calculo del tamanio de paginas del proceso:
 
 	tamanioPaginas := Config_Memoria.PageSize
-	numPaginas = (TamaniosProcesos[pedidoRecibido.PID] + tamanioPaginas - 1) / tamanioPaginas
+	numPaginas = (MemoriaGlobal.infoProc[pedidoRecibido.PID].Size + tamanioPaginas - 1) / tamanioPaginas
+
+	fmt.Println("Numero de paginas:", numPaginas, "Tamanio de paginas:", tamanioPaginas, "bytes", " Tamaño del proceso:", MemoriaGlobal.infoProc[pedidoRecibido.PID].Size, "bytes")
+	Logger.Debug("Numero de paginas y tamanio de paginas", "paginas", numPaginas, "tamanio", tamanioPaginas, "bytes", "tamanio_proceso", fmt.Sprintf("%d", MemoriaGlobal.infoProc[pedidoRecibido.PID].Size), "bytes")
+
 	//Creo el buffer para el dump
 
 	dump := make([]byte, numPaginas*tamanioPaginas)
+
+	fmt.Println("Tamanio del dump:", len(dump), "bytes")
+	Logger.Debug("Tamanio del dump", "bytes", len(dump))
+
+	fmt.Println("Memoria completa", MemoriaGlobal.datos)
+	Logger.Debug("Memoria completa", "datos", MemoriaGlobal.datos)
 
 	for pagina := 0; pagina < numPaginas; pagina++ {
 
@@ -327,8 +345,15 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 			origen := int(frameID) * tamanioPaginas
 			destino := pagina * tamanioPaginas
 			copy(dump[destino:destino+tamanioPaginas], MemoriaGlobal.datos[origen:origen+tamanioPaginas])
+
+			fmt.Println("Pagina", pagina, "copiada en dump ", dump, "desde frame", frameID, "con origen", origen, "y destino", destino)
+			Logger.Debug("Pagina copiada en dump", "pagina", pagina, "desde frame", frameID, "origen", origen, "destino", destino)
+		} else {
+			fmt.Println("Pagina", pagina, "no encontrada en memoria")
+			Logger.Debug("Pagina no encontrada en memoria", "pagina", pagina, "PID", pedidoRecibido.PID)
+
+			//TODO -- nota: no ponemos que si no esta en memoria principal, sus valores se pongan en cero, porque ya vienen inicializados en cero.
 		}
-		//TODO -- nota: no ponemos que si no esta en memoria principal, sus valores se pongan en cero, porque ya vienen inicializados en cero.
 	}
 
 	//timestamp guarda el dia y hora donde se hace el dump, en formato YYYYMMDD_HHMMSS
@@ -337,13 +362,16 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 	nombreArchivo := fmt.Sprintf("<%d><%d>.dpm", pedidoRecibido.PID, timestamp)
 	dumpPath := filepath.Join(Config_Memoria.DumpPath, nombreArchivo)
 
-	if err := os.WriteFile(dumpPath, dump, 0644); err != nil {
+	fmt.Println("El dump que se va a escribir es:", dump)
+	Logger.Debug("El dump que se va a escribir", "dump", dump)
+
+	if err := os.WriteFile(dumpPath, dump, 0644); err == nil {
 		// Si el pedido es valido, se hace la concesion de espacio
 
 		// TODO -- Log Obligatorio
 		LogMemoryDump(pedidoRecibido.PID)
 
-		//oppcional: Logger.Debug("Solicitud de Dump Memory aceptada", "PID", pedidoRecibido.PID)
+		//opcional: Logger.Debug("Solicitud de Dump Memory aceptada", "PID", pedidoRecibido.PID)
 
 		resp := globals.DumpMemoryResponse{
 			Modulo:    "Memoria",
@@ -779,7 +807,9 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Escribo el string convertido en un slice de bytes en la memoria
+
 	copy(MemoriaGlobal.datos[direccionFisica:], data)
+
 	respuestaWrite = true
 
 	response := globals.CPUWriteAMemoriaResponse{

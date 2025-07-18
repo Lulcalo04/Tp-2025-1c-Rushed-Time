@@ -386,7 +386,7 @@ func PeticionDesalojoKernel() {
 
 func PedirPaginaAMemoria(pid int, direccionFisica int, numeroDePagina int) *EntradaCache {
 	// Declaro la URL a la que me voy a conectar (handler de petición de página con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/pagina/pedir", Config_CPU.IPMemory, Config_CPU.PortMemory)
+	url := fmt.Sprintf("http://%s:%d/cpu/pagina/pedir", Config_CPU.IPMemory, Config_CPU.PortMemory)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.CPUtoMemoriaPageRequest{
@@ -422,9 +422,12 @@ func PedirPaginaAMemoria(pid int, direccionFisica int, numeroDePagina int) *Entr
 func EscribirEnPaginaMemoria(pid int, direccionFisica int, valor string) {
 
 	valorEnBytes := []byte(valor)
+	
+	fmt.Println("Escribiendo en memoria: PID:", pid, "Dirección Física:", direccionFisica, "Valor:", valorEnBytes)
+	Logger.Debug("Escribiendo en memoria", "pid", pid, "direccion_fisica", direccionFisica, "valor", valorEnBytes)
 
 	// Declaro la URL a la que me voy a conectar (handler de petición de página con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/pagina/escribir", Config_CPU.IPMemory, Config_CPU.PortMemory)
+	url := fmt.Sprintf("http://%s:%d/cpu/pagina/escribir", Config_CPU.IPMemory, Config_CPU.PortMemory)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.CPUWriteAMemoriaRequest{
@@ -470,7 +473,7 @@ func LeerDePaginaMemoria(pid int, direccionFisica int, tamanio string) {
 		return
 	}
 	// Declaro la URL a la que me voy a conectar (handler de petición de página con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/pagina/leer", Config_CPU.IPMemory, Config_CPU.PortMemory)
+	url := fmt.Sprintf("http://%s:%d/cpu/pagina/leer", Config_CPU.IPMemory, Config_CPU.PortMemory)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.CPUReadAMemoriaRequest{
@@ -512,7 +515,7 @@ func LeerDePaginaMemoria(pid int, direccionFisica int, tamanio string) {
 func ActualizarPaginaEnMemoria(pid int, numeroDePagina int, data []byte) {
 
 	// Declaro la URL a la que me voy a conectar (handler de actualización de página con el puerto del server)
-	url := fmt.Sprintf("http://%s:%d/pagina/actualizar", Config_CPU.IPMemory, Config_CPU.PortMemory)
+	url := fmt.Sprintf("http://%s:%d/cpu/pagina/actualizar", Config_CPU.IPMemory, Config_CPU.PortMemory)
 
 	// Declaro el body de la petición
 	pedidoBody := globals.CPUActualizarPaginaEnMemoriaRequest{
