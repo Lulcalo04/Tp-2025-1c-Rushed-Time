@@ -1,6 +1,8 @@
 # Log files
 *.log
 *.bin
+*.dmp
+
 
 utils/scripts/proceso1
 utils/scripts/proceso2

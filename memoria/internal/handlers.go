@@ -48,6 +48,7 @@ func IniciarServerMemoria(puerto int) {
 	mux.HandleFunc("/cpu/pagina/leer", HacerReadHandler)
 	mux.HandleFunc("/cpu/pagina/actualizar", ActualizarPaginahandler) // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
 	// ! mux.HandleFunc("/cpu/pagina/pedir", PedirPaginaHandler)
+
 	err := http.ListenAndServe(stringPuerto, mux)
 	if err != nil {
 		panic(err)
@@ -322,22 +323,17 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 	tamanioPaginas := Config_Memoria.PageSize
 	numPaginas = (MemoriaGlobal.infoProc[pedidoRecibido.PID].Size + tamanioPaginas - 1) / tamanioPaginas
 
-	fmt.Println("Numero de paginas:", numPaginas, "Tamanio de paginas:", tamanioPaginas, "bytes", " Tamaño del proceso:", MemoriaGlobal.infoProc[pedidoRecibido.PID].Size, "bytes")
-	Logger.Debug("Numero de paginas y tamanio de paginas", "paginas", numPaginas, "tamanio", tamanioPaginas, "bytes", "tamanio_proceso", fmt.Sprintf("%d", MemoriaGlobal.infoProc[pedidoRecibido.PID].Size), "bytes")
-
 	//Creo el buffer para el dump
-
 	dump := make([]byte, numPaginas*tamanioPaginas)
 
 	fmt.Println("Tamanio del dump:", len(dump), "bytes")
 	Logger.Debug("Tamanio del dump", "bytes", len(dump))
 
-	fmt.Println("Memoria completa", MemoriaGlobal.datos)
-	Logger.Debug("Memoria completa", "datos", MemoriaGlobal.datos)
-
 	for pagina := 0; pagina < numPaginas; pagina++ {
 
-		entradas := calcularEntradasPorNivel(pagina, Config_Memoria.EntriesPerPage, Config_Memoria.NumberOfLevels)
+		entradas := calcularEntradasPorNivel(pagina)
+		fmt.Println("Entradas para pagina", pagina, ":", entradas)
+		Logger.Debug("Entradas para pagina", "pagina", pagina, "entradas", entradas)
 		frameID, ok := MemoriaGlobal.buscarFramePorEntradas(tablaRaiz, entradas)
 
 		if ok {
@@ -345,6 +341,9 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 			origen := int(frameID) * tamanioPaginas
 			destino := pagina * tamanioPaginas
 			copy(dump[destino:destino+tamanioPaginas], MemoriaGlobal.datos[origen:origen+tamanioPaginas])
+
+			fmt.Println("EXTRAIDO DE MEMORIA", MemoriaGlobal.datos[origen:origen+tamanioPaginas], "bytes")
+			Logger.Debug("EXTRAIDO DE MEMORIA", "bytes", MemoriaGlobal.datos[origen:origen+tamanioPaginas])
 
 			fmt.Println("Pagina", pagina, "copiada en dump ", dump, "desde frame", frameID, "con origen", origen, "y destino", destino)
 			Logger.Debug("Pagina copiada en dump", "pagina", pagina, "desde frame", frameID, "origen", origen, "destino", destino)
@@ -829,11 +828,12 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 // ------------------------------------------------Funciones Auxiliares ---------------------------------------------
 
 // La usamos para el dump memory
-func calcularEntradasPorNivel(numPagina int, niveles int, IndicePorNivel int) []int {
-	entradas := make([]int, niveles)
-	for i := niveles - 1; i >= 0; i-- {
-		entradas[i] = numPagina % IndicePorNivel
-		numPagina /= IndicePorNivel
+func calcularEntradasPorNivel(numPagina int) []int {
+	entradas := make([]int, Config_Memoria.NumberOfLevels)
+
+	for i := Config_Memoria.NumberOfLevels - 1; i >= 0; i-- {
+		entradas[i] = numPagina % Config_Memoria.EntriesPerPage
+		numPagina /= Config_Memoria.EntriesPerPage
 	}
 	return entradas
 }

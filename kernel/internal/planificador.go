@@ -64,27 +64,6 @@ func IniciarPlanificadores() {
 	fmt.Println("Planificadores iniciados")
 }
 
-func SumarTamaniosProcesos() int {
-	total := 0
-
-	// Sumar tamaños en ColaSuspReady
-	for _, pcb := range ColaSuspReady {
-		total += pcb.TamanioEnMemoria
-	}
-
-	// Sumar tamaños en ColaReady
-	for _, pcb := range ColaReady {
-		total += pcb.TamanioEnMemoria
-	}
-
-	// Sumar tamaños en ColaExec
-	for _, pcb := range ColaExec {
-		total += pcb.TamanioEnMemoria
-	}
-
-	return total
-}
-
 var MutexPlanificadorLargo sync.Mutex // Mutex para evitar doble planificador de largo plazo
 var LargoNotifier = make(chan struct{}, 999)
 
