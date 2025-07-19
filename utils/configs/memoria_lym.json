@@ -5,9 +5,9 @@
     "entries_per_page": 4,
     "number_of_levels": 2,
     "memory_delay": 500,
-    "swapfile_path": "/home/utnso/swapfile.bin",
+    "swapfile_path": "memoria/swapfile.bin",
     "swap_delay": 3000,
-    "log_level": "INFO",
-    "dump_path": "/home/utnso/dump_files/",
+    "log_level": "DEBUG",
+    "dump_path": "memoria/dump_files/",
     "scripts_path": "utils/scripts/"
 }
