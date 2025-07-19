@@ -76,15 +76,15 @@ func IniciarCPU(nombreArchivoConfiguracion string) {
 	fmt.Println("Iniciando configuración de CPU...")
 	globals.IniciarConfiguracion("utils/configs/"+nombreArchivoConfiguracion+".json", &Config_CPU)
 
+	//Crea el archivo donde se logea cpu con su id
+	fmt.Println("Iniciando logger de CPU...")
+	Logger = ConfigurarLoggerCPU(CPUId, Config_CPU.LogLevel)
+
 	//Declaro algoritmo de reemplazo de TLB y cantidad de entradas
 	InicializarTLB()
 
 	//Declaro algoritmo de reemplazo de Cache y cantidad de entradas
 	InicializarCache()
-
-	//Crea el archivo donde se logea cpu con su id
-	fmt.Println("Iniciando logger de CPU...")
-	Logger = ConfigurarLoggerCPU(CPUId, Config_CPU.LogLevel)
 
 	fmt.Println("Iniciando servidor de CPU, en el puerto:", Config_CPU.PortCPU)
 	go IniciarServerCPU(Config_CPU.PortCPU)
@@ -155,12 +155,12 @@ func Execute() {
 		numeroDePagina, direccionLogicaInt := CalculoPagina(argumentoInstrucciones[1])
 		var desplazamiento int = direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina
 		var paginaCache *EntradaCache
+		direccionFisica := ObtenerDireccionFisica(numeroDePagina, direccionLogicaInt, desplazamiento)
 
 		if CacheHabilitada { // Si la Cache esta habilitada, se busca la pagina en cache
 			paginaCache = BuscarPaginaEnCache(numeroDePagina)
 			if paginaCache == nil { // Cache Miss, busco la pagina en memoria
 				// Se obtiene la direccion fisica
-				direccionFisica := ObtenerDireccionFisica(numeroDePagina, direccionLogicaInt, desplazamiento)
 				// Le pido la pagina a memoria y la guardo en cache
 				paginaCache = PedirPaginaAMemoria(ProcesoEjecutando.PID, direccionFisica, numeroDePagina)
 			}
@@ -180,10 +180,10 @@ func Execute() {
 			switch argumentoInstrucciones[0] {
 			case "WRITE":
 				// Si la instruccion es WRITE, se escribe en el byte correspondiente
-				EscribirEnPaginaMemoria(ProcesoEjecutando.PID, direccionLogicaInt, argumentoInstrucciones[2])
+				EscribirEnPaginaMemoria(ProcesoEjecutando.PID, direccionFisica, argumentoInstrucciones[2])
 			case "READ":
 				// Si la instruccion es READ, se lee del byte correspondiente
-				LeerDePaginaMemoria(ProcesoEjecutando.PID, direccionLogicaInt, argumentoInstrucciones[2])
+				LeerDePaginaMemoria(ProcesoEjecutando.PID, direccionFisica, argumentoInstrucciones[2])
 			}
 
 		}

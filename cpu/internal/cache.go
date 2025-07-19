@@ -28,12 +28,15 @@ var CacheHabilitada bool = false
 
 func InicializarCache() {
 	if Config_CPU.CacheEntries > 0 { // Si la cantidad de entradas es mayor a 0, habilitamos la Cache y la configuramos
+		Logger.Debug("CACHE habilidatada")
 		CacheHabilitada = true
 		Cache.Algoritmo = Config_CPU.CacheReplacement
 		Cache.CantidadEntradas = Config_CPU.CacheEntries
 		Cache.Delay = Config_CPU.CacheDelay
 		Cache.PunteroEntradaReemplazo = 0
 	}
+	Logger.Debug("CACHE deshabilidatada")
+
 }
 
 func AgregarPaginaEnCache(numeroDePagina int, contenido []byte, direccionFisica int) *EntradaCache {

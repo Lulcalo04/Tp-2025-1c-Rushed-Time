@@ -18,11 +18,13 @@ var TLBHabilitada bool = false
 // Funcion que inicializa la configuración de la TLB
 func InicializarTLB() {
 	if Config_CPU.TLBEntries > 0 { // Si la cantidad de entradas mayor a 0, habilitamos la TLB y la configuramos
+		Logger.Debug("TLB habilidatada")
 		TLBHabilitada = true
 		TLB.Algoritmo = Config_CPU.TLBReplacement
 		TLB.CantidadEntradas = Config_CPU.TLBEntries
 		TLB.Entrada = make([]EntradasTLB, 0, TLB.CantidadEntradas) // Inicializa la TLB vacía con capacidad máxima
 	}
+	Logger.Debug("TLB deshabilidatada")
 }
 
 func BuscarFrameEnTLB(numeroDePagina int) int {
@@ -37,10 +39,12 @@ func BuscarFrameEnTLB(numeroDePagina int) int {
 			}
 
 			LogTLBHit(ProcesoEjecutando.PID, numeroDePagina)
+
 			return entrada.Marco
 		}
 	}
 	LogTLBMiss(ProcesoEjecutando.PID, numeroDePagina)
+
 	return -1 // No se encontró la página en la TLB
 }
 
