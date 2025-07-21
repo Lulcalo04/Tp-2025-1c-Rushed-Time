@@ -179,7 +179,8 @@ type SolicitudFrameRequest struct {
 }
 
 type SolicitudFrameResponse struct {
-	Frame int `json:"frame"`
+	Frame          int    `json:"frame"`
+	ContenidoFrame []byte `json:"contenido_frame"`
 }
 
 type IOtoKernelDesconexionRequest struct {

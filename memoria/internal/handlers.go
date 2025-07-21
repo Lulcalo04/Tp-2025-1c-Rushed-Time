@@ -17,6 +17,7 @@ import (
 // TODO -- comentarios importantes en funciones
 // -------------------------------------------Funcion para iniciar Server de Memoria-------------------------------------------------------------
 
+// * Abrir servidor de memoria
 func IniciarServerMemoria(puerto int) {
 
 	//Transformo el puerto a string
@@ -46,7 +47,8 @@ func IniciarServerMemoria(puerto int) {
 	mux.HandleFunc("/cpu/frame", CalcularFrameHandler) // pedido de frame desde CPU para la traduccion de direcciones
 	mux.HandleFunc("/cpu/pagina/escribir", HacerWriteHandler)
 	mux.HandleFunc("/cpu/pagina/leer", HacerReadHandler)
-	mux.HandleFunc("/cpu/pagina/actualizar", ActualizarPaginahandler) // ! PREGUNTAR A LOS CHICOS COMO TIENEN ESTOS ENDPOINTS
+	mux.HandleFunc("/cpu/pagina/actualizar", ActualizarPaginahandler)
+	mux.HandleFunc("/cpu/frame", PedirFrameHandler)
 	// ! mux.HandleFunc("/cpu/pagina/pedir", PedirPaginaHandler)
 
 	err := http.ListenAndServe(stringPuerto, mux)
@@ -276,6 +278,7 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// (funcion auxiliar) LiberarProceso libera los frames y actualiza la metadata del proceso
 func (m *Memoria) LiberarProceso(pid int) error {
 	pi, ok := m.infoProc[pid]
 	if !ok {
@@ -641,6 +644,7 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	// opcional : Logger.Debug("Instrucción solicitada", "PID", request.PID, "PC", request.PC, "Instruccion", instrucciones[request.PC])
 }
 
+// (Función auxiliar) sirve para obtener la lista de instrucciones de un proceso
 func listaDeInstrucciones(pid int) []string {
 	filename := Config_Memoria.ScriptsPath + fmt.Sprintf("/%d.instr", pid)
 	content, err := os.ReadFile(filename)
@@ -738,6 +742,37 @@ func ActualizarPaginahandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+// *Endpoint de pedido de frame = /cpu/frame/pedir
+func PedirFrameHandler(w http.ResponseWriter, r *http.Request) {
+
+	var request globals.SolicitudFrameRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "JSON invalido", http.StatusBadRequest)
+		return
+	}
+
+	// Verificar que el PID sea válido
+	tablaRaiz := MemoriaGlobal.tablas[request.PID]
+	if tablaRaiz == nil {
+		http.Error(w, fmt.Sprintf("Proceso con PID %d no encontrado en memoria", request.PID), http.StatusNotFound)
+		return
+	}
+
+	// Buscar el frame físico recorriendo la tabla multinivel
+	frameID, ok := MemoriaGlobal.buscarFramePorEntradas(tablaRaiz, request.EntradasPorNivel)
+	if !ok {
+		http.Error(w, "Página no asignada en memoria", http.StatusNotFound)
+		return
+	}
+
+	response := globals.SolicitudFrameResponse{
+		ContenidoFrame: MemoriaGlobal.datos[int(frameID)*Config_Memoria.PageSize : int(frameID+1)*Config_Memoria.PageSize],
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 //--------------- Case CACHE desactivada -------------
 
 // * Endpoint de read = /cpu/read
@@ -827,7 +862,7 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 
 // ------------------------------------------------Funciones Auxiliares ---------------------------------------------
 
-// La usamos para el dump memory
+// *La usamos para el dump memory
 func calcularEntradasPorNivel(numPagina int) []int {
 	entradas := make([]int, Config_Memoria.NumberOfLevels)
 
@@ -837,5 +872,3 @@ func calcularEntradasPorNivel(numPagina int) []int {
 	}
 	return entradas
 }
-
-//Informacion de las metricas por proceso
