@@ -59,10 +59,11 @@ func AgregarPaginaEnCache(numeroDePagina int, contenido []byte, direccionFisica 
 	if len(Cache.Entradas) == Cache.CantidadEntradas {
 		paginaVictima, posicionEnCache := ElegirPaginaVictima()
 
-		if paginaVictima.Modificado {
-			// Reemplazamos la pagina victima con la nueva entrada
-			ReemplazarPaginaVictima(paginaVictima, &nuevaEntrada, posicionEnCache)
-		}
+		fmt.Println("Pagina victima elegida:", paginaVictima.Pagina, "en posicion:", posicionEnCache)
+		Logger.Debug(fmt.Sprintf("Pagina victima elegida: %d en posicion: %d", paginaVictima.Pagina, posicionEnCache))
+
+		// Si la pagina victima fue modificada, la actualizamos en memoria
+		ReemplazarPaginaVictima(paginaVictima, &nuevaEntrada, posicionEnCache)
 
 		// Retorna la entrada reemplazada en la Cache
 		return &Cache.Entradas[posicionEnCache]
@@ -97,8 +98,14 @@ func EscribirEnPaginaCache(paginaCache *EntradaCache, desplazamiento int, valor 
 	// Ver si el desplazamiento mas el valor a escribir no supera el tamaño de la pagina
 	if EstructuraMemoriaDeCPU.TamanioPagina >= desplazamiento+len(valor) {
 
+		fmt.Println("Escribiendo en la pagina cache:", paginaCache.Contenido)
+		Logger.Debug(fmt.Sprintf("Escribiendo en la pagina cache: %s", paginaCache.Contenido))
+
 		// Copio el valor en el array de bytes a partir del desplazamiento indicado
 		copy(paginaCache.Contenido[desplazamiento:], []byte(valor))
+
+		fmt.Println("Escribiendo en la pagina cache, despues de copiarla:", paginaCache.Contenido)
+		Logger.Debug(fmt.Sprintf("Escribiendo en la pagina cache, despues de copiarla: %s", paginaCache.Contenido))
 
 		// Actualizo el flag de modificado a true
 		paginaCache.Modificado = true
@@ -172,29 +179,33 @@ func ElegirPaginaVictima() (*EntradaCache, int) {
 			}
 		}
 	case "CLOCK-M":
-		// Primera pasada: buscar U=false y M=false
+
 		for i := 0; i < cantidad; i++ {
-			idx := Cache.PunteroEntradaReemplazo
-			entrada := &Cache.Entradas[idx]
-			if !entrada.Usado && !entrada.Modificado {
-				posicion := idx
+
+			// Primera pasada: buscar U=false y M=false
+			for i := 0; i < cantidad; i++ {
+				idx := Cache.PunteroEntradaReemplazo
+				entrada := &Cache.Entradas[idx]
+				if !entrada.Usado && !entrada.Modificado {
+					posicion := idx
+					Cache.PunteroEntradaReemplazo = (idx + 1) % cantidad
+					return entrada, posicion
+				}
 				Cache.PunteroEntradaReemplazo = (idx + 1) % cantidad
-				return entrada, posicion
 			}
-			// Si no cumple, pongo Usado en false
-			entrada.Usado = false
-			Cache.PunteroEntradaReemplazo = (idx + 1) % cantidad
-		}
-		// Segunda pasada: buscar U=false y M=true
-		for i := 0; i < cantidad; i++ {
-			idx := Cache.PunteroEntradaReemplazo
-			entrada := &Cache.Entradas[idx]
-			if !entrada.Usado && entrada.Modificado {
-				posicion := idx
+			// Segunda pasada: buscar U=false y M=true
+			for i := 0; i < cantidad; i++ {
+				idx := Cache.PunteroEntradaReemplazo
+				entrada := &Cache.Entradas[idx]
+				if !entrada.Usado && entrada.Modificado {
+					posicion := idx
+					Cache.PunteroEntradaReemplazo = (idx + 1) % cantidad
+					return entrada, posicion
+				}
+				// Si no cumple, pongo Usado en false
+				entrada.Usado = false
 				Cache.PunteroEntradaReemplazo = (idx + 1) % cantidad
-				return entrada, posicion
 			}
-			Cache.PunteroEntradaReemplazo = (idx + 1) % cantidad
 		}
 	}
 	return paginaVictima, posicionEnCache
@@ -205,7 +216,11 @@ func ReemplazarPaginaVictima(paginaVictima *EntradaCache, nuevaEntrada *EntradaC
 	time.Sleep(time.Duration(Cache.Delay) * time.Millisecond)
 
 	// Le enviamos a memoria la pagina victima para que sea actualizada
-	ActualizarPaginaEnMemoria(paginaVictima.PID, paginaVictima.Pagina, paginaVictima.Contenido)
+	if paginaVictima.Modificado {
+
+		ActualizarPaginaEnMemoria(paginaVictima.PID, paginaVictima.Pagina, paginaVictima.Contenido)
+
+	}
 
 	// Reemplazamos la pagina victima con la nueva entrada
 	Cache.Entradas[posicionEnCache] = *nuevaEntrada

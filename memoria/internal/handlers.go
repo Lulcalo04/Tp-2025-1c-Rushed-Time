@@ -48,8 +48,7 @@ func IniciarServerMemoria(puerto int) {
 	mux.HandleFunc("/cpu/pagina/escribir", HacerWriteHandler)
 	mux.HandleFunc("/cpu/pagina/leer", HacerReadHandler)
 	mux.HandleFunc("/cpu/pagina/actualizar", ActualizarPaginahandler)
-	mux.HandleFunc("/cpu/frame", PedirFrameHandler)
-	// ! mux.HandleFunc("/cpu/pagina/pedir", PedirPaginaHandler)
+	mux.HandleFunc("/cpu/pagina/pedir", PedirFrameHandler)
 
 	err := http.ListenAndServe(stringPuerto, mux)
 	if err != nil {
@@ -742,10 +741,10 @@ func ActualizarPaginahandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// *Endpoint de pedido de frame = /cpu/frame/pedir
+// *Endpoint de pedido de frame = /cpu/pagina/pedir
 func PedirFrameHandler(w http.ResponseWriter, r *http.Request) {
 
-	var request globals.SolicitudFrameRequest
+	var request globals.CPUtoMemoriaPageRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
 		return
@@ -758,16 +757,25 @@ func PedirFrameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	entradasPorNivel := calcularEntradasPorNivel(request.NumeroDePagina)
+
 	// Buscar el frame físico recorriendo la tabla multinivel
-	frameID, ok := MemoriaGlobal.buscarFramePorEntradas(tablaRaiz, request.EntradasPorNivel)
+	frameID, ok := MemoriaGlobal.buscarFramePorEntradas(tablaRaiz, entradasPorNivel)
 	if !ok {
 		http.Error(w, "Página no asignada en memoria", http.StatusNotFound)
 		return
 	}
 
-	response := globals.SolicitudFrameResponse{
-		ContenidoFrame: MemoriaGlobal.datos[int(frameID)*Config_Memoria.PageSize : int(frameID+1)*Config_Memoria.PageSize],
+	inicioPagina := int(frameID) * Config_Memoria.PageSize
+	finalPagina := inicioPagina + Config_Memoria.PageSize
+
+	response := globals.MemoriaToCPUPageResponse{
+		PID:             request.PID,
+		ContenidoPagina: MemoriaGlobal.datos[inicioPagina:finalPagina], // Replace with the correct field name
 	}
+
+	MemoriaGlobal.infoProc[request.PID].Metricas.LecturasDeMemoria++
+	MemoriaGlobal.infoProc[request.PID].Metricas.AccesoATablaDePaginas++
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

@@ -390,8 +390,8 @@ func PedirPaginaAMemoria(pid int, direccionFisica int, numeroDePagina int) *Entr
 
 	// Declaro el body de la petición
 	pedidoBody := globals.CPUtoMemoriaPageRequest{
-		PID:             pid,
-		DireccionFisica: direccionFisica,
+		PID:            pid,
+		NumeroDePagina: numeroDePagina,
 	}
 
 	// Serializo el body a JSON
@@ -422,7 +422,7 @@ func PedirPaginaAMemoria(pid int, direccionFisica int, numeroDePagina int) *Entr
 func EscribirEnPaginaMemoria(pid int, direccionFisica int, valor string) {
 
 	valorEnBytes := []byte(valor)
-	
+
 	fmt.Println("Escribiendo en memoria: PID:", pid, "Dirección Física:", direccionFisica, "Valor:", valorEnBytes)
 	Logger.Debug("Escribiendo en memoria", "pid", pid, "direccion_fisica", direccionFisica, "valor", valorEnBytes)
 
