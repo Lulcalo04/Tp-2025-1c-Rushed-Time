@@ -3,6 +3,7 @@ package kernel_internal
 import (
 	"fmt"
 	"globals"
+	"sync"
 )
 
 type IdentificadorCPU struct {
@@ -15,6 +16,8 @@ type IdentificadorCPU struct {
 }
 
 var ListaIdentificadoresCPU []IdentificadorCPU = make([]IdentificadorCPU, 0)
+
+var MutexIdentificadoresCPU sync.Mutex // ! Mutex para proteger el acceso a la lista de identificadores CPU
 
 // &-------------------------------------------Funciones de CPU-------------------------------------------------------------
 
