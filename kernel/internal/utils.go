@@ -347,9 +347,10 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaBlocked)
 		if pcbDelProceso == nil {
 			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaSuspBlocked)
-			if pcbDelProceso == nil {
+			//! Con esto se va un error de nill pero se crean hasta 64 procesos cuando no pueden pasar de los 32 por io
+			/* if pcbDelProceso == nil {
 				pcbDelProceso = BuscarProcesoEnCola(pid, &ColaReady)
-			}
+			} */
 		}
 		pcbDelProceso.PC = pc
 		pcbDelProceso.DesalojoAnalizado = true
