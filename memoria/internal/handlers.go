@@ -47,7 +47,7 @@ func IniciarServerMemoria(puerto int) {
 	mux.HandleFunc("/cpu/frame", CalcularFrameHandler) // pedido de frame desde CPU para la traduccion de direcciones
 	mux.HandleFunc("/cpu/pagina/escribir", HacerWriteHandler)
 	mux.HandleFunc("/cpu/pagina/leer", HacerReadHandler)
-	mux.HandleFunc("/cpu/pagina/actualizar", ActualizarPaginahandler)
+	mux.HandleFunc("/cpu/pagina/actualizar", ActualizarPaginaHandler)
 	mux.HandleFunc("/cpu/pagina/pedir", PedirFrameHandler)
 
 	err := http.ListenAndServe(stringPuerto, mux)
@@ -131,6 +131,8 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 
 // * Endpoint de pedido de espacio = /espacio/pedir
 func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
+
 	fmt.Println("Solicitud de espacio recibida")
 	Logger.Debug("Solicitud de espacio recibida")
 
@@ -146,6 +148,10 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 	//verificar si hay suficiente espacio en memoria para el proceso
 	framesLibres := MemoriaGlobal.framesLibres()
+
+	fmt.Println("Frames libres disponibles:", framesLibres)
+	Logger.Debug("Frames libres disponibles", "framesLibres", framesLibres)
+
 	pedidoEnMemoria := false
 	var framesReservados []int
 
@@ -237,6 +243,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 
 // *Endopoint de liberacion de espacio = /espacio/liberar
 func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "Metodo no permitido", http.StatusMethodNotAllowed)
@@ -288,6 +295,10 @@ func (m *Memoria) LiberarProceso(pid int) error {
 	for _, page := range pi.Pages {
 		if page.InRAM {
 			m.liberarFrame(page.FrameID)
+
+			Logger.Debug("Frame liberado", "FrameID", page.FrameID)
+			fmt.Println("Frame liberado", "FrameID", page.FrameID)
+
 		} else {
 			m.freeSwapOffsets = append(m.freeSwapOffsets, page.Offset)
 		}
@@ -303,6 +314,7 @@ func (m *Memoria) LiberarProceso(pid int) error {
 
 // *Endpoint de pedido de espacio = /dump
 func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
 
 	var pedidoRecibido globals.DumpMemoryRequest
 	var numPaginas int
@@ -359,8 +371,8 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 
 	//timestamp guarda el dia y hora donde se hace el dump, en formato YYYYMMDD_HHMMSS
 	// TODO  nota sobre Unix: creo que devuelve el tiempo  desde el 1 de enero de 1970
-	timestamp := time.Now().Unix() //! arreglar esto
-	nombreArchivo := fmt.Sprintf("<%d><%d>.dpm", pedidoRecibido.PID, timestamp)
+	timestamp := time.Now().Format("2006-01-02_15:04:05")
+	nombreArchivo := fmt.Sprintf("<%d><%s>.dmp", pedidoRecibido.PID, timestamp)
 	dumpPath := filepath.Join(Config_Memoria.DumpPath, nombreArchivo)
 
 	fmt.Println("El dump que se va a escribir es:", dump)
@@ -396,6 +408,7 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 
 // * Endpoint de swappeo = /espacio/entrarASwap
 func EntrarASwap(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -438,6 +451,8 @@ func EntrarASwap(w http.ResponseWriter, r *http.Request) {
 
 // *Endpoint de restauracion = /espacio/volverDeSwap
 func VolverDeSwap(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
+
 	w.Header().Set("Content-Type", "application/json")
 
 	// Decodificar el body
@@ -522,6 +537,9 @@ func (mp *Memoria) SuspenderPagina(pid, pagina int) error {
 	// 7) Liberar frame en bitmap
 	mp.liberarFrame(page.FrameID)
 
+	Logger.Debug("Frame liberado", "FrameID", page.FrameID)
+	fmt.Println("Frame liberado", "FrameID", page.FrameID)
+
 	// 8) Actualizo la info del proceso
 	page.InRAM = false
 	page.Offset = offset
@@ -581,6 +599,8 @@ func (mp *Memoria) RestaurarPagina(pid, pagina int) error {
 
 // * Endpoint de instrucciones = /instrucciones
 func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
+
 	// Verificar que el método sea POST
 	if r.Method != http.MethodPost {
 		http.Error(w, "Metodo no permitido", http.StatusMethodNotAllowed)
@@ -626,7 +646,6 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
 	// Preparar y enviar respuesta
 	resp := globals.InstruccionAMemoriaResponse{
 		InstruccionAEjecutar: instrucciones[request.PC],
@@ -661,8 +680,11 @@ func listaDeInstrucciones(pid int) []string {
 
 // * Endpoint de frame = /cpu/frame (traduccion de direcciones)
 func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		Logger.Debug("Método no permitido", "Método", r.Method)
 		return
 	}
 
@@ -670,6 +692,7 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
+		Logger.Debug("JSON invalido", "error", err.Error())
 		return
 	}
 
@@ -677,6 +700,7 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 	tablaRaiz := MemoriaGlobal.tablas[request.PID]
 	if tablaRaiz == nil {
 		http.Error(w, "Proceso no encontrado en memoria", http.StatusNotFound)
+		Logger.Debug("Proceso no encontrado en memoria", "PID", request.PID)
 		return
 	}
 
@@ -684,6 +708,7 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 	frame, ok := MemoriaGlobal.buscarFramePorEntradas(tablaRaiz, request.EntradasPorNivel)
 	if !ok {
 		http.Error(w, "Página no asignada en memoria", http.StatusNotFound)
+		Logger.Debug("Página no asignada en memoria", "PID", request.PID, "EntradasPorNivel", request.EntradasPorNivel)
 		return
 	}
 
@@ -697,7 +722,9 @@ func CalcularFrameHandler(w http.ResponseWriter, r *http.Request) {
 
 // --------------Caso CACHE activada -----------------
 // *Endpoint de actualizar pagina completa = /syscall/actualizarPagina
-func ActualizarPaginahandler(w http.ResponseWriter, r *http.Request) {
+func ActualizarPaginaHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
+
 	var request globals.CPUActualizarPaginaEnMemoriaRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -743,6 +770,7 @@ func ActualizarPaginahandler(w http.ResponseWriter, r *http.Request) {
 
 // *Endpoint de pedido de frame = /cpu/pagina/pedir
 func PedirFrameHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
 
 	var request globals.CPUtoMemoriaPageRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -785,6 +813,8 @@ func PedirFrameHandler(w http.ResponseWriter, r *http.Request) {
 
 // * Endpoint de read = /cpu/read
 func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
+
 	var request globals.CPUReadAMemoriaRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
@@ -824,6 +854,7 @@ func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
 
 // * Endpoint de write = /cpu/write
 func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
 
 	var request globals.CPUWriteAMemoriaRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {

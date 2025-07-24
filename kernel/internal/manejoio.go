@@ -26,6 +26,8 @@ type InstanciaIO struct {
 
 var ListaDispositivosIO map[string]*DispositivoIO = make(map[string]*DispositivoIO)
 
+var MutexIdentificadoresIO sync.Mutex
+
 var mutexProcesoEsperando sync.Mutex
 
 // &-------------------------------------------Funciones de Administración de IO-------------------------------------------------------------
@@ -39,23 +41,28 @@ func RegistrarInstanciaIO(nombre string, puerto int, ip string) {
 
 		//Al tener una nueva instancia libre, si hay un proceso en espera, la ocupamos
 		if len(disp.ColaEsperaProcesos) != 0 {
+
+			MutexIdentificadoresIO.Lock()
 			mutexProcesoEsperando.Lock()
 
-			// Si hay procesos esperando en la cola de espera del dispositivo, ocupamos la instancia recientemente liberada
 			procesoEsperando := ListaDispositivosIO[nombre].ColaEsperaProcesos[0]
 			// Lo eliminamos de la cola de espera
 			ListaDispositivosIO[nombre].ColaEsperaProcesos = ListaDispositivosIO[nombre].ColaEsperaProcesos[1:] // Eliminamos el primer proceso de la cola de espera
+
 			mutexProcesoEsperando.Unlock()
+			MutexIdentificadoresIO.Unlock()
 
 			UsarDispositivoDeIO(nombre, procesoEsperando.Proceso.PID, procesoEsperando.Tiempo)
 		}
 
 		//Si no existe el dispositivo IO, lo creamos
 	} else {
+		MutexIdentificadoresIO.Lock()
 		ListaDispositivosIO[nombre] = &DispositivoIO{
 			ColaEsperaProcesos:    []ProcesoEsperando{},
 			InstanciasDispositivo: []InstanciaIO{instancia},
 		}
+		MutexIdentificadoresIO.Unlock()
 	}
 
 	mensajeRegistro := fmt.Sprintf("Dispositivo IO registrado: Nombre %s, IP %s, Puerto %d", nombre, ip, puerto)
@@ -89,9 +96,11 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 			}
 
 			// Borramos la instancia de IO de la lista de instancias del dispositivo IO
+			MutexIdentificadoresIO.Lock()
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo = append(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[:pos], ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[pos+1:]...)
-
 			mensajeInstanciasRestantes := fmt.Sprintf("Instancias del dispositivo %s: %d", nombreDispositivo, len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
+			MutexIdentificadoresIO.Unlock()
+
 			fmt.Println(mensajeInstanciasRestantes)
 			Logger.Debug(mensajeInstanciasRestantes)
 
@@ -112,7 +121,9 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 				}
 
 				// Borramos del mapa de dispositivos IO el dispositivo que ya no tiene instancias
+				MutexIdentificadoresIO.Lock()
 				delete(ListaDispositivosIO, nombreDispositivo)
+				MutexIdentificadoresIO.Unlock()
 
 			} else {
 				mensajeInstanciasRestantes := fmt.Sprintf("Instancias del dispositivo %s: %d", nombreDispositivo, len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
@@ -178,12 +189,17 @@ func ProcesarFinIO(pid int, nombreDispositivo string) {
 	LiberarInstanciaDeIO(nombreDispositivo, *instanciaDeIO)
 
 	if len(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos) != 0 {
-		mutexProcesoEsperando.Lock()
 		// Si hay procesos esperando en la cola de espera del dispositivo, ocupamos la instancia recientemente liberada
+
+		MutexIdentificadoresIO.Lock()
+		mutexProcesoEsperando.Lock()
 		procesoEsperando := ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[0]
 		// Lo eliminamos de la cola de espera
 		ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos = ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[1:] // Eliminamos el primer proceso de la cola de espera
+
 		mutexProcesoEsperando.Unlock()
+		MutexIdentificadoresIO.Unlock()
+
 		// Ocupamos la instancia de IO con el PID del proceso que estaba esperando
 		UsarDispositivoDeIO(nombreDispositivo, procesoEsperando.Proceso.PID, procesoEsperando.Tiempo)
 	}
@@ -197,11 +213,14 @@ func OcuparInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO, pid in
 	for i, instanciaIO := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
 
 		if instanciaIO == instancia {
+			MutexIdentificadoresIO.Lock()
 			instancia := &ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i]
 			instancia.Estado = "Ocupada"
 			instancia.PID = pid
 
 			mensajeOcupacionInstancia := fmt.Sprintf("Instancia de IO ocupada: Dispositivo %s, Estado: %s, PID %d", nombreDispositivo, instancia.Estado, pid)
+			MutexIdentificadoresIO.Unlock()
+
 			fmt.Println(mensajeOcupacionInstancia)
 			Logger.Debug(mensajeOcupacionInstancia)
 
@@ -217,9 +236,11 @@ func OcuparInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO, pid in
 func LiberarInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO) {
 	for i, instanciaIO := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
 		if instanciaIO == instancia {
+			MutexIdentificadoresIO.Lock()
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].Estado = "Libre"
 			ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo[i].PID = -1
 			Logger.Debug("Instancia de IO liberada", "dispositivo", instancia.NombreIO)
+			MutexIdentificadoresIO.Unlock()
 			return
 		}
 	}
@@ -254,7 +275,9 @@ func BloquearProcesoPorIO(nombreDispositivo string, pid int, tiempoEspera int) {
 		Tiempo:  tiempoEspera,
 	}
 	//Agregar el proceso a la cola de espera del dispositivo
+	MutexIdentificadoresIO.Lock()
 	ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos = append(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos, ProcesoEsperando)
+	MutexIdentificadoresIO.Unlock()
 
 }
 

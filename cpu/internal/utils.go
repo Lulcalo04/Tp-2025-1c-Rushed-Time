@@ -256,7 +256,7 @@ func CheckInterrupt() bool {
 
 func ObtenerDireccionFisica(numeroDePagina int, direccionLogicaInt int, desplazamiento int) int {
 
-	var frame int
+	frame := -1
 	var direccionFisica int
 
 	//Si la TLB esta habilitada

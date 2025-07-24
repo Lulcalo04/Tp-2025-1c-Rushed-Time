@@ -363,9 +363,10 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 
 	for i, cpu := range ListaIdentificadoresCPU {
 		if cpu.CPUID == cpuId {
-
+			MutexIdentificadoresCPU.Lock()
 			ListaIdentificadoresCPU[i].Ocupado = false
 			ListaIdentificadoresCPU[i].DesalojoSolicitado = false
+			MutexIdentificadoresCPU.Unlock()
 
 			MutexCpuLibres.Lock()
 			CpuLibres = true // Indicamos que hay CPU libres para recibir nuevos procesos

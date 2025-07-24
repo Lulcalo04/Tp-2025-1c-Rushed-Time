@@ -179,8 +179,7 @@ type SolicitudFrameRequest struct {
 }
 
 type SolicitudFrameResponse struct {
-	Frame          int    `json:"frame"`
-	ContenidoFrame []byte `json:"contenido_frame"`
+	Frame int `json:"frame"`
 }
 
 type IOtoKernelDesconexionRequest struct {
@@ -201,8 +200,8 @@ type CPUtoKernelDesalojoResponse struct {
 }
 
 type CPUtoMemoriaPageRequest struct {
-	PID             int `json:"pid"`
-	NumeroDePagina  int `json:"numero_de_pagina"` // Número de página a solicitar
+	PID            int `json:"pid"`
+	NumeroDePagina int `json:"numero_de_pagina"` // Número de página a solicitar
 }
 
 type MemoriaToCPUPageResponse struct {

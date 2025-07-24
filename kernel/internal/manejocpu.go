@@ -51,8 +51,12 @@ func RegistrarIdentificadorCPU(cpuID string, puerto int, ip string) globals.CPUT
 		Ocupado:            false,
 		DesalojoSolicitado: false,
 	}
+
 	//Lo agregamos a la lista de identificadores CPU
+	MutexIdentificadoresCPU.Lock()
 	ListaIdentificadoresCPU = append(ListaIdentificadoresCPU, identificadorCPU)
+	MutexIdentificadoresCPU.Unlock()
+
 	Logger.Debug("Identificador CPU nuevo", "cpu_id", identificadorCPU.CPUID, "puerto", identificadorCPU.Puerto, "ip", identificadorCPU.Ip)
 
 	bodyRespuesta.Respuesta = true
