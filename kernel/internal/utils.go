@@ -120,6 +120,7 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 		},
 		TiempoDeUltimaRafaga: 0,
 		InicioEjecucion:      time.Time{},
+		DesalojoAnalizado:    true,
 	}
 
 	// Bloquear el mutex de la cola de New
@@ -208,6 +209,7 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 
 		if proceso.Estado == globals.Exec {
 			proceso.InicioEjecucion = time.Now()
+			proceso.DesalojoAnalizado = false // Reiniciar el análisis de desalojo al entrar en Exec
 		}
 
 		// Actualizar la métrica de tiempo por estado del proceso
@@ -272,14 +274,12 @@ func MoverProcesoDeBlockedAReady(pid int) {
 
 	// Si no se encuentra el PCB del proceso en la cola de blocked, xq el plani de mediano plazo lo movió a SuspBlocked
 	if pcbDelProceso == nil {
-		Logger.Debug("No se encontro al buscar el PCB del proceso en la cola de blocked", "pid", pid)
-		fmt.Println("No se encontro al buscar el PCB del proceso en la cola de blocked", "pid", pid)
-
 		// Busco el PCB del proceso en la cola de SuspBlocked
 		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
 		if pcbDelProceso == nil {
 			Logger.Debug("No se encontro al buscar el PCB del proceso en la cola de SuspBlocked", "pid", pid)
 			fmt.Println("No se encontro al buscar el PCB del proceso en la cola de SuspBlocked", "pid", pid)
+			return
 		}
 
 		//Si el DesSwap fue bien Lo muevo a la cola SuspReady
@@ -290,6 +290,7 @@ func MoverProcesoDeBlockedAReady(pid int) {
 
 	} else {
 		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
+
 		MoverProcesoACola(pcbDelProceso, &ColaReady)
 		CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 	}
@@ -340,13 +341,18 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 		LogDesalojoPorSJF_SRT(pid)
 		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaReady)
 		pcbDelProceso.PC = pc
+		pcbDelProceso.DesalojoAnalizado = true
 	case "IO":
 		Logger.Debug("Desalojo por IO", "pid", pid)
 		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaBlocked)
 		if pcbDelProceso == nil {
 			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+			if pcbDelProceso == nil {
+				pcbDelProceso = BuscarProcesoEnCola(pid, &ColaReady)
+			}
 		}
 		pcbDelProceso.PC = pc
+		pcbDelProceso.DesalojoAnalizado = true
 	case "DUMP_MEMORY":
 		Logger.Debug("Desalojo por DUMP_MEMORY", "pid", pid)
 		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaReady)
@@ -354,6 +360,7 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaExit)
 		}
 		pcbDelProceso.PC = pc
+		pcbDelProceso.DesalojoAnalizado = true
 	case "EXIT":
 		Logger.Debug("Desalojo por EXIT", "pid", pid)
 	default:

@@ -39,6 +39,7 @@ type PCB struct {
 	EstimacionDeRafaga   EstructuraRafaga         `json:"estimacion_de_rafaga"`    // Estimación de la duración de la próxima ráfaga de CPU del proceso
 	TiempoDeUltimaRafaga float64                  `json:"tiempo_de_ultima_rafaga"` // Marca el tiempo que duró su última ráfaga de CPU
 	InicioEjecucion      time.Time                `json:"inicio_ejecucion"`        // Marca el tiempo en que el proceso comenzó a ejecutarse
+	DesalojoAnalizado    bool                     `json:"desalojo_analizado"`      // Indica si el proceso ha sido analizado para desalojo
 }
 
 // &-------------------------------------------Inicio de configuraciones-------------------------------------------

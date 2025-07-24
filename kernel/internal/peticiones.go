@@ -378,21 +378,23 @@ func EnviarProcesoACPU(cpuIp string, cpuPuerto int, procesoPID int, procesoPC in
 	defer resp.Body.Close() // Cierra la conexión al finalizar la función
 }
 
-func PeticionDesalojo(pid int, motivoDesalojo string) {
+func PeticionDesalojo(pid int, motivoDesalojo string) bool {
 
+	MutexIdentificadoresCPU.Lock()
 	cpuDelPID := BuscarCPUporPID(pid)
 	if cpuDelPID == nil {
 		mensajeCpuNoEncontrada := fmt.Sprintf("No se encontró la CPU que tiene el PID %d, no se puede desalojar", pid)
 		Logger.Debug(mensajeCpuNoEncontrada)
 		fmt.Println(mensajeCpuNoEncontrada)
-		return
+		return false
 	}
+	MutexIdentificadoresCPU.Unlock()
 
 	if !cpuDelPID.DesalojoSolicitado {
 		cpuDelPID.DesalojoSolicitado = true
 	} else {
 		Logger.Debug("Ya se ha solicitado un desalojo para el PID", "pid", pid, "cpu_id", cpuDelPID.CPUID)
-		return
+		return false
 	}
 
 	mensajeIntentoDesalojo := fmt.Sprintf("Intentando desalojar el PID %d de la CPU %s por motivo: %s", pid, cpuDelPID.CPUID, motivoDesalojo)
@@ -411,25 +413,25 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 	bodyBytes, err := json.Marshal(pedidoBody)
 	if err != nil {
 		Logger.Debug("Error serializando JSON", "error", err)
-		return
+		return false
 	}
 	// Hacemos la petición POST al server
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		Logger.Debug("Error conectando con CPU", "error", err)
-		return
+		return false
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		Logger.Debug("Error: StatusCode no es 200 OK", "status_code", resp.StatusCode)
-		return
+		return false
 	}
 
 	// Decodifico la respuesta JSON del server
 	var respuestaDesalojo globals.KerneltoCPUDesalojoResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respuestaDesalojo); err != nil {
 		Logger.Debug("Error decodificando respuesta JSON", "error", err)
-		return
+		return false
 	}
 
 	if respuestaDesalojo.Respuesta {
@@ -437,10 +439,12 @@ func PeticionDesalojo(pid int, motivoDesalojo string) {
 		Logger.Debug(mensajeDesalojoExitoso)
 		fmt.Println(mensajeDesalojoExitoso)
 		CortoNotifier <- struct{}{} // Notificamos al planificador de corto plazo que se ha desalojado un proceso
+		return true
 	} else {
 		mensajeDesalojoFallido := fmt.Sprintf("Desalojo fallido del PID %d de la CPU %s", pid, cpuDelPID.CPUID)
 		Logger.Debug(mensajeDesalojoFallido)
 		fmt.Println(mensajeDesalojoFallido)
+		return false
 	}
 
 }

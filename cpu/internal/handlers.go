@@ -62,25 +62,28 @@ func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var respuestaDesalojo = globals.KerneltoCPUDesalojoResponse{
+		Respuesta: true,
+	}
 	// Si el PID es el correcto, se marca que hay q interrumpir el ciclo
 	if ProcesoRequest.PID == ProcesoEjecutando.PID {
 		Logger.Debug("Recibí una solicitud de desalojo", "PID", ProcesoRequest.PID, "Motivo", ProcesoRequest.Motivo)
 		fmt.Printf("Recibí una solicitud de desalojo para el PID %d con motivo: %s\n", ProcesoRequest.PID, ProcesoRequest.Motivo)
 
-		
-		
-
-		mutexProcesoEjecutando.Lock()
-		ProcesoEjecutando.Interrupt = true
-		ProcesoEjecutando.MotivoDesalojo = ProcesoRequest.Motivo
-		mutexProcesoEjecutando.Unlock()
-
-		LogInterrupcionRecibida()
+		// Si el motivo es IO, DUMP_MEMORY o EXIT, no se puede desalojar porque ya la propia instruccion lo va a hacer
+		if ProcesoRequest.Motivo == "Planificador" && (ArgumentoInstrucciones[0] == "IO" || ArgumentoInstrucciones[0] == "DUMP_MEMORY" || ArgumentoInstrucciones[0] == "EXIT") {
+			respuestaDesalojo.Respuesta = false
+			Logger.Debug("No se pudo desalojar el proceso por", ArgumentoInstrucciones[0], "en ejecución")
+			fmt.Printf("No se pudo desalojar el proceso PID %d por %s en ejecución\n", ProcesoRequest.PID, ArgumentoInstrucciones[0])
+		} else {
+			mutexProcesoEjecutando.Lock()
+			ProcesoEjecutando.Interrupt = true
+			ProcesoEjecutando.MotivoDesalojo = ProcesoRequest.Motivo
+			mutexProcesoEjecutando.Unlock()
+			LogInterrupcionRecibida()
+		}
 	}
 
-	var respuestaDesalojo = globals.KerneltoCPUDesalojoResponse{
-		Respuesta: true,
-	}
 	json.NewEncoder(w).Encode(respuestaDesalojo)
 
 }

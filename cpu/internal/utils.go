@@ -48,7 +48,7 @@ var CPUId string
 var EstructuraMemoriaDeCPU EstructuraMemoria
 var ProcesoEjecutando PCBdeCPU
 var InstruccionUsaMemoria bool = false
-var argumentoInstrucciones []string
+var ArgumentoInstrucciones []string
 
 var mutexProcesoEjecutando sync.Mutex
 
@@ -130,29 +130,35 @@ func Fetch() {
 func Decode() {
 
 	// Devuelve en un slice de strings las palabras de la instruccion actual separadas por espacios
-	argumentoInstrucciones = strings.Fields(ProcesoEjecutando.InstruccionActual)
+	ArgumentoInstrucciones = strings.Fields(ProcesoEjecutando.InstruccionActual)
 
-	if (argumentoInstrucciones[0] == "WRITE") || (argumentoInstrucciones[0] == "READ") {
+	if (ArgumentoInstrucciones[0] == "WRITE") || (ArgumentoInstrucciones[0] == "READ") {
 		// Si la instruccion es WRITE o READ, Se tiene que utilizar la MMU para traducir la direccion logica a fisica
 		InstruccionUsaMemoria = true
 	}
+
+	mutexProcesoEjecutando.Lock()
+	if ProcesoEjecutando.MotivoDesalojo == "Planificador" && (ArgumentoInstrucciones[0] == "IO" || ArgumentoInstrucciones[0] == "DUMP_MEMORY" || ArgumentoInstrucciones[0] == "EXIT") {
+		ProcesoEjecutando.MotivoDesalojo = ArgumentoInstrucciones[0]
+	}
+	mutexProcesoEjecutando.Unlock()
 
 }
 
 func Execute() {
 
-	switch len(argumentoInstrucciones) {
+	switch len(ArgumentoInstrucciones) {
 	case 1:
-		LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], "")
+		LogInstruccionEjecutada(ProcesoEjecutando.PID, ArgumentoInstrucciones[0], "")
 	case 2:
-		LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1])
+		LogInstruccionEjecutada(ProcesoEjecutando.PID, ArgumentoInstrucciones[0], ArgumentoInstrucciones[1])
 	case 3:
-		LogInstruccionEjecutada(ProcesoEjecutando.PID, argumentoInstrucciones[0], argumentoInstrucciones[1]+" "+argumentoInstrucciones[2])
+		LogInstruccionEjecutada(ProcesoEjecutando.PID, ArgumentoInstrucciones[0], ArgumentoInstrucciones[1]+" "+ArgumentoInstrucciones[2])
 	}
 
 	if InstruccionUsaMemoria {
 		//Averiguar la pagina de esa Direccion Logica para saber si la tiene cache
-		numeroDePagina, direccionLogicaInt := CalculoPagina(argumentoInstrucciones[1])
+		numeroDePagina, direccionLogicaInt := CalculoPagina(ArgumentoInstrucciones[1])
 		var desplazamiento int = direccionLogicaInt % EstructuraMemoriaDeCPU.TamanioPagina
 		var paginaCache *EntradaCache
 		direccionFisica := ObtenerDireccionFisica(numeroDePagina, direccionLogicaInt, desplazamiento)
@@ -166,41 +172,41 @@ func Execute() {
 			}
 
 			// Escribo/Leo la pagina en cache
-			switch argumentoInstrucciones[0] {
+			switch ArgumentoInstrucciones[0] {
 			case "WRITE":
 				// Si la instruccion es WRITE, se escribe en el byte correspondiente
-				EscribirEnPaginaCache(paginaCache, desplazamiento, argumentoInstrucciones[2])
+				EscribirEnPaginaCache(paginaCache, desplazamiento, ArgumentoInstrucciones[2])
 			case "READ":
 				// Si la instruccion es READ, se lee del byte correspondiente
-				LeerDePaginaCache(paginaCache, desplazamiento, argumentoInstrucciones[2])
+				LeerDePaginaCache(paginaCache, desplazamiento, ArgumentoInstrucciones[2])
 			}
 
 		} else { //Cache desabilitada, peticiones a memoria con los recursos directamente
 
-			switch argumentoInstrucciones[0] {
+			switch ArgumentoInstrucciones[0] {
 			case "WRITE":
 				// Si la instruccion es WRITE, se escribe en el byte correspondiente
-				EscribirEnPaginaMemoria(ProcesoEjecutando.PID, direccionFisica, argumentoInstrucciones[2])
+				EscribirEnPaginaMemoria(ProcesoEjecutando.PID, direccionFisica, ArgumentoInstrucciones[2])
 			case "READ":
 				// Si la instruccion es READ, se lee del byte correspondiente
-				LeerDePaginaMemoria(ProcesoEjecutando.PID, direccionFisica, argumentoInstrucciones[2])
+				LeerDePaginaMemoria(ProcesoEjecutando.PID, direccionFisica, ArgumentoInstrucciones[2])
 			}
 
 		}
 
 	}
 
-	switch argumentoInstrucciones[0] {
+	switch ArgumentoInstrucciones[0] {
 	case "GOTO":
 		//Actualiza el PC al valor de la instruccion
-		ActualizarPC(argumentoInstrucciones[1])
+		ActualizarPC(ArgumentoInstrucciones[1])
 		return // No se incrementa el PC
 	case "IO":
 		// Si la instruccion es IO, se realiza una peticion al kernel para que maneje la syscall
-		PeticionIOKernel(ProcesoEjecutando.PID, argumentoInstrucciones[1], argumentoInstrucciones[2])
+		PeticionIOKernel(ProcesoEjecutando.PID, ArgumentoInstrucciones[1], ArgumentoInstrucciones[2])
 	case "INIT_PROC":
 		// Si la instruccion es INIT_PROC, se realiza una peticion al kernel para que maneje la syscall
-		PeticionInitProcKernel(ProcesoEjecutando.PID, argumentoInstrucciones[1], argumentoInstrucciones[2])
+		PeticionInitProcKernel(ProcesoEjecutando.PID, ArgumentoInstrucciones[1], ArgumentoInstrucciones[2])
 	case "DUMP_MEMORY":
 		// Si la instruccion es DUMP_MEMORY, se realiza una peticion al kernel para que maneje la syscall
 		PeticionDumpMemoryKernel(ProcesoEjecutando.PID)
@@ -216,12 +222,12 @@ func Execute() {
 
 func CheckInterrupt() bool {
 
-	if ProcesoEjecutando.MotivoDesalojo == "Planificador" && (argumentoInstrucciones[0] == "IO" || argumentoInstrucciones[0] == "DUMP_MEMORY" || argumentoInstrucciones[0] == "EXIT") {
-		// Despues
-		mutexProcesoEjecutando.Lock()
-		ProcesoEjecutando.MotivoDesalojo = argumentoInstrucciones[0]
-		mutexProcesoEjecutando.Unlock()
+	mutexProcesoEjecutando.Lock()
+
+	if ProcesoEjecutando.MotivoDesalojo == "Planificador" && (ArgumentoInstrucciones[0] == "IO" || ArgumentoInstrucciones[0] == "DUMP_MEMORY" || ArgumentoInstrucciones[0] == "EXIT") {
+		ProcesoEjecutando.MotivoDesalojo = ArgumentoInstrucciones[0]
 	}
+	mutexProcesoEjecutando.Unlock()
 
 	//Si hay interrupcion por atender..
 	if ProcesoEjecutando.Interrupt {

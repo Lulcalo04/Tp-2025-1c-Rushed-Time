@@ -156,13 +156,13 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	var framesReservados []int
 
 	if framesLibres >= framesNecesarios {
+		MutexMemoriaGlobal.Lock()
 		pedidoEnMemoria = true
 
 		// Crear tabla raíz si no existe
 		if MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID] == nil {
 			MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID] = NuevaTablaPags()
 		}
-
 		tablaRaiz := MemoriaGlobal.tablas[pedidoRecibido.ProcesoPCB.PID]
 		//guardo los valores en el struct del progeso
 		if MemoriaGlobal.infoProc[pedidoRecibido.ProcesoPCB.PID] == nil {
@@ -183,6 +183,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 			// Insertar en la tabla de páginas
 			MemoriaGlobal.insertarEnMultinivel(tablaRaiz, pagina, frameID, 0)
 		}
+		MutexMemoriaGlobal.Unlock()
 	} else {
 		pedidoEnMemoria = false
 		Logger.Debug("Solicitud a Memoria rechazada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
@@ -206,7 +207,10 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 			Offset:  0, // No esta en SWAP
 		}
 	}
+
+	MutexMemoriaGlobal.Lock()
 	MemoriaGlobal.infoProc[pedidoRecibido.ProcesoPCB.PID] = pi
+	MutexMemoriaGlobal.Unlock()
 
 	if pedidoEnMemoria {
 		// Si el pedido es valido, se hace la concesion de espacio
@@ -223,7 +227,9 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//& Actualizacion de metricas
+		MutexMemoriaGlobal.Lock()
 		MemoriaGlobal.infoProc[pedidoRecibido.ProcesoPCB.PID].Metricas.AccesoATablaDePaginas++
+		MutexMemoriaGlobal.Unlock()
 
 		json.NewEncoder(w).Encode(resp)
 	} else {
@@ -260,7 +266,9 @@ func LiberarEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	LogDestruccionDeProceso(pedidoRecibido.PID, *MemoriaGlobal.infoProc[pedidoRecibido.PID].Metricas)
 
 	pid := pedidoRecibido.PID
+	MutexMemoriaGlobal.Lock()
 	err := MemoriaGlobal.LiberarProceso(pid)
+	MutexMemoriaGlobal.Unlock()
 
 	w.Header().Set("Content-Type", "application/json") // Setear Content-Type JSON (osea que la respuesta sera del tipo JSON)
 
@@ -354,7 +362,9 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 
 			origen := int(frameID) * tamanioPaginas
 			destino := pagina * tamanioPaginas
+			MutexMemoriaGlobal.Lock()
 			copy(dump[destino:destino+tamanioPaginas], MemoriaGlobal.datos[origen:origen+tamanioPaginas])
+			MutexMemoriaGlobal.Unlock()
 
 			fmt.Println("EXTRAIDO DE MEMORIA", MemoriaGlobal.datos[origen:origen+tamanioPaginas], "bytes")
 			Logger.Debug("EXTRAIDO DE MEMORIA", "bytes", MemoriaGlobal.datos[origen:origen+tamanioPaginas])
@@ -432,6 +442,7 @@ func EntrarASwap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Suspender todas sus páginas
+	MutexMemoriaGlobal.Lock()
 	for i := range pi.Pages {
 		if err := MemoriaGlobal.SuspenderPagina(requestSwap.PID, i); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -440,11 +451,14 @@ func EntrarASwap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	MutexMemoriaGlobal.Unlock()
 
 	json.NewEncoder(w).Encode(responseSwap)
 
 	// & Actualizar las métricas del proceso
+	MutexMemoriaGlobal.Lock()
 	MemoriaGlobal.infoProc[requestSwap.PID].Metricas.BajadasASwap++
+	MutexMemoriaGlobal.Unlock()
 
 	Logger.Debug("Proceso swappeado exitosamente", "PID", requestSwap.PID)
 }
@@ -473,6 +487,7 @@ func VolverDeSwap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	MutexMemoriaGlobal.Lock()
 	for i := range pi.Pages {
 		if err := MemoriaGlobal.RestaurarPagina(requestSwap.PID, i); err != nil {
 			responseSwap.Respuesta = false
@@ -480,11 +495,14 @@ func VolverDeSwap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	MutexMemoriaGlobal.Unlock()
 
 	json.NewEncoder(w).Encode(responseSwap)
 
 	//& Metricas por proceso
+	MutexMemoriaGlobal.Lock()
 	MemoriaGlobal.infoProc[requestSwap.PID].Metricas.SubidasAMemoriaPrincipal++
+	MutexMemoriaGlobal.Unlock()
 
 }
 
@@ -652,7 +670,9 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//& Actualizo metricas:
+	MutexMemoriaGlobal.Lock()
 	MemoriaGlobal.infoProc[request.PID].Metricas.InstruccionesSolicitadas++
+	MutexMemoriaGlobal.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -753,11 +773,15 @@ func ActualizarPaginaHandler(w http.ResponseWriter, r *http.Request) {
 	// Actualizo el contenido de la página en memoria
 
 	offset := frameID * Config_Memoria.PageSize
+	MutexMemoriaGlobal.Lock()
 	copy(MemoriaGlobal.datos[offset:offset+len(request.Data)], request.Data)
+	MutexMemoriaGlobal.Unlock()
 
 	// & Metricas
+	MutexMemoriaGlobal.Lock()
 	MemoriaGlobal.infoProc[request.PID].Metricas.AccesoATablaDePaginas++
 	MemoriaGlobal.infoProc[request.PID].Metricas.EscriturasDeMemoria++
+	MutexMemoriaGlobal.Unlock()
 
 	response := globals.CPUActualizarPaginaEnMemoriaResponse{
 		Respuesta: true,
@@ -799,11 +823,13 @@ func PedirFrameHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := globals.MemoriaToCPUPageResponse{
 		PID:             request.PID,
-		ContenidoPagina: MemoriaGlobal.datos[inicioPagina:finalPagina], // Replace with the correct field name
+		ContenidoPagina: MemoriaGlobal.datos[inicioPagina:finalPagina],
 	}
 
+	MutexMemoriaGlobal.Lock()
 	MemoriaGlobal.infoProc[request.PID].Metricas.LecturasDeMemoria++
 	MemoriaGlobal.infoProc[request.PID].Metricas.AccesoATablaDePaginas++
+	MutexMemoriaGlobal.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -843,8 +869,10 @@ func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//& Actualizo las metricas del proceso
+	MutexMemoriaGlobal.Lock()
 	MemoriaGlobal.infoProc[request.PID].Metricas.AccesoATablaDePaginas++
 	MemoriaGlobal.infoProc[request.PID].Metricas.LecturasDeMemoria++
+	MutexMemoriaGlobal.Unlock()
 
 	LogOperacionEnEspacioUsuario(request.PID, "read", direccionFisica, tamanio)
 
@@ -881,7 +909,9 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Escribo el string convertido en un slice de bytes en la memoria
 
+	MutexMemoriaGlobal.Lock()
 	copy(MemoriaGlobal.datos[direccionFisica:], data)
+	MutexMemoriaGlobal.Unlock()
 
 	respuestaWrite = true
 
@@ -890,8 +920,10 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// &Actualizo las metricas del proceso
+	MutexMemoriaGlobal.Lock()
 	MemoriaGlobal.infoProc[request.PID].Metricas.AccesoATablaDePaginas++
 	MemoriaGlobal.infoProc[request.PID].Metricas.EscriturasDeMemoria++
+	MutexMemoriaGlobal.Unlock()
 
 	LogOperacionEnEspacioUsuario(request.PID, "write", direccionFisica, len(data))
 

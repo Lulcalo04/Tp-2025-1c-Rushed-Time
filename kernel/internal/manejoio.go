@@ -267,8 +267,23 @@ func BuscarPrimerInstanciaLibre(nombreDispositivo string) (InstanciaIO, bool) {
 
 func BloquearProcesoPorIO(nombreDispositivo string, pid int, tiempoEspera int) {
 
-	//Buscamos el PCB del proceso en la cola de blocked
-	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaBlocked)
+	//Buscamos el PCB del proceso en las colas donde podría estar
+	var pcbDelProceso *globals.PCB
+
+	// Primero buscamos en ColaBlocked
+	pcbDelProceso = BuscarProcesoEnCola(pid, &ColaBlocked)
+	if pcbDelProceso == nil {
+		// Si no está en ColaBlocked, buscamos en ColaSuspBlocked
+		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+		if pcbDelProceso == nil {
+			// Si no está en ColaSuspBlocked, buscamos en ColaReady por si no se movió correctamente
+			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaReady)
+			if pcbDelProceso == nil {
+				Logger.Debug("No se encontró el proceso en ninguna cola válida", "pid", pid)
+				return
+			}
+		}
+	}
 
 	ProcesoEsperando := ProcesoEsperando{
 		Proceso: *pcbDelProceso,

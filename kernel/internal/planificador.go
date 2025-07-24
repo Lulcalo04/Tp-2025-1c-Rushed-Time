@@ -106,8 +106,10 @@ func PlanificadorLargoPlazo() {
 					MoverProcesoACola(ColaSuspReady[0], &ColaReady)
 					CortoNotifier <- struct{}{}
 				} else {
+					// Guardamos referencia al proceso antes de moverlo
+					procesoAProcesar := ColaNew[0]
 
-					respuestaMemoria := PedirEspacioAMemoria(*ColaNew[0])
+					respuestaMemoria := PedirEspacioAMemoria(*procesoAProcesar)
 
 					if !respuestaMemoria {
 						fmt.Println("P.LP: No hay espacio en memoria, rompiendo el for")
@@ -116,7 +118,7 @@ func PlanificadorLargoPlazo() {
 					}
 
 					// Mueve el proceso a la cola Ready y notifica al planificador de corto plazo
-					MoverProcesoACola(ColaNew[0], &ColaReady)
+					MoverProcesoACola(procesoAProcesar, &ColaReady)
 					CortoNotifier <- struct{}{}
 				}
 			}
@@ -148,7 +150,11 @@ func PlanificadorLargoPlazo() {
 					fmt.Println("P.LP: Procesando cola New")
 					Logger.Debug("Procesando cola New")
 
-					respuestaMemoria := PedirEspacioAMemoria(*ColaNew[pcbMasChico()])
+					// Guardamos el índice y referencia al proceso antes de procesarlo
+					indiceProceso := pcbMasChico()
+					procesoAProcesar := ColaNew[indiceProceso]
+
+					respuestaMemoria := PedirEspacioAMemoria(*procesoAProcesar)
 
 					// Si memoria responde que no hay espacio...
 					if !respuestaMemoria {
@@ -157,7 +163,7 @@ func PlanificadorLargoPlazo() {
 						break // Salimos del for para esperar un nuevo proceso en New
 					}
 
-					MoverProcesoACola(ColaNew[pcbMasChico()], &ColaReady)
+					MoverProcesoACola(procesoAProcesar, &ColaReady)
 					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
 				}
 
@@ -240,14 +246,13 @@ func PlanificadorCortoPlazo() {
 				// Cambiamos el boolean de YaCalculado a false para que se vuelva a calcular en la próxima iteración
 				pcbElegido.EstimacionDeRafaga.YaCalculado = false
 
-				if ElegirCpuYMandarProceso(*pcbElegido) {
-					break // Salimos del for para esperar un nuevo proceso en Ready
-				} else {
+				if !ElegirCpuYMandarProceso(*pcbElegido) {
 					// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
 					MutexCpuLibres.Lock()
 					CpuLibres = false // Indicamos que la CPU no está libre
 					MutexCpuLibres.Unlock()
 				}
+				break // Salimos del for para esperar un nuevo proceso en Ready
 			}
 			if algoritmo == "SRT" && CpuLibres {
 				// Recorremos la cola de Ready
@@ -271,14 +276,13 @@ func PlanificadorCortoPlazo() {
 				// Cambiamos el boolean de YaCalculado a false para que se vuelva a calcular en la próxima iteración
 				pcbElegido.EstimacionDeRafaga.YaCalculado = false
 
-				if ElegirCpuYMandarProceso(*pcbElegido) {
-					break // Salimos del for para esperar un nuevo proceso en Ready
-				} else {
+				if !ElegirCpuYMandarProceso(*pcbElegido) {
 					// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
 					MutexCpuLibres.Lock()
 					CpuLibres = false // Indicamos que la CPU no está libre
 					MutexCpuLibres.Unlock()
 				}
+				break
 			} else if algoritmo == "SRT" && !CpuLibres {
 				// Si no hay cpu libres, elegir a victima de SRT, el que tenga mayor tiempo restante en la CPU
 				MutexReady.Lock()
@@ -325,25 +329,28 @@ func PlanificadorCortoPlazo() {
 							CpuLiberada = false
 							MutexCpuLiberada.Unlock()
 
-							PeticionDesalojo(pcbVictima.PID, "Planificador")
+							if PeticionDesalojo(pcbVictima.PID, "Planificador") {
+								// Muevo el proceso víctima a la cola Ready
 
-							// Muevo el proceso víctima a la cola Ready
-							MoverProcesoACola(pcbVictima, &ColaReady)
+								MoverProcesoACola(pcbVictima, &ColaReady)
 
-							for {
-								if CpuLiberada {
-									break
+								for {
+									if CpuLiberada {
+										break
+									}
 								}
-							}
 
-							// Intentamos enviar el proceso a la CPU
-							if ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
+								// Intentamos enviar el proceso a la CPU
+								if !ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
+									// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
+									MutexCpuLibres.Lock()
+									CpuLibres = false // Indicamos que la CPU no está libre
+									MutexCpuLibres.Unlock()
+								}
 								break // Salimos del for para esperar un nuevo proceso en Ready
+
 							} else {
-								// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
-								MutexCpuLibres.Lock()
-								CpuLibres = false // Indicamos que la CPU no está libre
-								MutexCpuLibres.Unlock()
+								break
 							}
 
 						}

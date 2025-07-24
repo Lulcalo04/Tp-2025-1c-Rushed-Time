@@ -5,6 +5,7 @@ import (
 	"globals"
 	"log/slog"
 	"os"
+	"sync"
 )
 
 type ConfigMemoria struct {
@@ -22,6 +23,8 @@ type ConfigMemoria struct {
 }
 
 var MemoriaGlobal *Memoria
+
+var MutexMemoriaGlobal sync.Mutex
 
 var Config_Memoria *ConfigMemoria
 
@@ -135,6 +138,7 @@ func NuevaMemoria() {
 	}
 
 	// 6) Inicializar la memoria global
+	MutexMemoriaGlobal.Lock()
 	MemoriaGlobal = &Memoria{
 		datos:           datos,
 		pageSize:        Config_Memoria.PageSize,
@@ -146,4 +150,5 @@ func NuevaMemoria() {
 		freeSwapOffsets: make([]int64, 0), // Inicializamos con un slice
 		nextSwapOffset:  0,                // Inicializamos el offset de swap
 	}
+	MutexMemoriaGlobal.Unlock()
 }
