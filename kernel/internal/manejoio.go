@@ -76,6 +76,10 @@ func RegistrarInstanciaIO(nombre string, puerto int, ip string) {
 }
 
 func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puertoInstancia int) {
+
+	fmt.Println("Desconectando instancia de IO:", nombreDispositivo, ipInstancia, puertoInstancia)
+	Logger.Debug("Desconectando instancia de IO", "nombre_dispositivo", nombreDispositivo, "ip_instancia", ipInstancia, "puerto_instancia", puertoInstancia)
+
 	// Recorro la lista de instancias del dispositivo IO en búsqueda de la instancia a eliminar
 	for pos, instanciaBuscada := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
 

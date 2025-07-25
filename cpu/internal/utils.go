@@ -115,6 +115,8 @@ func CicloDeInstruccion() {
 		Decode()
 		Execute()
 		if CheckInterrupt() {
+			Logger.Debug("Rompi el ciclo de instrucción por interrupción", "PID", ProcesoEjecutando.PID)
+			fmt.Println("Rompi el ciclo de instrucción por interrupción para el proceso", ProcesoEjecutando.PID)
 			break
 		}
 	}
@@ -226,6 +228,7 @@ func CheckInterrupt() bool {
 
 	if ProcesoEjecutando.MotivoDesalojo == "Planificador" && (ArgumentoInstrucciones[0] == "IO" || ArgumentoInstrucciones[0] == "DUMP_MEMORY" || ArgumentoInstrucciones[0] == "EXIT") {
 		ProcesoEjecutando.MotivoDesalojo = ArgumentoInstrucciones[0]
+		Logger.Debug("Caso de planificador, motivo de desalojo actualizado", "motivo", ProcesoEjecutando.MotivoDesalojo)
 	}
 	mutexProcesoEjecutando.Unlock()
 

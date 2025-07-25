@@ -331,6 +331,10 @@ func EnviarProcesoAIO(instanciaDeIO InstanciaIO, pid int, milisegundosDeUso int)
 
 	// Realizamos la petición en un goroutine para no bloquear
 	go func() {
+
+		Logger.Debug("Enviando petición a IO", "pid", pid, "dispositivo", instanciaDeIO.NombreIO, "tiempo", milisegundosDeUso)
+		fmt.Println("Enviando petición a IO", "pid", pid, "dispositivo", instanciaDeIO.NombreIO, "tiempo", milisegundosDeUso)
+
 		respuestaIo, err := http.Post(url, "application/json", bytes.NewBuffer(bodyPeticion))
 		if err != nil {
 			Logger.Debug("Error conectando con IO", "error", err)

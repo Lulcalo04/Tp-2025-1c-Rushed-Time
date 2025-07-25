@@ -491,6 +491,9 @@ func VolverDeSwap(w http.ResponseWriter, r *http.Request) {
 	for i := range pi.Pages {
 		if err := MemoriaGlobal.RestaurarPagina(requestSwap.PID, i); err != nil {
 			responseSwap.Respuesta = false
+			Logger.Debug("Error restaurando página desde swap", "PID", requestSwap.PID, "Pagina", i, "Error", err.Error())
+			fmt.Println("Error restaurando página desde swap", "PID", requestSwap.PID, "Pagina", i, "Error", err.Error())
+			MutexMemoriaGlobal.Unlock()
 			json.NewEncoder(w).Encode(responseSwap)
 			return
 		}
@@ -581,7 +584,7 @@ func (mp *Memoria) RestaurarPagina(pid, pagina int) error {
 	//1) Reservar frame libre
 	frameID, err := mp.obtenerFrameLibre()
 	if err != nil {
-		fmt.Println("no hay frames libres para restaurar página: %w", err)
+		fmt.Println("no hay frames libres para restaurar página: ", "PID", pid, "Pagina", pagina)
 		Logger.Debug("No hay frames libres para restaurar página", "PID", pid, "Pagina", pagina)
 		return fmt.Errorf("no hay frames libres para restaurar página: %w", err)
 	}
@@ -647,6 +650,8 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 		content, err := os.ReadFile(filename)
 		if err != nil {
 			http.Error(w, "No se encontro el archivo del proceso", http.StatusNotFound)
+			Logger.Debug("No se encontro el archivo del proceso", "PID", request.PID, "Archivo", pi.PathArchivo)
+			fmt.Println("No se encontro el archivo del proceso", "PID", request.PID, "Archivo", pi.PathArchivo)
 			return
 		}
 		instrucciones = strings.Split(strings.TrimSpace(string(content)), "\n")
@@ -661,6 +666,8 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	// Validar el PC
 	if request.PC < 0 || request.PC >= len(instrucciones) {
 		http.Error(w, "PC fuera de rango", http.StatusBadRequest)
+		Logger.Debug("PC fuera de rango", "PID", request.PID, "PC", request.PC, "Instrucciones", len(instrucciones))
+		fmt.Println("PC fuera de rango", "PID", request.PID, "PC", request.PC, "Instrucciones", len(instrucciones))
 		return
 	}
 
@@ -670,16 +677,14 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//& Actualizo metricas:
+
 	MutexMemoriaGlobal.Lock()
 	MemoriaGlobal.infoProc[request.PID].Metricas.InstruccionesSolicitadas++
 	MutexMemoriaGlobal.Unlock()
 
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 
-	// TODO -- log obligatorio
 	LogObtenerInstruccion(request.PID, request.PC, instrucciones[request.PC])
-	// opcional : Logger.Debug("Instrucción solicitada", "PID", request.PID, "PC", request.PC, "Instruccion", instrucciones[request.PC])
 }
 
 // (Función auxiliar) sirve para obtener la lista de instrucciones de un proceso

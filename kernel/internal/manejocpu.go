@@ -78,12 +78,12 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 	cpu := ObtenerCpuDisponible()
 	if cpu != nil {
 
-		if !proceso.DesalojoAnalizado {
+		/* if !proceso.DesalojoAnalizado {
 
 			Logger.Debug("No se analizó desalojo, no se puede mandar a CPU todavía", "proceso_pid", proceso.PID)
 			fmt.Println("No se analizó desalojo, no se puede mandar a CPU todavía", "proceso PID:", proceso.PID)
 			return false
-		}
+		} */
 
 		MutexIdentificadoresCPU.Lock()
 		cpu.Ocupado = true
@@ -99,10 +99,34 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 		fmt.Println("CPU elegida:", cpu.CPUID, ", Mandando proceso PID:", proceso.PID)
 		EnviarProcesoACPU(cpu.Ip, cpu.Puerto, proceso.PID, proceso.PC)
 
+		//Me fijo si hay alguna otra CPU libre y si no la hay marco que ya no queda ninguna libre
+		MutexIdentificadoresCPU.Lock()
+		for i := range ListaIdentificadoresCPU {
+			if !ListaIdentificadoresCPU[i].Ocupado {
+				MutexIdentificadoresCPU.Unlock()
+				MutexCpuLibres.Lock()
+				CpuLibres = true
+				MutexCpuLibres.Unlock()
+				return true
+			}
+		}
+		MutexIdentificadoresCPU.Unlock()
+
+		MutexCpuLibres.Lock()
+		CpuLibres = false // Indicamos que no hay CPUs libres
+		MutexCpuLibres.Unlock()
+
+		Logger.Debug("No queda ninguna CPU libre")
+		fmt.Println("No queda ninguna CPU libre")
+
 		return true
 	} else {
 		Logger.Debug("No hay CPU disponible para el proceso ", "proceso_pid", proceso.PID)
 		fmt.Println("No hay CPU disponible para el proceso", proceso.PID)
+		MutexCpuLibres.Lock()
+		CpuLibres = false // Indicamos que no hay CPUs libres
+		MutexCpuLibres.Unlock()
+
 		return false
 	}
 }

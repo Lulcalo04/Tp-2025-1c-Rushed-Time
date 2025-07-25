@@ -150,6 +150,7 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 	// Obtener el mutex de la cola de origen
 	var mutexOrigen *sync.Mutex
 	for colaOrigen, estado := range ColaEstados {
+		fmt.Println("ITERO FOR 1 MOVER COLA ")
 		if proceso.Estado == estado {
 			mutexOrigen = ColaMutexes[colaOrigen]
 			break
@@ -171,6 +172,7 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 
 	// Verificar si el proceso ya está en la cola destino
 	for _, p := range *colaDestino {
+		fmt.Println("ITERO FOR 2 MOVER COLA ")
 		if p.PID == proceso.PID {
 			fmt.Printf("El proceso ya está en la cola destino: PID %d\n", proceso.PID)
 			return
@@ -185,6 +187,8 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 
 	// Buscar y eliminar el proceso de su cola actual
 	for cola, estado := range ColaEstados {
+		fmt.Println("ITERO FOR 3 MOVER COLA ")
+
 		if procesoEstadoAnterior == estado {
 			for i := range *cola {
 				if (*cola)[i].PID == proceso.PID {
@@ -202,7 +206,7 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 
 		// Si el proceso estaba en Exec, guardar el tiempo de la última ráfaga
 		if procesoEstadoAnterior == globals.Exec {
-			proceso.TiempoDeUltimaRafaga = float64(time.Since(proceso.InicioEjecucion))
+			proceso.TiempoDeUltimaRafaga = float64(time.Since(proceso.InicioEjecucion).Milliseconds())
 			Logger.Debug("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
 			fmt.Println("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
 		}
@@ -347,10 +351,12 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaBlocked)
 		if pcbDelProceso == nil {
 			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaSuspBlocked)
-			//! Con esto se va un error de nill pero se crean hasta 64 procesos cuando no pueden pasar de los 32 por io
-			/* if pcbDelProceso == nil {
+			if pcbDelProceso == nil {
 				pcbDelProceso = BuscarProcesoEnCola(pid, &ColaReady)
-			} */
+				if pcbDelProceso == nil {
+					pcbDelProceso = BuscarProcesoEnCola(pid, &ColaExit)
+				}
+			}
 		}
 		pcbDelProceso.PC = pc
 		pcbDelProceso.DesalojoAnalizado = true
@@ -370,6 +376,8 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 	}
 
 	for i, cpu := range ListaIdentificadoresCPU {
+
+		fmt.Println("ITERO FOR ANALIZAR DESALOJO ")
 		if cpu.CPUID == cpuId {
 			MutexIdentificadoresCPU.Lock()
 			ListaIdentificadoresCPU[i].Ocupado = false

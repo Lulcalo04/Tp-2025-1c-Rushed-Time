@@ -128,6 +128,7 @@ func SolicitarSiguienteInstruccionMemoria(pid int, pc int) {
 	mutexProcesoEjecutando.Lock()
 	ProcesoEjecutando.InstruccionActual = respuestaMemoria.InstruccionAEjecutar
 	mutexProcesoEjecutando.Unlock()
+
 }
 
 func PeticionFrameAMemoria(entradasPorNivel []int, pid int) int {

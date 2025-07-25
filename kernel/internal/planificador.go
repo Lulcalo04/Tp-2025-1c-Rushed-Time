@@ -83,6 +83,8 @@ func PlanificadorLargoPlazo() {
 		for len(ColaNew) != 0 || len(ColaSuspReady) != 0 {
 
 			if algoritmo == "FIFO" {
+				Logger.Debug("P.LP: Procesando cola New")
+				fmt.Println("P.LP: Procesando cola New")
 				// Verifica conexión con memoria
 				if !PingCon("Memoria", Config_Kernel.IPMemory, Config_Kernel.PortMemory) {
 					Logger.Debug("No se puede conectar con memoria (Ping no devuelto)")
@@ -197,6 +199,9 @@ func PlanificadorCortoPlazo() {
 		for len(ColaReady) != 0 {
 			if algoritmo == "FIFO" && CpuLibres {
 
+				Logger.Debug("P.CP: ENTRANDO EN FIFO")
+				fmt.Println("P.CP: ENTRANDO EN FIFO")
+
 				// Sabemos que el proceso que acabamos de mover a Exec es el último de la cola
 				primerProcesoEnReady := ColaReady[0]
 
@@ -256,6 +261,9 @@ func PlanificadorCortoPlazo() {
 			}
 			if algoritmo == "SRT" && CpuLibres {
 				// Recorremos la cola de Ready
+				Logger.Debug("P.CP: ()()()()()()()Hay CPU libre, buscando proceso con menor estimación de ráfaga")
+				fmt.Println("P.CP: ()()()()()()()Hay CPU libre, buscando proceso con menor estimación de ráfaga")
+
 				MutexReady.Lock()
 				for i := range ColaReady {
 					// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
@@ -278,13 +286,16 @@ func PlanificadorCortoPlazo() {
 
 				if !ElegirCpuYMandarProceso(*pcbElegido) {
 					// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
-					MutexCpuLibres.Lock()
-					CpuLibres = false // Indicamos que la CPU no está libre
-					MutexCpuLibres.Unlock()
+					Logger.Debug("P.CP: CPU LIBRE No se pudo enviar el proceso a la CPU porque no hay CPUs libres del", "PID", pcbElegido.PID)
+					fmt.Println("P.CP: CPU LIBRE No se pudo enviar el proceso a la CPU porque no hay CPUs libres")
+					continue
 				}
 				break
 			} else if algoritmo == "SRT" && !CpuLibres {
 				// Si no hay cpu libres, elegir a victima de SRT, el que tenga mayor tiempo restante en la CPU
+				Logger.Debug("P.CP: ()()()()()()()No hay CPU libre, buscando víctima de SRT")
+				fmt.Println("P.CP: ()()()()()()()No hay CPU libre, buscando víctima de SRT")
+
 				MutexReady.Lock()
 				for i := range ColaReady {
 					// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
@@ -311,7 +322,9 @@ func PlanificadorCortoPlazo() {
 				ultimoProcesoEnReady := ColaReady[len(ColaReady)-1]
 
 				if pcbVictima == nil {
-					continue
+					Logger.Debug("()()No hay procesos en la cola Exec para comparar con SRT")
+					fmt.Println("()()No hay procesos en la cola Exec para comparar con SRT")
+					break
 				}
 				fmt.Println("P.CP: Buscando víctima de SRT, PID:", pcbVictima.PID, "con tiempo restante en CPU:", tiempoRestanteEnCpu(*pcbVictima), "y estimación de ráfaga del último en Ready:", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
 				Logger.Debug("P.CP: Buscando víctima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
@@ -350,6 +363,9 @@ func PlanificadorCortoPlazo() {
 								break // Salimos del for para esperar un nuevo proceso en Ready
 
 							} else {
+
+								Logger.Debug("No se pudo desalojar a la víctima de SRT", "PID", pcbVictima.PID)
+								fmt.Println("No se pudo desalojar a la víctima de SRT", "PID", pcbVictima.PID)
 								break
 							}
 
