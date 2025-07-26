@@ -47,6 +47,9 @@ var ColaMutexes = map[*[]*globals.PCB]*sync.Mutex{
 var MutexCpuLibres sync.Mutex
 var CpuLibres bool = true
 
+var mejorTiempoDeRafaga float64 = 1.7976931348623157e+30 // valor máximo para float64
+var posicionDeLaMejorRafaja = -1
+
 func IniciarPlanificadores() {
 
 	//ESPERAR ENTER
@@ -297,83 +300,124 @@ func PlanificadorCortoPlazo() {
 				fmt.Println("P.CP: ()()()()()()()No hay CPU libre, buscando víctima de SRT")
 
 				MutexReady.Lock()
-				for i := range ColaReady {
-					// Si el proceso no tiene una estimación de ráfaga calculada, la calculamos
-					if ColaReady[i].MetricasDeEstados[globals.Exec] != 0 && !ColaReady[i].EstimacionDeRafaga.YaCalculado {
 
-						fmt.Println("1!) Estimacion de rafaga", "PID", ColaReady[i].PID, "sin calcular:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
-						Logger.Debug("1!) Estimacion de rafaga", "PID", ColaReady[i].PID, "sin calcular:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+				// Verificar que ColaReady no esté vacía antes de calcular PosicionAMandar
+				if len(ColaReady) == 0 {
+					Logger.Debug("P.CP: ColaReady está vacía durante SRT")
+					fmt.Println("P.CP: ColaReady está vacía durante SRT")
+					MutexReady.Unlock()
+					break
+				}
 
-						//Est(n+1) =  alfa.R(n) + (1-alfa).Est(n) ;   alfa pertenece [0,1]
-						ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * ColaReady[i].TiempoDeUltimaRafaga) +
-							(1-Config_Kernel.Alpha)*ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga
+				PosicionAMandar := len(ColaReady) - 1 // Posición del último proceso en Ready
 
-						ColaReady[i].EstimacionDeRafaga.YaCalculado = true
+				if !ColaReady[PosicionAMandar].EstimacionDeRafaga.YaCalculado {
+					ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga = (Config_Kernel.Alpha * ColaReady[PosicionAMandar].TiempoDeUltimaRafaga) +
+						(1-Config_Kernel.Alpha)*ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga
+					ColaReady[PosicionAMandar].EstimacionDeRafaga.YaCalculado = true
+				}
 
-						fmt.Println("2!) Estimacion de rafaga", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
-						Logger.Debug("2!) Estimacion de rafaga", "PID", ColaReady[i].PID, "calculada:", ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga)
+				if ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga >= mejorTiempoDeRafaga {
+					Logger.Debug("P.CP: Mejor estimacion", "ME", mejorTiempoDeRafaga, "PID", ColaReady[PosicionAMandar].PID, "Estimación de ráfaga", ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga)
+					fmt.Println("P.CP: Mejor estimacion", "ME", mejorTiempoDeRafaga, "PID", ColaReady[PosicionAMandar].PID, "Estimación de ráfaga", ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga)
+					if posicionDeLaMejorRafaja != -1 && posicionDeLaMejorRafaja < len(ColaReady) {
+						PosicionAMandar = posicionDeLaMejorRafaja
+					} else {
+						Logger.Debug("P.CP: Mejor estimacion no establecida o índice inválido, cortando el ciclo")
+						MutexReady.Unlock()
+						break
 					}
 				}
-				MutexReady.Unlock()
+
+				// Verificar nuevamente que el índice sea válido antes de usar PosicionAMandar
+				if PosicionAMandar >= len(ColaReady) {
+					Logger.Debug("P.CP: Índice PosicionAMandar fuera de rango", "indice", PosicionAMandar, "longitud", len(ColaReady))
+					fmt.Println("P.CP: Índice PosicionAMandar fuera de rango", "indice", PosicionAMandar, "longitud", len(ColaReady))
+					MutexReady.Unlock()
+					break
+				}
 
 				pcbVictima := buscarTiempoRestanteEnCpuMasAlto()
-
-				// Agarro el proceso que generó la comparación
-				ultimoProcesoEnReady := ColaReady[len(ColaReady)-1]
 
 				if pcbVictima == nil {
 					Logger.Debug("()()No hay procesos en la cola Exec para comparar con SRT")
 					fmt.Println("()()No hay procesos en la cola Exec para comparar con SRT")
+					MutexReady.Unlock()
 					break
 				}
-				fmt.Println("P.CP: Buscando víctima de SRT, PID:", pcbVictima.PID, "con tiempo restante en CPU:", tiempoRestanteEnCpu(*pcbVictima), "y estimación de ráfaga del último en Ready:", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
-				Logger.Debug("P.CP: Buscando víctima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
 
-				if tiempoRestanteEnCpu(*pcbVictima) > ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga && pcbVictima.PID != ultimoProcesoEnReady.PID {
+				fmt.Println("P.CP: Buscando víctima de SRT, PID:", pcbVictima.PID, "con tiempo restante en CPU:", tiempoRestanteEnCpu(*pcbVictima), "y estimación de ráfaga del último en Ready:", ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga)
+				Logger.Debug("P.CP: Buscando víctima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga)
 
-					Logger.Debug("Quiero desalojar a la victima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
-					fmt.Println("Quiero desalojar a la victima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ultimoProcesoEnReady.EstimacionDeRafaga.TiempoDeRafaga)
-					// Pido el desalojo a la CPU del proceso víctima
+				if tiempoRestanteEnCpu(*pcbVictima) > ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga && pcbVictima.PID != ColaReady[PosicionAMandar].PID {
 
-					for i := range ColaExec {
-						if ColaExec[i].PID == pcbVictima.PID {
+					Logger.Debug("Quiero desalojar a la victima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga)
+					fmt.Println("Quiero desalojar a la victima de SRT", "PID", pcbVictima.PID, "TiempoRestanteEnCPU", tiempoRestanteEnCpu(*pcbVictima), "Estimación de ráfaga del último en Ready", ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga)
 
-							MutexCpuLiberada.Lock()
-							CpuLiberada = false
-							MutexCpuLiberada.Unlock()
+					// Guardamos una referencia al proceso antes de liberar el mutex
+					if PosicionAMandar >= len(ColaReady) {
+						Logger.Debug("P.CP: Índice inválido antes de enviar a CPU", "indice", PosicionAMandar, "longitud", len(ColaReady))
+						MutexReady.Unlock()
+						break
+					}
+					procesoAEnviar := ColaReady[PosicionAMandar]
 
-							if PeticionDesalojo(pcbVictima.PID, "Planificador") {
-								// Muevo el proceso víctima a la cola Ready
+					MutexCpuLiberada.Lock()
+					CpuLiberada = false
+					MutexCpuLiberada.Unlock()
 
-								MoverProcesoACola(pcbVictima, &ColaReady)
+					if PeticionDesalojo(pcbVictima.PID, "Planificador") {
+						fmt.Println("P.CP: Desalojo exitoso de la víctima de SRT", "PID", pcbVictima.PID)
 
-								for {
-									if CpuLiberada {
-										break
-									}
-								}
+						//Le damos el lock de la cola READY para que pueda mover el proceso victima
+						MutexReady.Unlock()
 
-								// Intentamos enviar el proceso a la CPU
-								if !ElegirCpuYMandarProceso(*ultimoProcesoEnReady) {
-									// No se pudo enviar el proceso a la CPU porque no habia CPUs libres
-									MutexCpuLibres.Lock()
-									CpuLibres = false // Indicamos que la CPU no está libre
-									MutexCpuLibres.Unlock()
-								}
-								break // Salimos del for para esperar un nuevo proceso en Ready
+						MoverProcesoACola(pcbVictima, &ColaReady)
+						fmt.Println("P.CP: Proceso víctima de SRT movido a Ready", "PID", pcbVictima.PID)
 
-							} else {
-
-								Logger.Debug("No se pudo desalojar a la víctima de SRT", "PID", pcbVictima.PID)
-								fmt.Println("No se pudo desalojar a la víctima de SRT", "PID", pcbVictima.PID)
+						for {
+							if CpuLiberada {
 								break
 							}
-
 						}
 
+						// Usamos la referencia guardada en lugar del índice
+						if !ElegirCpuYMandarProceso(*procesoAEnviar) {
+							MutexCpuLibres.Lock()
+							CpuLibres = false
+							MutexCpuLibres.Unlock()
+							break
+						} else {
+							//Si se pudo mandar el proceso a la CPU, actualizamos las variables de mejor estimación
+							MutexReady.Lock()
+							var PosibleMejor float64 = 999999999999999
+							var posicionDelMejor int
+							for i := range ColaReady {
+								if ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga < PosibleMejor {
+									PosibleMejor = ColaReady[i].EstimacionDeRafaga.TiempoDeRafaga
+									posicionDelMejor = i
+								}
+							}
+							mejorTiempoDeRafaga = PosibleMejor
+							posicionDeLaMejorRafaja = posicionDelMejor
+							MutexReady.Unlock()
+							break
+						}
+					} else {
+						Logger.Debug("No se pudo desalojar a la víctima de SRT", "PID", pcbVictima.PID)
+						fmt.Println("No se pudo desalojar a la víctima de SRT", "PID", pcbVictima.PID)
+						mejorTiempoDeRafaga = ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga
+						posicionDeLaMejorRafaja = PosicionAMandar
+						MutexReady.Unlock()
+						break
 					}
+				} else {
+					mejorTiempoDeRafaga = ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga
+					posicionDeLaMejorRafaja = PosicionAMandar
+					fmt.Println("P.CP: No se encontró una víctima de SRT con mejor estimación de ráfaga, manteniendo el último en Ready", "PID", ColaReady[PosicionAMandar].PID, "Estimación de ráfaga", ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga)
+					Logger.Debug("P.CP: No se encontró una víctima de SRT con mejor estimación de ráfaga", "PID", ColaReady[PosicionAMandar].PID, "Estimación de ráfaga", ColaReady[PosicionAMandar].EstimacionDeRafaga.TiempoDeRafaga)
+					MutexReady.Unlock()
 				}
-
 				break
 			}
 		}

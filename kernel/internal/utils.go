@@ -147,37 +147,48 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
 
+	fmt.Println("_______EMPIEZO FOR 1")
+
 	// Obtener el mutex de la cola de origen
 	var mutexOrigen *sync.Mutex
 	for colaOrigen, estado := range ColaEstados {
-		fmt.Println("ITERO FOR 1 MOVER COLA ")
+		//fmt.Println("ITERO FOR 1 MOVER COLA ")
 		if proceso.Estado == estado {
 			mutexOrigen = ColaMutexes[colaOrigen]
 			break
 		}
 	}
 
+	fmt.Println("_______TERMINE FOR 1")
+
 	// Obtener el mutex de la cola de destino
 	mutexDestino := ColaMutexes[colaDestino]
 
+	fmt.Println("_______PIDO EL MUTEX DE LA COLA ORIGEN")
 	// Bloquear ambas colas (origen y destino)
 	if mutexOrigen != nil {
 		mutexOrigen.Lock()
 		defer mutexOrigen.Unlock()
 	}
+	fmt.Println("_______ME DIERON EL MUTEX DE LA COLA ORIGEN")
+
+	fmt.Println("_______PIDO EL MUTEX DE LA COLA DESTINO")
 	if mutexDestino != nil {
 		mutexDestino.Lock()
 		defer mutexDestino.Unlock()
 	}
+	fmt.Println("_______ME DIERON EL MUTEX DE LA COLA DESTINO")
 
+	fmt.Println("_______EMPIEZO FOR 2")
 	// Verificar si el proceso ya está en la cola destino
 	for _, p := range *colaDestino {
-		fmt.Println("ITERO FOR 2 MOVER COLA ")
+		//fmt.Println("ITERO FOR 2 MOVER COLA ")
 		if p.PID == proceso.PID {
 			fmt.Printf("El proceso ya está en la cola destino: PID %d\n", proceso.PID)
 			return
 		}
 	}
+	fmt.Println("_______TERMINE FOR 2")
 
 	// Cambiar el estado del proceso y añadirlo a la cola de destino
 	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
@@ -187,7 +198,7 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 
 	// Buscar y eliminar el proceso de su cola actual
 	for cola, estado := range ColaEstados {
-		fmt.Println("ITERO FOR 3 MOVER COLA ")
+		//fmt.Println("ITERO FOR 3 MOVER COLA ")
 
 		if procesoEstadoAnterior == estado {
 			for i := range *cola {
@@ -344,6 +355,22 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 	case "Planificador":
 		LogDesalojoPorSJF_SRT(pid)
 		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaReady)
+		if pcbDelProceso == nil {
+			fmt.Println("No se encontró el proceso en ColaReady, buscando en Exec")
+			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaExec)
+			if pcbDelProceso == nil {
+				fmt.Println("No se encontró el proceso en ColaExec, buscando en Blocked")
+				pcbDelProceso = BuscarProcesoEnCola(pid, &ColaBlocked)
+				if pcbDelProceso == nil {
+					fmt.Println("No se encontró el proceso en ColaBlocked, buscando en SuspBlocked")
+					pcbDelProceso = BuscarProcesoEnCola(pid, &ColaSuspBlocked)
+					if pcbDelProceso == nil {
+						fmt.Println("No se encontró el proceso en ColaSuspBlocked, buscando en ColaExit")
+						pcbDelProceso = BuscarProcesoEnCola(pid, &ColaExit)
+					}
+				}
+			}
+		}
 		pcbDelProceso.PC = pc
 		pcbDelProceso.DesalojoAnalizado = true
 	case "IO":

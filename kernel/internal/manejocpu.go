@@ -78,12 +78,12 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 	cpu := ObtenerCpuDisponible()
 	if cpu != nil {
 
-		/* if !proceso.DesalojoAnalizado {
+		if !proceso.DesalojoAnalizado {
 
 			Logger.Debug("No se analizó desalojo, no se puede mandar a CPU todavía", "proceso_pid", proceso.PID)
 			fmt.Println("No se analizó desalojo, no se puede mandar a CPU todavía", "proceso PID:", proceso.PID)
 			return false
-		} */
+		}
 
 		MutexIdentificadoresCPU.Lock()
 		cpu.Ocupado = true
