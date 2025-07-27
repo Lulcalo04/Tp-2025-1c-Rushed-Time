@@ -337,19 +337,17 @@ func PeticionExitKernel(pid int) {
 	}
 }
 
-func PeticionDesalojoKernel() {
+func PeticionDesalojoKernel(pid int, pc int, motivo string) {
 	// Declaro la URL a la que me voy a conectar (handler de desalojo con el puerto del server)
 	url := fmt.Sprintf("http://%s:%d/cpu/desalojo", Config_CPU.IPKernel, Config_CPU.PortKernel)
 
 	// Declaro el body de la petición
-	mutexProcesoEjecutando.Lock()
 	pedidoBody := globals.CPUtoKernelDesalojoRequest{
-		PID:    ProcesoEjecutando.PID,
-		PC:     ProcesoEjecutando.PC,
-		Motivo: ProcesoEjecutando.MotivoDesalojo,
+		PID:    pid,
+		PC:     pc,
+		Motivo: motivo,
 		CPUID:  CPUId,
 	}
-	mutexProcesoEjecutando.Unlock()
 
 	// Serializo el body a JSON
 	bodyBytes, err := json.Marshal(pedidoBody)
@@ -373,15 +371,15 @@ func PeticionDesalojoKernel() {
 	}
 
 	if respuestaKernel.Respuesta {
-		mutexProcesoEjecutando.Lock()
-		Logger.Debug("Se desalojo a ", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la cpuid", CPUId, "por el motivo", ProcesoEjecutando.MotivoDesalojo)
-		fmt.Println("Se desalojo a ", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la cpuid", CPUId, "por el motivo", ProcesoEjecutando.MotivoDesalojo)
-		mutexProcesoEjecutando.Unlock()
+
+		Logger.Debug("Se desalojo a ", "pid", pid, "pc", pc, "de la cpuid", CPUId, "por el motivo", motivo)
+		fmt.Println("Se desalojo a ", "pid", pid, "pc", pc, "de la cpuid", CPUId, "por el motivo", motivo)
+
 	} else {
-		mutexProcesoEjecutando.Lock()
-		Logger.Debug("No se pudo desalojar el proceso", "pid", ProcesoEjecutando.PID, "pc", ProcesoEjecutando.PC, "de la cpuid", CPUId)
-		fmt.Println("No se pudo desalojar el proceso", ProcesoEjecutando.PID, "por el Kernel", "pc", ProcesoEjecutando.PC, "de la CPU", CPUId)
-		mutexProcesoEjecutando.Unlock()
+
+		Logger.Debug("No se pudo desalojar el proceso", "pid", pid, "pc", pc, "de la cpuid", CPUId)
+		fmt.Println("No se pudo desalojar el proceso", pid, "por el Kernel", "pc", pc, "de la CPU", CPUId)
+
 	}
 }
 
@@ -507,7 +505,6 @@ func LeerDePaginaMemoria(pid int, direccionFisica int, tamanio string) {
 	if respuestaMemoria.Respuesta {
 		//Logeo e imprimo lo leido de memoria
 		LogLecturaEscrituraMemoria(pid, "READ", direccionFisica, string(respuestaMemoria.Data))
-		fmt.Printf("PID: %d - Acción: READ - Dirección Física: %d - Valor: %s\n", pid, direccionFisica, string(respuestaMemoria.Data))
 	} else {
 		Logger.Debug("Error al leer de memoria", "pid", pid, "direccion_fisica", direccionFisica, "tamanio", tamanio)
 	}

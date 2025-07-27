@@ -111,9 +111,12 @@ func IniciarCPU(nombreArchivoConfiguracion string) {
 func CicloDeInstruccion() {
 
 	for {
-		Fetch()
-		Decode()
-		Execute()
+		//Me fijo q el motivo no sea plani, xq si es asi, salteamos hasta check interrupt
+		if ProcesoEjecutando.MotivoDesalojo != "Planificador" {
+			Fetch()
+			Decode()
+			Execute()
+		}
 		if CheckInterrupt() {
 			Logger.Debug("Rompi el ciclo de instrucción por interrupción", "PID", ProcesoEjecutando.PID)
 			fmt.Println("Rompi el ciclo de instrucción por interrupción para el proceso", ProcesoEjecutando.PID)
@@ -124,6 +127,7 @@ func CicloDeInstruccion() {
 }
 
 func Fetch() {
+
 	InstruccionUsaMemoria = false // Reseteamos la variable que indica si la instruccion usa memoria
 	SolicitarSiguienteInstruccionMemoria(ProcesoEjecutando.PID, ProcesoEjecutando.PC)
 	LogFetchInstruccion(ProcesoEjecutando.PID, ProcesoEjecutando.PC)
@@ -230,7 +234,6 @@ func CheckInterrupt() bool {
 		ProcesoEjecutando.MotivoDesalojo = ArgumentoInstrucciones[0]
 		Logger.Debug("Caso de planificador, motivo de desalojo actualizado", "motivo", ProcesoEjecutando.MotivoDesalojo)
 	}
-	mutexProcesoEjecutando.Unlock()
 
 	//Si hay interrupcion por atender..
 	if ProcesoEjecutando.Interrupt {
@@ -246,20 +249,20 @@ func CheckInterrupt() bool {
 		}
 
 		//Le avisamos a kernel que desalojamos
-		PeticionDesalojoKernel()
+		PeticionDesalojoKernel(ProcesoEjecutando.PID, ProcesoEjecutando.PC, ProcesoEjecutando.MotivoDesalojo)
 
 		//Marcamos que la interrupcion fue atendida
-		mutexProcesoEjecutando.Lock()
 		ProcesoEjecutando.Interrupt = false
 		ProcesoEjecutando.MotivoDesalojo = ""
-		mutexProcesoEjecutando.Unlock()
 
 		//Cortamos bucle de ciclo de instruccion
+		mutexProcesoEjecutando.Unlock()
 		mutexCicloDeInstruccion.Unlock()
 		return true
 	}
 
 	//Si no hay interrupcion, seguimos el ciclo de instruccion
+	mutexProcesoEjecutando.Unlock()
 	return false
 }
 

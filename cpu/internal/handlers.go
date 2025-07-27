@@ -70,18 +70,18 @@ func DesalojoHandler(w http.ResponseWriter, r *http.Request) {
 		Logger.Debug("Recibí una solicitud de desalojo", "PID", ProcesoRequest.PID, "Motivo", ProcesoRequest.Motivo)
 		fmt.Printf("Recibí una solicitud de desalojo para el PID %d con motivo: %s\n", ProcesoRequest.PID, ProcesoRequest.Motivo)
 
-		// Si el motivo es IO, DUMP_MEMORY o EXIT, no se puede desalojar porque ya la propia instruccion lo va a hacer
+		mutexProcesoEjecutando.Lock()
+		// Si la intnstruccion es IO, DUMP_MEMORY o EXIT, no se puede desalojar porque ya la propia instruccion lo va a hacer
 		if ProcesoRequest.Motivo == "Planificador" && (ArgumentoInstrucciones[0] == "IO" || ArgumentoInstrucciones[0] == "DUMP_MEMORY" || ArgumentoInstrucciones[0] == "EXIT") {
 			respuestaDesalojo.Respuesta = false
 			Logger.Debug("No se pudo desalojar el proceso por", ArgumentoInstrucciones[0], "en ejecución")
 			fmt.Printf("No se pudo desalojar el proceso PID %d por %s en ejecución\n", ProcesoRequest.PID, ArgumentoInstrucciones[0])
 		} else {
-			mutexProcesoEjecutando.Lock()
 			ProcesoEjecutando.Interrupt = true
 			ProcesoEjecutando.MotivoDesalojo = ProcesoRequest.Motivo
-			mutexProcesoEjecutando.Unlock()
 			LogInterrupcionRecibida()
 		}
+		mutexProcesoEjecutando.Unlock()
 	}
 
 	json.NewEncoder(w).Encode(respuestaDesalojo)
