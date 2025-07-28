@@ -90,10 +90,13 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 		cpu.PID = proceso.PID
 		MutexIdentificadoresCPU.Unlock()
 
+		// Cambiamos el boolean de YaCalculado a false para que se vuelva a calcular en la próxima iteración
+		proceso.EstimacionDeRafaga.YaCalculado = false
+
 		// Movemos el proceso a la cola Exec
 		MoverProcesoACola(&proceso, &ColaExec)
-		Logger.Debug("Proceso movido a cola Exec", "proceso_pid", proceso.PID, "Inicio de ejecución", proceso.InicioEjecucion)
-		fmt.Println("Proceso", proceso.PID, "movido a la cola Exec", "Inicio de ejecución:", proceso.InicioEjecucion)
+		Logger.Debug("Proceso movido a cola Exec", "proceso_pid", proceso.PID, "Inicio de ejecución", proceso.InicioEjecucion.Format("2006-01-02 15:04:05"))
+		fmt.Println("Proceso", proceso.PID, "movido a la cola Exec", "Inicio de ejecución:", proceso.InicioEjecucion.Format("2006-01-02 15:04:05"))
 
 		Logger.Debug("CPU elegida: ", "cpu_id", cpu.CPUID, ", Mandando proceso_pid: ", proceso.PID)
 		fmt.Println("CPU elegida:", cpu.CPUID, ", Mandando proceso PID:", proceso.PID)

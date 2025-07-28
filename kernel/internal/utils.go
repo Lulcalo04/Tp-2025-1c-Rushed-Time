@@ -147,8 +147,6 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 	// Guardar el estado anterior del proceso
 	procesoEstadoAnterior := proceso.Estado
 
-	fmt.Println("_______EMPIEZO FOR 1")
-
 	// Obtener el mutex de la cola de origen
 	var mutexOrigen *sync.Mutex
 	for colaOrigen, estado := range ColaEstados {
@@ -159,27 +157,20 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 		}
 	}
 
-	fmt.Println("_______TERMINE FOR 1")
-
 	// Obtener el mutex de la cola de destino
 	mutexDestino := ColaMutexes[colaDestino]
 
-	fmt.Println("_______PIDO EL MUTEX DE LA COLA ORIGEN")
 	// Bloquear ambas colas (origen y destino)
 	if mutexOrigen != nil {
 		mutexOrigen.Lock()
 		defer mutexOrigen.Unlock()
 	}
-	fmt.Println("_______ME DIERON EL MUTEX DE LA COLA ORIGEN")
 
-	fmt.Println("_______PIDO EL MUTEX DE LA COLA DESTINO")
 	if mutexDestino != nil {
 		mutexDestino.Lock()
 		defer mutexDestino.Unlock()
 	}
-	fmt.Println("_______ME DIERON EL MUTEX DE LA COLA DESTINO")
 
-	fmt.Println("_______EMPIEZO FOR 2")
 	// Verificar si el proceso ya está en la cola destino
 	for _, p := range *colaDestino {
 		//fmt.Println("ITERO FOR 2 MOVER COLA ")
@@ -188,7 +179,6 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 			return
 		}
 	}
-	fmt.Println("_______TERMINE FOR 2")
 
 	// Cambiar el estado del proceso y añadirlo a la cola de destino
 	if estadoDestino, ok := ColaEstados[colaDestino]; ok {
@@ -215,13 +205,31 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 	// Actualizar métricas y tiempos si el estado cambió
 	if proceso.Estado != procesoEstadoAnterior {
 
-		// Si el proceso estaba en Exec, guardar el tiempo de la última ráfaga
+		// Genero una variable para indicar si el proceso fue reestimado
+		procesoReestimado := false
+
+		// Si el proceso sale de Exec (abandona la CPU)
 		if procesoEstadoAnterior == globals.Exec {
+			// Guardar el tiempo de la última ráfaga (cuanto tiempo ejecutó en CPU)
 			proceso.TiempoDeUltimaRafaga = float64(time.Since(proceso.InicioEjecucion).Milliseconds())
-			Logger.Debug("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
-			fmt.Println("$$$$Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
+
+			Logger.Debug("Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
+			fmt.Println("Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
+
+			// Si el proceso sale de Exec y va directo a Ready es por desalojo de SRT
+			if proceso.Estado == globals.Ready && (AlgoritmoCortoPlazo == "SRT" || AlgoritmoCortoPlazo == "SJF") {
+				reestimarProceso(proceso, "Planificador")
+				procesoReestimado = true
+			}
+
 		}
 
+		// Si el proceso entra a Ready tengo que reestimar
+		if proceso.Estado == globals.Ready && !procesoReestimado && (AlgoritmoCortoPlazo == "SRT" || AlgoritmoCortoPlazo == "SJF") {
+			reestimarProceso(proceso, "IO/DUMP")
+		}
+
+		// Si el proceso entra a Exec (entra en la CPU)
 		if proceso.Estado == globals.Exec {
 			proceso.InicioEjecucion = time.Now()
 			proceso.DesalojoAnalizado = false // Reiniciar el análisis de desalojo al entrar en Exec
