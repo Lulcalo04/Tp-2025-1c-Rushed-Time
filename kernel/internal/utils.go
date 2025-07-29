@@ -325,7 +325,7 @@ func MoverProcesoDeBlockedAReady(pid int) {
 
 		MoverProcesoACola(pcbDelProceso, &ColaReady)
 		select {
-		case CortoNotifier <- struct{}:
+		case CortoNotifier <- struct{}{}:
 			// señal enviada
 		default:
 			// ya hay una señal pendiente, no enviar otra
@@ -444,7 +444,7 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 			CpuLiberada = true // Variable para indicar si la CPU fue liberada por el proceso que estaba ejecutando
 			MutexCpuLiberada.Unlock()
 			select {
-			case CortoNotifier <- struct{}:
+			case CortoNotifier <- struct{}{}:
 				// señal enviada
 			default:
 				// ya hay una señal pendiente, no enviar otra
