@@ -78,6 +78,7 @@ func PlanificadorLargoPlazo() {
 	Logger.Debug("Planificador de largo plazo iniciado", "algoritmo", AlgoritmoLargoPlazo)
 
 	for {
+		time.Sleep(1000 * time.Millisecond) // Espera 1000ms antes de volver a ejecutar el planificador
 		<-LargoNotifier
 		MutexPlanificadorLargo.Lock()
 
@@ -111,7 +112,13 @@ func PlanificadorLargoPlazo() {
 
 					// Mueve el proceso a la cola Ready y notifica al planificador de corto plazo
 					MoverProcesoACola(ColaSuspReady[0], &ColaReady)
-					CortoNotifier <- struct{}{}
+					// En vez de CortoNotifier <- struct{}{}, usamos el patrón select para evitar señales acumuladas
+					select {
+					case CortoNotifier <- struct{}{}:
+						// señal enviada
+					default:
+						// ya hay una señal pendiente, no enviar otra
+					}
 				} else {
 					// Guardamos referencia al proceso antes de moverlo
 					procesoAProcesar := ColaNew[0]
@@ -126,7 +133,13 @@ func PlanificadorLargoPlazo() {
 
 					// Mueve el proceso a la cola Ready y notifica al planificador de corto plazo
 					MoverProcesoACola(procesoAProcesar, &ColaReady)
-					CortoNotifier <- struct{}{}
+					// En vez de CortoNotifier <- struct{}{}, usamos el patrón select para evitar señales acumuladas
+					select {
+					case CortoNotifier <- struct{}{}:
+						// señal enviada
+					default:
+						// ya hay una señal pendiente, no enviar otra
+					}
 				}
 			}
 
@@ -150,7 +163,13 @@ func PlanificadorLargoPlazo() {
 					}
 
 					MoverProcesoACola(ColaSuspReady[pcbMasChico()], &ColaReady)
-					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
+					// En vez de CortoNotifier <- struct{}{}, usamos el patrón select para evitar señales acumuladas
+					select {
+					case CortoNotifier <- struct{}{}:
+						// señal enviada
+					default:
+						// ya hay una señal pendiente, no enviar otra
+					} // Notifico que hay un proceso listo para ejecutar
 				} else {
 					// Pido espacio en memoria para el primer proceso de la cola New
 
@@ -171,7 +190,13 @@ func PlanificadorLargoPlazo() {
 					}
 
 					MoverProcesoACola(procesoAProcesar, &ColaReady)
-					CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
+					// En vez de CortoNotifier <- struct{}{}, usamos el patrón select para evitar señales acumuladas
+					select {
+					case CortoNotifier <- struct{}{}:
+						// señal enviada
+					default:
+						// ya hay una señal pendiente, no enviar otra
+					} // Notifico que hay un proceso listo para ejecutar
 				}
 
 			}
@@ -179,12 +204,15 @@ func PlanificadorLargoPlazo() {
 		MutexPlanificadorLargo.Unlock()
 		// Drenar señales adicionales en el canal para evitar interrupciones
 		select {
+
 		case <-LargoNotifier:
+
 			Logger.Debug("P.LP: señal recibida, acumulada para una proxima iteración")
 			fmt.Println("P.LP: señal recibida, acumulada para una proxima iteración")
 		default:
 			// No hay más señales, continuar normalmente
 		}
+
 	}
 }
 
@@ -378,6 +406,7 @@ func PlanificadorCortoPlazo() {
 		default:
 			// No hay más señales, continuar normalmente
 		}
+
 	}
 }
 

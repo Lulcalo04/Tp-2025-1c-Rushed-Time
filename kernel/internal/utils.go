@@ -138,8 +138,12 @@ func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 	LogCreacionDeProceso(ContadorPID)
 
 	// Al agregar un nuevo proceso a la cola de New, notificamos al planificador de largo plazo
-	LargoNotifier <- struct{}{}
-
+	select {
+	case LargoNotifier <- struct{}{}:
+		// señal enviada
+	default:
+		// ya hay una señal pendiente, no enviar otra
+	}
 }
 
 func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
@@ -308,14 +312,24 @@ func MoverProcesoDeBlockedAReady(pid int) {
 		//Si el DesSwap fue bien Lo muevo a la cola SuspReady
 		MoverProcesoACola(pcbDelProceso, &ColaSuspReady)
 		Logger.Debug("Enviando notificación a LargoNotifier")
-		LargoNotifier <- struct{}{}
+		select {
+		case LargoNotifier <- struct{}{}:
+			// señal enviada
+		default:
+			// ya hay una señal pendiente, no enviar otra
+		}
 		Logger.Debug("Notificación enviada a LargoNotifier")
 
 	} else {
 		// Como lo encontré en la cola de blocked, lo muevo a la cola destino
 
 		MoverProcesoACola(pcbDelProceso, &ColaReady)
-		CortoNotifier <- struct{}{} // Notifico que hay un proceso listo para ejecutar
+		select {
+		case CortoNotifier <- struct{}:
+			// señal enviada
+		default:
+			// ya hay una señal pendiente, no enviar otra
+		}
 	}
 
 }
@@ -335,11 +349,14 @@ func TerminarProceso(pid int, colaOrigen *[]*globals.PCB) {
 	}
 
 	MoverProcesoACola(proceso, &ColaExit)
-
 	respuestaMemoria := LiberarProcesoEnMemoria(pid)
-
 	if respuestaMemoria {
-		LargoNotifier <- struct{}{} // Como se liberó memoria, notificamos al planificador de largo plazo
+		select {
+		case LargoNotifier <- struct{}{}:
+			// señal enviada
+		default:
+			// ya hay una señal pendiente, no enviar otra
+		}
 	} else {
 		fmt.Println("Error al liberar memoria del proceso:", pid)
 	}
@@ -426,6 +443,12 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 			MutexCpuLiberada.Lock()
 			CpuLiberada = true // Variable para indicar si la CPU fue liberada por el proceso que estaba ejecutando
 			MutexCpuLiberada.Unlock()
+			select {
+			case CortoNotifier <- struct{}:
+				// señal enviada
+			default:
+				// ya hay una señal pendiente, no enviar otra
+			}
 		}
 	}
 
@@ -433,7 +456,12 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 	fmt.Println(mensajeCpuLiberada)
 	Logger.Debug(mensajeCpuLiberada)
 
-	CortoNotifier <- struct{}{} // Notificamos al planificador de corto plazo que se ha desalojado un proceso
+	select {
+	case CortoNotifier <- struct{}{}:
+		// señal enviada
+	default:
+		// ya hay una señal pendiente, no enviar otra
+	}
 }
 
 func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
@@ -456,12 +484,15 @@ func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
 			fmt.Println("Contador de Susp Blocked cumplido para el proceso", pidLocal)
 			if BuscarProcesoEnCola(pidLocal, &ColaBlocked) != nil {
 				MoverProcesoACola(pcb, &ColaSuspBlocked)
-
 				// ENVIAMOS EL PROCESO A SWAP
 				PedirSwapping(pcb.PID)
-
 				Logger.Debug("Enviando notificación a LargoNotifier")
-				LargoNotifier <- struct{}{}
+				select {
+				case LargoNotifier <- struct{}{}:
+					// señal enviada
+				default:
+					// ya hay una señal pendiente, no enviar otra
+				}
 			}
 		case <-cancel:
 			fmt.Println("Contador de Susp Blocked cancelado para el proceso", pidLocal)
