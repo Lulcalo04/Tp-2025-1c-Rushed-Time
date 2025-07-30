@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"globals"
 	"sync"
+	"time"
 )
 
 type IdentificadorCPU struct {
@@ -79,9 +80,9 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 	if cpu != nil {
 
 		if !proceso.DesalojoAnalizado {
-
 			Logger.Debug("No se analizó desalojo, no se puede mandar a CPU todavía", "proceso_pid", proceso.PID)
 			fmt.Println("No se analizó desalojo, no se puede mandar a CPU todavía", "proceso PID:", proceso.PID)
+			time.Sleep(time.Second * 1) // Esperamos un segundo antes de volver a intentar
 			return false
 		}
 
