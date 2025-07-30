@@ -78,7 +78,7 @@ func PlanificadorLargoPlazo() {
 	Logger.Debug("Planificador de largo plazo iniciado", "algoritmo", AlgoritmoLargoPlazo)
 
 	for {
-		time.Sleep(1000 * time.Millisecond) // Espera 1000ms antes de volver a ejecutar el planificador
+		//time.Sleep(1000 * time.Millisecond) // Espera 1000ms antes de volver a ejecutar el planificador
 		<-LargoNotifier
 		MutexPlanificadorLargo.Lock()
 
@@ -154,7 +154,8 @@ func PlanificadorLargoPlazo() {
 				if len(ColaSuspReady) != 0 {
 
 					// Pido la liberación de swap del proceso mas chico de la cola SuspReady
-					respuestaMemoria := PedirLiberacionDeSwap(ColaSuspReady[pcbMasChico()].PID)
+					procesoMasChico := ColaSuspReady[pcbMasChico(ColaSuspReady)]
+					respuestaMemoria := PedirLiberacionDeSwap(procesoMasChico.PID)
 
 					if !respuestaMemoria {
 						fmt.Println("P.LP: No hay espacio en memoria, rompiendo el for")
@@ -162,7 +163,7 @@ func PlanificadorLargoPlazo() {
 						break // Salimos del for para esperar un nuevo proceso en New
 					}
 
-					MoverProcesoACola(ColaSuspReady[pcbMasChico()], &ColaReady)
+					MoverProcesoACola(procesoMasChico, &ColaReady)
 					// En vez de CortoNotifier <- struct{}{}, usamos el patrón select para evitar señales acumuladas
 					select {
 					case CortoNotifier <- struct{}{}:
@@ -177,7 +178,7 @@ func PlanificadorLargoPlazo() {
 					Logger.Debug("Procesando cola New")
 
 					// Guardamos el índice y referencia al proceso antes de procesarlo
-					indiceProceso := pcbMasChico()
+					indiceProceso := pcbMasChico(ColaNew)
 					procesoAProcesar := ColaNew[indiceProceso]
 
 					respuestaMemoria := PedirEspacioAMemoria(*procesoAProcesar)
@@ -206,7 +207,6 @@ func PlanificadorLargoPlazo() {
 		select {
 
 		case <-LargoNotifier:
-
 			Logger.Debug("P.LP: señal recibida, acumulada para una proxima iteración")
 			fmt.Println("P.LP: señal recibida, acumulada para una proxima iteración")
 		default:
@@ -227,6 +227,7 @@ func PlanificadorCortoPlazo() {
 	Logger.Debug("Planificador de corto plazo iniciado", "algoritmo", AlgoritmoCortoPlazo)
 
 	for {
+		//time.Sleep(1000 * time.Millisecond) // Espera 1000ms antes de volver a ejecutar el planificador
 		<-CortoNotifier
 		MutexPlanificadorCorto.Lock()
 
@@ -256,6 +257,10 @@ func PlanificadorCortoPlazo() {
 					MutexCpuLibres.Unlock()
 				}
 			}
+			if AlgoritmoCortoPlazo == "FIFO" && !CpuLibres {
+				// Para cortar la espera activa
+				break
+			}
 			if AlgoritmoCortoPlazo == "SJF" && CpuLibres {
 				// Una vez que calculamos las estimaciones de ráfaga, elegimos el proceso con la estimación más pequeña
 				pcbElegido := elegirPcbConEstimacionMasChica()
@@ -265,6 +270,10 @@ func PlanificadorCortoPlazo() {
 
 				ElegirCpuYMandarProceso(*pcbElegido)
 				break // Salimos del for para esperar un nuevo proceso en Ready
+			}
+			if AlgoritmoCortoPlazo == "SJF" && !CpuLibres {
+				// Para cortar la espera activa
+				break
 			}
 			if AlgoritmoCortoPlazo == "SRT" && CpuLibres {
 
@@ -410,11 +419,11 @@ func PlanificadorCortoPlazo() {
 	}
 }
 
-func pcbMasChico() int {
-	// Encontrar el PCB más chico
+func pcbMasChico(cola []*globals.PCB) int {
+	// Encontrar el PCB más chico de la cola
 	minIndex := 0
-	for i := 1; i < len(ColaNew); i++ {
-		if ColaNew[i].TamanioEnMemoria < ColaNew[minIndex].TamanioEnMemoria {
+	for i := 1; i < len(cola); i++ {
+		if cola[i].TamanioEnMemoria < cola[minIndex].TamanioEnMemoria {
 			minIndex = i
 		}
 	}
