@@ -13,9 +13,6 @@ func IniciarServerKernel(puerto int) {
 	//Transformo el puerto a string
 	stringPuerto := fmt.Sprintf(":%d", puerto)
 
-	Logger.Debug("EStoy escuchando")
-	fmt.Println("EStoy escuchando")
-
 	//Declaro el server
 	mux := http.NewServeMux()
 

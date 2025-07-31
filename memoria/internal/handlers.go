@@ -60,7 +60,7 @@ func IniciarServerMemoria(puerto int) {
 
 // * Endpoint de handshake = /handshake
 func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Handshake recibido")
+	//fmt.Println("Handshake recibido")
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -89,7 +89,7 @@ func HandshakeHandler(w http.ResponseWriter, r *http.Request) {
 
 // * Endpoint de handshake = /handshake/cpu
 func HandshakeConCPU(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Handshake recibido")
+	//fmt.Println("Handshake recibido")
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -133,7 +133,7 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(time.Duration(Config_Memoria.MemoryDelay) * time.Millisecond) // Simular retardo de memoria
 
-	fmt.Println("Solicitud de espacio recibida")
+	//fmt.Println("Solicitud de espacio recibida")
 	Logger.Debug("Solicitud de espacio recibida")
 
 	var pedidoRecibido globals.PeticionMemoriaRequest
@@ -149,7 +149,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	//verificar si hay suficiente espacio en memoria para el proceso
 	framesLibres := MemoriaGlobal.framesLibres()
 
-	fmt.Println("Frames libres disponibles:", framesLibres)
+	//fmt.Println("Frames libres disponibles:", framesLibres)
 	Logger.Debug("Frames libres disponibles", "framesLibres", framesLibres)
 
 	pedidoEnMemoria := false
@@ -217,7 +217,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 		//TODO -- Log Obligatorio
 		LogCreacionDeProceso(pedidoRecibido.ProcesoPCB.PID, pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 		Logger.Debug("Solicitud a Memoria aceptada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
-		fmt.Println("Solicitud a Memoria aceptada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
+		//fmt.Println("Solicitud a Memoria aceptada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 
 		// Preparar respuesta y codificarla como JSON (se envia automaticamente a traves del encode)
 		resp := globals.PeticionMemoriaResponse{
@@ -235,7 +235,7 @@ func PidenEspacioHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Si el pedido no es valido, se envia un mensaje de error
 		Logger.Debug("Solicitud a Memoria rechazada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
-		fmt.Println("Solicitud a Memoria rechazada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
+		//fmt.Println("Solicitud a Memoria rechazada", "PID", pedidoRecibido.ProcesoPCB.PID, "Tamanio", pedidoRecibido.ProcesoPCB.TamanioEnMemoria)
 
 		// Preparar respuesta y codificarla como JSON (se envia automaticamente a traves del encode)
 		resp := globals.PeticionMemoriaResponse{
@@ -305,7 +305,7 @@ func (m *Memoria) LiberarProceso(pid int) error {
 			m.liberarFrame(page.FrameID)
 
 			Logger.Debug("Frame liberado", "FrameID", page.FrameID)
-			fmt.Println("Frame liberado", "FrameID", page.FrameID)
+			//fmt.Println("Frame liberado", "FrameID", page.FrameID)
 
 		} else {
 			m.freeSwapOffsets = append(m.freeSwapOffsets, page.Offset)
@@ -348,13 +348,13 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 	//Creo el buffer para el dump
 	dump := make([]byte, numPaginas*tamanioPaginas)
 
-	fmt.Println("Tamanio del dump:", len(dump), "bytes")
+	//fmt.Println("Tamanio del dump:", len(dump), "bytes")
 	Logger.Debug("Tamanio del dump", "bytes", len(dump))
 
 	for pagina := 0; pagina < numPaginas; pagina++ {
 
 		entradas := calcularEntradasPorNivel(pagina)
-		fmt.Println("Entradas para pagina", pagina, ":", entradas)
+		//fmt.Println("Entradas para pagina", pagina, ":", entradas)
 		Logger.Debug("Entradas para pagina", "pagina", pagina, "entradas", entradas)
 		frameID, ok := MemoriaGlobal.buscarFramePorEntradas(tablaRaiz, entradas)
 
@@ -366,13 +366,13 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 			copy(dump[destino:destino+tamanioPaginas], MemoriaGlobal.datos[origen:origen+tamanioPaginas])
 			MutexMemoriaGlobal.Unlock()
 
-			fmt.Println("EXTRAIDO DE MEMORIA", MemoriaGlobal.datos[origen:origen+tamanioPaginas], "bytes")
+			//fmt.Println("EXTRAIDO DE MEMORIA", MemoriaGlobal.datos[origen:origen+tamanioPaginas], "bytes")
 			Logger.Debug("EXTRAIDO DE MEMORIA", "bytes", MemoriaGlobal.datos[origen:origen+tamanioPaginas])
 
-			fmt.Println("Pagina", pagina, "copiada en dump ", dump, "desde frame", frameID, "con origen", origen, "y destino", destino)
+			//fmt.Println("Pagina", pagina, "copiada en dump ", dump, "desde frame", frameID, "con origen", origen, "y destino", destino)
 			Logger.Debug("Pagina copiada en dump", "pagina", pagina, "desde frame", frameID, "origen", origen, "destino", destino)
 		} else {
-			fmt.Println("Pagina", pagina, "no encontrada en memoria")
+			//fmt.Println("Pagina", pagina, "no encontrada en memoria")
 			Logger.Debug("Pagina no encontrada en memoria", "pagina", pagina, "PID", pedidoRecibido.PID)
 
 			//TODO -- nota: no ponemos que si no esta en memoria principal, sus valores se pongan en cero, porque ya vienen inicializados en cero.
@@ -385,7 +385,7 @@ func DumpMemoryHandler(w http.ResponseWriter, r *http.Request) {
 	nombreArchivo := fmt.Sprintf("<%d><%s>.dmp", pedidoRecibido.PID, timestamp)
 	dumpPath := filepath.Join(Config_Memoria.DumpPath, nombreArchivo)
 
-	fmt.Println("El dump que se va a escribir es:", dump)
+	//fmt.Println("El dump que se va a escribir es:", dump)
 	Logger.Debug("El dump que se va a escribir", "dump", dump)
 
 	if err := os.WriteFile(dumpPath, dump, 0644); err == nil {
@@ -492,7 +492,7 @@ func VolverDeSwap(w http.ResponseWriter, r *http.Request) {
 		if err := MemoriaGlobal.RestaurarPagina(requestSwap.PID, i); err != nil {
 			responseSwap.Respuesta = false
 			Logger.Debug("Error restaurando página desde swap", "PID", requestSwap.PID, "Pagina", i, "Error", err.Error())
-			fmt.Println("Error restaurando página desde swap", "PID", requestSwap.PID, "Pagina", i, "Error", err.Error())
+			//fmt.Println("Error restaurando página desde swap", "PID", requestSwap.PID, "Pagina", i, "Error", err.Error())
 			MutexMemoriaGlobal.Unlock()
 			json.NewEncoder(w).Encode(responseSwap)
 			return
@@ -559,7 +559,7 @@ func (mp *Memoria) SuspenderPagina(pid, pagina int) error {
 	mp.liberarFrame(page.FrameID)
 
 	Logger.Debug("Frame liberado", "FrameID", page.FrameID)
-	fmt.Println("Frame liberado", "FrameID", page.FrameID)
+	//fmt.Println("Frame liberado", "FrameID", page.FrameID)
 
 	// 8) Actualizo la info del proceso
 	page.InRAM = false
@@ -584,7 +584,7 @@ func (mp *Memoria) RestaurarPagina(pid, pagina int) error {
 	//1) Reservar frame libre
 	frameID, err := mp.obtenerFrameLibre()
 	if err != nil {
-		fmt.Println("no hay frames libres para restaurar página: ", "PID", pid, "Pagina", pagina)
+		//fmt.Println("no hay frames libres para restaurar página: ", "PID", pid, "Pagina", pagina)
 		Logger.Debug("No hay frames libres para restaurar página", "PID", pid, "Pagina", pagina)
 		return fmt.Errorf("no hay frames libres para restaurar página: %w", err)
 	}
@@ -593,7 +593,7 @@ func (mp *Memoria) RestaurarPagina(pid, pagina int) error {
 	buffer := make([]byte, Config_Memoria.PageSize)
 	if _, err := mp.swapFile.ReadAt(buffer, info.Offset); err != nil {
 		mp.liberarFrame(frameID)
-		fmt.Println("error leyendo swap: %w", err)
+		//fmt.Println("error leyendo swap: %w", err)
 		Logger.Debug("Error leyendo swap", "PID", pid, "Pagina", pagina, "Offset", info.Offset)
 		return fmt.Errorf("error leyendo swap: %w", err)
 	}
@@ -651,7 +651,7 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, "No se encontro el archivo del proceso", http.StatusNotFound)
 			Logger.Debug("No se encontro el archivo del proceso", "PID", request.PID, "Archivo", pi.PathArchivo)
-			fmt.Println("No se encontro el archivo del proceso", "PID", request.PID, "Archivo", pi.PathArchivo)
+			//fmt.Println("No se encontro el archivo del proceso", "PID", request.PID, "Archivo", pi.PathArchivo)
 			return
 		}
 		instrucciones = strings.Split(strings.TrimSpace(string(content)), "\n")
@@ -667,7 +667,7 @@ func InstruccionesHandler(w http.ResponseWriter, r *http.Request) {
 	if request.PC < 0 || request.PC >= len(instrucciones) {
 		http.Error(w, "PC fuera de rango", http.StatusBadRequest)
 		Logger.Debug("PC fuera de rango", "PID", request.PID, "PC", request.PC, "Instrucciones", len(instrucciones))
-		fmt.Println("PC fuera de rango", "PID", request.PID, "PC", request.PC, "Instrucciones", len(instrucciones))
+		//fmt.Println("PC fuera de rango", "PID", request.PID, "PC", request.PC, "Instrucciones", len(instrucciones))
 		return
 	}
 
@@ -879,7 +879,7 @@ func HacerReadHandler(w http.ResponseWriter, r *http.Request) {
 	MemoriaGlobal.infoProc[request.PID].Metricas.LecturasDeMemoria++
 	MutexMemoriaGlobal.Unlock()
 
-	LogOperacionEnEspacioUsuario(request.PID, "read", direccionFisica, tamanio)
+	LogOperacionEnEspacioUsuario(request.PID, "READ", direccionFisica, tamanio)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -930,7 +930,7 @@ func HacerWriteHandler(w http.ResponseWriter, r *http.Request) {
 	MemoriaGlobal.infoProc[request.PID].Metricas.EscriturasDeMemoria++
 	MutexMemoriaGlobal.Unlock()
 
-	LogOperacionEnEspacioUsuario(request.PID, "write", direccionFisica, len(data))
+	LogOperacionEnEspacioUsuario(request.PID, "WRITE", direccionFisica, len(data))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

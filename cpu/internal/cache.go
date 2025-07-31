@@ -59,8 +59,8 @@ func AgregarPaginaEnCache(numeroDePagina int, contenido []byte, direccionFisica 
 	if len(Cache.Entradas) == Cache.CantidadEntradas {
 		paginaVictima, posicionEnCache := ElegirPaginaVictima()
 
-		fmt.Println("Pagina victima elegida:", paginaVictima.Pagina, "en posicion:", posicionEnCache)
 		Logger.Debug(fmt.Sprintf("Pagina victima elegida: %d en posicion: %d", paginaVictima.Pagina, posicionEnCache))
+		//fmt.Println("Pagina victima elegida:", paginaVictima.Pagina, "en posicion:", posicionEnCache)
 
 		// Si la pagina victima fue modificada, la actualizamos en memoria
 		ReemplazarPaginaVictima(paginaVictima, &nuevaEntrada, posicionEnCache)
@@ -98,13 +98,13 @@ func EscribirEnPaginaCache(paginaCache *EntradaCache, desplazamiento int, valor 
 	// Ver si el desplazamiento mas el valor a escribir no supera el tamaño de la pagina
 	if EstructuraMemoriaDeCPU.TamanioPagina >= desplazamiento+len(valor) {
 
-		fmt.Println("Escribiendo en la pagina cache:", paginaCache.Contenido)
+		//fmt.Println("Escribiendo en la pagina cache:", paginaCache.Contenido)
 		Logger.Debug(fmt.Sprintf("Escribiendo en la pagina cache: %s", paginaCache.Contenido))
 
 		// Copio el valor en el array de bytes a partir del desplazamiento indicado
 		copy(paginaCache.Contenido[desplazamiento:], []byte(valor))
 
-		fmt.Println("Escribiendo en la pagina cache, despues de copiarla:", paginaCache.Contenido)
+		//fmt.Println("Escribiendo en la pagina cache, despues de copiarla:", paginaCache.Contenido)
 		Logger.Debug(fmt.Sprintf("Escribiendo en la pagina cache, despues de copiarla: %s", paginaCache.Contenido))
 
 		// Actualizo el flag de modificado a true
@@ -119,7 +119,7 @@ func EscribirEnPaginaCache(paginaCache *EntradaCache, desplazamiento int, valor 
 	}
 
 	direccionFisica := paginaCache.DireccionFisica + desplazamiento
-	LogLecturaEscrituraMemoria(ProcesoEjecutando.PID, "ESCRIBIR", direccionFisica, valor)
+	LogLecturaEscrituraMemoria(ProcesoEjecutando.PID, "WRITE", direccionFisica, valor)
 
 }
 
@@ -147,10 +147,10 @@ func LeerDePaginaCache(paginaCache *EntradaCache, desplazamiento int, tamanio st
 		// Manejar error si el desplazamiento es mayor al tamaño del contenido
 	}
 
-	fmt.Println(string(TextoExtraido)) // Imprimir el contenido extraído de la página
+	//fmt.Println(string(TextoExtraido)) // Imprimir el contenido extraído de la página
 
 	direccionFisica := paginaCache.DireccionFisica + desplazamiento
-	LogLecturaEscrituraMemoria(ProcesoEjecutando.PID, "LEER", direccionFisica, string(TextoExtraido))
+	LogLecturaEscrituraMemoria(ProcesoEjecutando.PID, "READ", direccionFisica, string(TextoExtraido))
 
 }
 

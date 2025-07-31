@@ -1,7 +1,6 @@
 package kernel_internal
 
 import (
-	"fmt"
 	"globals"
 	"sync"
 	"time"
@@ -81,7 +80,7 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 
 		if !proceso.DesalojoAnalizado {
 			Logger.Debug("No se analizó desalojo, no se puede mandar a CPU todavía", "proceso_pid", proceso.PID)
-			fmt.Println("No se analizó desalojo, no se puede mandar a CPU todavía", "proceso PID:", proceso.PID)
+			//fmt.Println("No se analizó desalojo, no se puede mandar a CPU todavía", "proceso PID:", proceso.PID)
 			time.Sleep(time.Second * 1) // Esperamos un segundo antes de volver a intentar
 			return false
 		}
@@ -97,10 +96,10 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 		// Movemos el proceso a la cola Exec
 		MoverProcesoACola(&proceso, &ColaExec)
 		Logger.Debug("Proceso movido a cola Exec", "proceso_pid", proceso.PID, "Inicio de ejecución", proceso.InicioEjecucion.Format("2006-01-02 15:04:05"))
-		fmt.Println("Proceso", proceso.PID, "movido a la cola Exec", "Inicio de ejecución:", proceso.InicioEjecucion.Format("2006-01-02 15:04:05"))
+		//fmt.Println("Proceso", proceso.PID, "movido a la cola Exec", "Inicio de ejecución:", proceso.InicioEjecucion.Format("2006-01-02 15:04:05"))
 
 		Logger.Debug("CPU elegida: ", "cpu_id", cpu.CPUID, ", Mandando proceso_pid: ", proceso.PID)
-		fmt.Println("CPU elegida:", cpu.CPUID, ", Mandando proceso PID:", proceso.PID)
+		//fmt.Println("CPU elegida:", cpu.CPUID, ", Mandando proceso PID:", proceso.PID)
 		EnviarProcesoACPU(cpu.Ip, cpu.Puerto, proceso.PID, proceso.PC)
 
 		//Me fijo si hay alguna otra CPU libre y si no la hay marco que ya no queda ninguna libre
@@ -121,12 +120,12 @@ func ElegirCpuYMandarProceso(proceso globals.PCB) bool {
 		MutexCpuLibres.Unlock()
 
 		Logger.Debug("No queda ninguna CPU libre")
-		fmt.Println("No queda ninguna CPU libre")
+		//fmt.Println("No queda ninguna CPU libre")
 
 		return true
 	} else {
 		Logger.Debug("No hay CPU disponible para el proceso ", "proceso_pid", proceso.PID)
-		fmt.Println("No hay CPU disponible para el proceso", proceso.PID)
+		//fmt.Println("No hay CPU disponible para el proceso", proceso.PID)
 		MutexCpuLibres.Lock()
 		CpuLibres = false // Indicamos que no hay CPUs libres
 		MutexCpuLibres.Unlock()

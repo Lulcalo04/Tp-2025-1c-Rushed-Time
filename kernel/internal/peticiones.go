@@ -78,7 +78,7 @@ func PingCon(nombre, ip string, puerto int) bool {
 	}
 
 	mensajePingExitoso := fmt.Sprintf("Ping exitoso a %s, respuesta: %s", nombre, respuesta.Mensaje)
-	fmt.Println(mensajePingExitoso)
+	//fmt.Println(mensajePingExitoso)
 	Logger.Debug(mensajePingExitoso)
 
 	return true
@@ -118,11 +118,11 @@ func PedirEspacioAMemoria(pcbDelProceso globals.PCB) bool {
 
 	if respuestaMemoria.Respuesta {
 		mensajeEspacioConcedido := fmt.Sprintf("Espacio en memoria concedido para el PID %d: %s", pcbDelProceso.PID, respuestaMemoria.Mensaje)
-		fmt.Println(mensajeEspacioConcedido)
+		//fmt.Println(mensajeEspacioConcedido)
 		Logger.Debug(mensajeEspacioConcedido)
 		return true
 	} else {
-		fmt.Printf("Espacio en memoria NO concedido para el PID %d: %s\n", pcbDelProceso.PID, respuestaMemoria.Mensaje)
+		//fmt.Printf("Espacio en memoria NO concedido para el PID %d: %s\n", pcbDelProceso.PID, respuestaMemoria.Mensaje)
 		Logger.Debug("Espacio en memoria NO concedido", "mensaje", respuestaMemoria.Mensaje, "pid", pcbDelProceso.PID)
 		return false
 	}
@@ -172,13 +172,13 @@ func LiberarProcesoEnMemoria(pid int) bool {
 	if respuestaMemoria.Respuesta {
 		mensajeLiberacionExitosa := fmt.Sprintf("Liberación de memoria exitosa para el PID %d", pid)
 		Logger.Debug(mensajeLiberacionExitosa)
-		fmt.Println(mensajeLiberacionExitosa)
+		//fmt.Println(mensajeLiberacionExitosa)
 
 		return true
 	} else {
 		mensajeLiberacionFallida := fmt.Sprintf("Liberación de memoria fallida para el PID %d", pid)
 		Logger.Debug(mensajeLiberacionFallida)
-		fmt.Println(mensajeLiberacionFallida)
+		//fmt.Println(mensajeLiberacionFallida)
 
 		return false
 	}
@@ -303,11 +303,11 @@ func PedirLiberacionDeSwap(pid int) bool {
 
 	if respuestaMemoria.Respuesta {
 		Logger.Debug("Liberación de Swap Exitosa", "PID", pid)
-		fmt.Println("Liberación de Swap Exitosa", "PID", pid)
+		//fmt.Println("Liberación de Swap Exitosa", "PID", pid)
 		return true
 	} else {
 		Logger.Debug("No se pudo liberar el Swap", "PID", pid)
-		fmt.Println("No se pudo liberar el Swap", "PID", pid)
+		//fmt.Println("No se pudo liberar el Swap", "PID", pid)
 		return false
 	}
 }
@@ -333,7 +333,7 @@ func EnviarProcesoAIO(instanciaDeIO InstanciaIO, pid int, milisegundosDeUso int)
 	go func() {
 
 		Logger.Debug("Enviando petición a IO", "pid", pid, "dispositivo", instanciaDeIO.NombreIO, "tiempo", milisegundosDeUso)
-		fmt.Println("Enviando petición a IO", "pid", pid, "dispositivo", instanciaDeIO.NombreIO, "tiempo", milisegundosDeUso)
+		//fmt.Println("Enviando petición a IO", "pid", pid, "dispositivo", instanciaDeIO.NombreIO, "tiempo", milisegundosDeUso)
 
 		respuestaIo, err := http.Post(url, "application/json", bytes.NewBuffer(bodyPeticion))
 		if err != nil {
@@ -350,7 +350,7 @@ func EnviarProcesoAIO(instanciaDeIO InstanciaIO, pid int, milisegundosDeUso int)
 
 		mensajePeticionEnviada := fmt.Sprintf("Petición enviada a IO con éxito para el PID %d en el dispositivo %s con puerto %d", pid, instanciaDeIO.NombreIO, instanciaDeIO.PortIO)
 		Logger.Debug(mensajePeticionEnviada)
-		fmt.Println(mensajePeticionEnviada)
+		//fmt.Println(mensajePeticionEnviada)
 
 	}()
 }
@@ -389,7 +389,7 @@ func PeticionDesalojo(pid int, motivoDesalojo string) bool {
 	if cpuDelPID == nil {
 		mensajeCpuNoEncontrada := fmt.Sprintf("No se encontró la CPU que tiene el PID %d, no se puede desalojar", pid)
 		Logger.Debug(mensajeCpuNoEncontrada)
-		fmt.Println(mensajeCpuNoEncontrada)
+		//fmt.Println(mensajeCpuNoEncontrada)
 		return false
 	}
 	MutexIdentificadoresCPU.Unlock()
@@ -403,7 +403,7 @@ func PeticionDesalojo(pid int, motivoDesalojo string) bool {
 
 	mensajeIntentoDesalojo := fmt.Sprintf("Intentando desalojar el PID %d de la CPU %s por motivo: %s", pid, cpuDelPID.CPUID, motivoDesalojo)
 	Logger.Debug(mensajeIntentoDesalojo)
-	fmt.Println(mensajeIntentoDesalojo)
+	//fmt.Println(mensajeIntentoDesalojo)
 
 	url := fmt.Sprintf("http://%s:%d/desalojo", cpuDelPID.Ip, cpuDelPID.Puerto)
 
@@ -441,7 +441,7 @@ func PeticionDesalojo(pid int, motivoDesalojo string) bool {
 	if respuestaDesalojo.Respuesta {
 		mensajeDesalojoExitoso := fmt.Sprintf("Desalojo exitoso del PID %d de la CPU %s", pid, cpuDelPID.CPUID)
 		Logger.Debug(mensajeDesalojoExitoso)
-		fmt.Println(mensajeDesalojoExitoso)
+		//fmt.Println(mensajeDesalojoExitoso)
 		select {
 		case CortoNotifier <- struct{}{}:
 			// señal enviada
@@ -452,7 +452,7 @@ func PeticionDesalojo(pid int, motivoDesalojo string) bool {
 	} else {
 		mensajeDesalojoFallido := fmt.Sprintf("Desalojo fallido del PID %d de la CPU %s", pid, cpuDelPID.CPUID)
 		Logger.Debug(mensajeDesalojoFallido)
-		fmt.Println(mensajeDesalojoFallido)
+		//fmt.Println(mensajeDesalojoFallido)
 		return false
 	}
 

@@ -373,12 +373,12 @@ func PeticionDesalojoKernel(pid int, pc int, motivo string) {
 	if respuestaKernel.Respuesta {
 
 		Logger.Debug("Se desalojo a ", "pid", pid, "pc", pc, "de la cpuid", CPUId, "por el motivo", motivo)
-		fmt.Println("Se desalojo a ", "pid", pid, "pc", pc, "de la cpuid", CPUId, "por el motivo", motivo)
+		//fmt.Println("Se desalojo a ", "pid", pid, "pc", pc, "de la cpuid", CPUId, "por el motivo", motivo)
 
 	} else {
 
 		Logger.Debug("No se pudo desalojar el proceso", "pid", pid, "pc", pc, "de la cpuid", CPUId)
-		fmt.Println("No se pudo desalojar el proceso", pid, "por el Kernel", "pc", pc, "de la CPU", CPUId)
+		//fmt.Println("No se pudo desalojar el proceso", pid, "por el Kernel", "pc", pc, "de la CPU", CPUId)
 
 	}
 }
@@ -422,7 +422,7 @@ func EscribirEnPaginaMemoria(pid int, direccionFisica int, valor string) {
 
 	valorEnBytes := []byte(valor)
 
-	fmt.Println("Escribiendo en memoria: PID:", pid, "Dirección Física:", direccionFisica, "Valor:", valorEnBytes)
+	//fmt.Println("Escribiendo en memoria: PID:", pid, "Dirección Física:", direccionFisica, "Valor:", valorEnBytes)
 	Logger.Debug("Escribiendo en memoria", "pid", pid, "direccion_fisica", direccionFisica, "valor", valorEnBytes)
 
 	// Declaro la URL a la que me voy a conectar (handler de petición de página con el puerto del server)

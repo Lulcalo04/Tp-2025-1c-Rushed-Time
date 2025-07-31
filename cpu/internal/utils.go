@@ -119,7 +119,7 @@ func CicloDeInstruccion() {
 		}
 		if CheckInterrupt() {
 			Logger.Debug("Rompi el ciclo de instrucción por interrupción", "PID", ProcesoEjecutando.PID)
-			fmt.Println("Rompi el ciclo de instrucción por interrupción para el proceso", ProcesoEjecutando.PID)
+			//fmt.Println("Rompi el ciclo de instrucción por interrupción para el proceso", ProcesoEjecutando.PID)
 			break
 		}
 	}

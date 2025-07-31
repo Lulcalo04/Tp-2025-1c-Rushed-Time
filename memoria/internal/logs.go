@@ -12,8 +12,8 @@ Memory Dump: “## PID: <PID> - Memory Dump solicitado”
 
 func LogCreacionDeProceso(pid int, size int) {
 	message := fmt.Sprintf("## PID: %d - Proceso Creado - Tamaño: %d", pid, size)
-	fmt.Println(message)
 	Logger.Info(message)
+	fmt.Println(message)
 }
 
 func LogDestruccionDeProceso(pid int, metricas MetricasPorProceso) {

@@ -65,19 +65,15 @@ func RegistrarInstanciaIO(nombre string, puerto int, ip string) {
 		MutexIdentificadoresIO.Unlock()
 	}
 
-	mensajeRegistro := fmt.Sprintf("Dispositivo IO registrado: Nombre %s, IP %s, Puerto %d", nombre, ip, puerto)
+	mensajeRegistro := fmt.Sprintf("Dispositivo IO registrado: Nombre %s, IP %s, Puerto %d, Numero de instancias: %d", nombre, ip, puerto, len(ListaDispositivosIO[nombre].InstanciasDispositivo))
 	fmt.Println(mensajeRegistro)
 	Logger.Debug(mensajeRegistro)
-
-	mensajeNumeroInstancias := fmt.Sprintf("Número de instancias del dispositivo %s: %d", nombre, len(ListaDispositivosIO[nombre].InstanciasDispositivo))
-	fmt.Println(mensajeNumeroInstancias)
-	Logger.Debug(mensajeNumeroInstancias)
 
 }
 
 func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puertoInstancia int) {
 
-	fmt.Println("Desconectando instancia de IO:", nombreDispositivo, ipInstancia, puertoInstancia)
+	//fmt.Println("Desconectando instancia de IO:", nombreDispositivo, ipInstancia, puertoInstancia)
 	Logger.Debug("Desconectando instancia de IO", "nombre_dispositivo", nombreDispositivo, "ip_instancia", ipInstancia, "puerto_instancia", puertoInstancia)
 
 	// Recorro la lista de instancias del dispositivo IO en búsqueda de la instancia a eliminar
@@ -87,13 +83,13 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 		if instanciaBuscada.IpIO == ipInstancia && instanciaBuscada.PortIO == puertoInstancia {
 
 			mensajeDesconectandoInstancia := fmt.Sprintf("Desconectando instancia de IO Dispositivo %s, IP %s, Puerto %d", nombreDispositivo, ipInstancia, puertoInstancia)
-			fmt.Println(mensajeDesconectandoInstancia)
+			//fmt.Println(mensajeDesconectandoInstancia)
 			Logger.Debug(mensajeDesconectandoInstancia)
 
 			// Mandamos al proceso que estaba usando la instancia a Exit
 			if instanciaBuscada.Estado == "Ocupada" {
 				mensajeDesconexionDuranteEjecucion := fmt.Sprintf("Desconexion de IO durante ejecucion, se envia proceso a Exit: PID %d, Dispositivo %s", instanciaBuscada.PID, nombreDispositivo)
-				fmt.Println(mensajeDesconexionDuranteEjecucion)
+				//fmt.Println(mensajeDesconexionDuranteEjecucion)
 				Logger.Debug(mensajeDesconexionDuranteEjecucion)
 
 				MoverProcesoDeBlockedAExit(instanciaBuscada.PID)
@@ -105,7 +101,7 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 			mensajeInstanciasRestantes := fmt.Sprintf("Instancias del dispositivo %s: %d", nombreDispositivo, len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
 			MutexIdentificadoresIO.Unlock()
 
-			fmt.Println(mensajeInstanciasRestantes)
+			//fmt.Println(mensajeInstanciasRestantes)
 			Logger.Debug(mensajeInstanciasRestantes)
 
 			// Si la instancia desconectada era la única que quedaba...
@@ -117,7 +113,7 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 					// Recorro la lista de procesos bloqueados por la IO y los mando a Exit
 					for i, procesoEnEspera := range ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos {
 						mensajeDesconexionDuranteEjecucion := fmt.Sprintf("Desconexion de IO durante ejecucion, se envia proceso esperando al dispositivo a Exit: PID %d, Dispositivo %s", procesoEnEspera.Proceso.PID, nombreDispositivo)
-						fmt.Println(mensajeDesconexionDuranteEjecucion)
+						//fmt.Println(mensajeDesconexionDuranteEjecucion)
 						Logger.Debug(mensajeDesconexionDuranteEjecucion)
 
 						MoverProcesoDeBlockedAExit(ListaDispositivosIO[nombreDispositivo].ColaEsperaProcesos[i].Proceso.PID)
@@ -131,17 +127,17 @@ func DesconectarInstanciaIO(nombreDispositivo string, ipInstancia string, puerto
 
 			} else {
 				mensajeInstanciasRestantes := fmt.Sprintf("Instancias del dispositivo %s: %d", nombreDispositivo, len(ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo))
-				fmt.Println(mensajeInstanciasRestantes)
+				//fmt.Println(mensajeInstanciasRestantes)
 				Logger.Debug(mensajeInstanciasRestantes)
 			}
 
 			mensajeInstanciaDesconectada := fmt.Sprintf("Instancia de IO desconectada: Dispositivo %s, IP %s, Puerto %d", nombreDispositivo, ipInstancia, puertoInstancia)
-			fmt.Println(mensajeInstanciaDesconectada)
+			//fmt.Println(mensajeInstanciaDesconectada)
 			Logger.Debug(mensajeInstanciaDesconectada)
 
 		} else {
 			mensajeInstanciaNoEncontrada := fmt.Sprintf("Instancia de IO no encontrada: Dispositivo %s, IP %s, Puerto %d", nombreDispositivo, ipInstancia, puertoInstancia)
-			fmt.Println(mensajeInstanciaNoEncontrada)
+			//fmt.Println(mensajeInstanciaNoEncontrada)
 			Logger.Debug(mensajeInstanciaNoEncontrada)
 		}
 	}
@@ -225,7 +221,7 @@ func OcuparInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO, pid in
 			mensajeOcupacionInstancia := fmt.Sprintf("Instancia de IO ocupada: Dispositivo %s, Estado: %s, PID %d", nombreDispositivo, instancia.Estado, pid)
 			MutexIdentificadoresIO.Unlock()
 
-			fmt.Println(mensajeOcupacionInstancia)
+			//fmt.Println(mensajeOcupacionInstancia)
 			Logger.Debug(mensajeOcupacionInstancia)
 
 			return
@@ -233,7 +229,7 @@ func OcuparInstanciaDeIO(nombreDispositivo string, instancia InstanciaIO, pid in
 	}
 
 	mensajeErrorOcupacion := fmt.Sprintf("Error al ocupar la instancia de IO: Dispositivo %s, PID %d", instancia.NombreIO, pid)
-	fmt.Println(mensajeErrorOcupacion)
+	//fmt.Println(mensajeErrorOcupacion)
 	Logger.Debug(mensajeErrorOcupacion)
 }
 
@@ -255,7 +251,7 @@ func BuscarPrimerInstanciaLibre(nombreDispositivo string) (InstanciaIO, bool) {
 	for _, instancia := range ListaDispositivosIO[nombreDispositivo].InstanciasDispositivo {
 		if instancia.Estado == "Libre" {
 			mensajeInstanciaLibre := fmt.Sprintf("Instancia de IO libre encontrada: Dispositivo %s, IP %s, Puerto %d", instancia.NombreIO, instancia.IpIO, instancia.PortIO)
-			fmt.Println(mensajeInstanciaLibre)
+			//fmt.Println(mensajeInstanciaLibre)
 			Logger.Debug(mensajeInstanciaLibre)
 
 			return instancia, true
@@ -263,7 +259,7 @@ func BuscarPrimerInstanciaLibre(nombreDispositivo string) (InstanciaIO, bool) {
 	}
 
 	mensajeNoHayInstancias := fmt.Sprintf("No hay instancias libres del dispositivo IO: %s", nombreDispositivo)
-	fmt.Println(mensajeNoHayInstancias)
+	//fmt.Println(mensajeNoHayInstancias)
 	Logger.Debug(mensajeNoHayInstancias)
 
 	return InstanciaIO{}, false

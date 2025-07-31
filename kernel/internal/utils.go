@@ -101,7 +101,7 @@ func BuscarProcesoEnCola(pid int, cola *[]*globals.PCB) *globals.PCB {
 func InicializarPCB(tamanioEnMemoria int, nombreArchivoPseudo string) {
 	mensajeInicializandoPCB := "Inicializando PCB" + " tamanio_en_memoria=" + strconv.Itoa(tamanioEnMemoria) + ", nombre_archivo_pseudo=" + nombreArchivoPseudo
 	Logger.Debug(mensajeInicializandoPCB)
-	fmt.Println(mensajeInicializandoPCB)
+	//fmt.Println(mensajeInicializandoPCB)
 
 	ContadorPID++
 
@@ -218,7 +218,7 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 			proceso.TiempoDeUltimaRafaga = float64(time.Since(proceso.InicioEjecucion).Milliseconds())
 
 			Logger.Debug("Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
-			fmt.Println("Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
+			//fmt.Println("Guardando tiempo de última ráfaga", "pid", proceso.PID, "tiempo", proceso.TiempoDeUltimaRafaga)
 
 			// Si el proceso sale de Exec y va directo a Ready es por desalojo de SRT
 			if proceso.Estado == globals.Ready && (AlgoritmoCortoPlazo == "SRT" || AlgoritmoCortoPlazo == "SJF") {
@@ -252,7 +252,7 @@ func MoverProcesoACola(proceso *globals.PCB, colaDestino *[]*globals.PCB) {
 		LogCambioDeEstado(proceso.PID, string(procesoEstadoAnterior), string(proceso.Estado))
 	} else {
 		Logger.Debug("El proceso ya estaba en el estado destino", "pid", proceso.PID, "estado", proceso.Estado)
-		fmt.Println("El proceso ya estaba en el estado destino", "pid", proceso.PID, "estado", proceso.Estado)
+		//fmt.Println("El proceso ya estaba en el estado destino", "pid", proceso.PID, "estado", proceso.Estado)
 	}
 }
 
@@ -261,7 +261,7 @@ func MoverProcesoDeExecABlocked(pid int) {
 	pcbDelProceso := BuscarProcesoEnCola(pid, &ColaExec)
 	if pcbDelProceso == nil {
 		Logger.Debug("Proceso no encontrado en ColaExec", "pid", pid)
-		fmt.Println("Proceso no encontrado en ColaExec", "pid", pid)
+		//fmt.Println("Proceso no encontrado en ColaExec", "pid", pid)
 		return
 	}
 
@@ -279,7 +279,7 @@ func MoverProcesoDeBlockedAExit(pid int) {
 	// Si no se encuentra el PCB del proceso en la cola de blocked, xq el plani de mediano plazo lo movió a SuspBlocked
 	if BuscarProcesoEnCola(pid, &ColaBlocked) == nil {
 		Logger.Debug("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
-		fmt.Println("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
+		//fmt.Println("Error al buscar el PCB del proceso en la cola de blocked", "pid", pid)
 
 		//! BORRAR EL PROCESO DE SWAP Y LIBERAR LA MEMORIA
 
@@ -305,7 +305,7 @@ func MoverProcesoDeBlockedAReady(pid int) {
 		pcbDelProceso := BuscarProcesoEnCola(pid, &ColaSuspBlocked)
 		if pcbDelProceso == nil {
 			Logger.Debug("No se encontro al buscar el PCB del proceso en la cola de SuspBlocked", "pid", pid)
-			fmt.Println("No se encontro al buscar el PCB del proceso en la cola de SuspBlocked", "pid", pid)
+			//fmt.Println("No se encontro al buscar el PCB del proceso en la cola de SuspBlocked", "pid", pid)
 			return
 		}
 
@@ -339,7 +339,7 @@ func TerminarProceso(pid int, colaOrigen *[]*globals.PCB) {
 	proceso := BuscarProcesoEnCola(pid, colaOrigen)
 	if proceso == nil {
 		Logger.Debug("Proceso no encontrado en la cola de origen al terminar proceso", "pid", pid)
-		fmt.Println("Proceso no encontrado en la cola de origen al terminar proceso", "pid", pid)
+		//fmt.Println("Proceso no encontrado en la cola de origen al terminar proceso", "pid", pid)
 		return
 	}
 
@@ -358,7 +358,7 @@ func TerminarProceso(pid int, colaOrigen *[]*globals.PCB) {
 			// ya hay una señal pendiente, no enviar otra
 		}
 	} else {
-		fmt.Println("Error al liberar memoria del proceso:", pid)
+		//fmt.Println("Error al liberar memoria del proceso:", pid)
 	}
 
 	proceso = BuscarProcesoEnCola(pid, &ColaExit)
@@ -372,7 +372,7 @@ var MutexCpuLiberada sync.Mutex
 
 func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 	mensajePedidoDesalojo := fmt.Sprintf("Analizando desalojo de CPU: ID %s, PID %d, PC %d, Motivo %s", cpuId, pid, pc, motivoDesalojo)
-	fmt.Println(mensajePedidoDesalojo)
+	//fmt.Println(mensajePedidoDesalojo)
 	Logger.Debug(mensajePedidoDesalojo)
 
 	var pcbDelProceso *globals.PCB
@@ -381,16 +381,16 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 		LogDesalojoPorSJF_SRT(pid)
 		pcbDelProceso = BuscarProcesoEnCola(pid, &ColaReady)
 		if pcbDelProceso == nil {
-			fmt.Println("No se encontró el proceso en ColaReady, buscando en Exec")
+			//fmt.Println("No se encontró el proceso en ColaReady, buscando en Exec")
 			pcbDelProceso = BuscarProcesoEnCola(pid, &ColaExec)
 			if pcbDelProceso == nil {
-				fmt.Println("No se encontró el proceso en ColaExec, buscando en Blocked")
+				//fmt.Println("No se encontró el proceso en ColaExec, buscando en Blocked")
 				pcbDelProceso = BuscarProcesoEnCola(pid, &ColaBlocked)
 				if pcbDelProceso == nil {
-					fmt.Println("No se encontró el proceso en ColaBlocked, buscando en SuspBlocked")
+					//fmt.Println("No se encontró el proceso en ColaBlocked, buscando en SuspBlocked")
 					pcbDelProceso = BuscarProcesoEnCola(pid, &ColaSuspBlocked)
 					if pcbDelProceso == nil {
-						fmt.Println("No se encontró el proceso en ColaSuspBlocked, buscando en ColaExit")
+						//fmt.Println("No se encontró el proceso en ColaSuspBlocked, buscando en ColaExit")
 						pcbDelProceso = BuscarProcesoEnCola(pid, &ColaExit)
 					}
 				}
@@ -429,7 +429,7 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 
 	for i, cpu := range ListaIdentificadoresCPU {
 
-		fmt.Println("ITERO FOR ANALIZAR DESALOJO ")
+		//fmt.Println("ITERO FOR ANALIZAR DESALOJO ")
 		if cpu.CPUID == cpuId {
 			MutexIdentificadoresCPU.Lock()
 			ListaIdentificadoresCPU[i].Ocupado = false
@@ -453,7 +453,7 @@ func AnalizarDesalojo(cpuId string, pid int, pc int, motivoDesalojo string) {
 	}
 
 	mensajeCpuLiberada := fmt.Sprintf("Se liberó la CPU con ID: %s", cpuId)
-	fmt.Println(mensajeCpuLiberada)
+	//fmt.Println(mensajeCpuLiberada)
 	Logger.Debug(mensajeCpuLiberada)
 
 	select {
@@ -476,12 +476,12 @@ func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
 
 	go func(pidLocal int, cancel chan struct{}) {
 		Logger.Debug("Iniciando contador de blocked para el proceso", "pid", pidLocal, "tiempo", milisegundos)
-		fmt.Println("Iniciando contador de blocked para el proceso", "pid", pidLocal, "tiempo", milisegundos)
+		//fmt.Println("Iniciando contador de blocked para el proceso", "pid", pidLocal, "tiempo", milisegundos)
 
 		timer := time.NewTimer(time.Duration(milisegundos) * time.Millisecond)
 		select {
 		case <-timer.C:
-			fmt.Println("Contador de Susp Blocked cumplido para el proceso", pidLocal)
+			//fmt.Println("Contador de Susp Blocked cumplido para el proceso", pidLocal)
 			if BuscarProcesoEnCola(pidLocal, &ColaBlocked) != nil {
 				MoverProcesoACola(pcb, &ColaSuspBlocked)
 				// ENVIAMOS EL PROCESO A SWAP
@@ -495,7 +495,7 @@ func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
 				}
 			}
 		case <-cancel:
-			fmt.Println("Contador de Susp Blocked cancelado para el proceso", pidLocal)
+			//fmt.Println("Contador de Susp Blocked cancelado para el proceso", pidLocal)
 			timer.Stop()
 		}
 	}(pid, cancel) // Pasa el PID y el canal como argumentos a la goroutine
@@ -504,11 +504,11 @@ func IniciarContadorBlocked(pcb *globals.PCB, milisegundos int) {
 func CancelarContadorBlocked(pid int) {
 	mutexCanceladoresBlocked.Lock()
 	if cancel, ok := canceladoresBlocked[pid]; ok {
-		fmt.Println("Cancelando contador para PID:", pid)
+		//fmt.Println("Cancelando contador para PID:", pid)
 		close(cancel)
 		delete(canceladoresBlocked, pid)
 	} else {
-		fmt.Println("No se encontró un contador para PID:", pid)
+		//fmt.Println("No se encontró un contador para PID:", pid)
 	}
 	mutexCanceladoresBlocked.Unlock()
 }

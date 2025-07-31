@@ -57,7 +57,7 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 	LogSyscall(pid, "IO")
 
 	if VerificarDispositivo(nombreDispositivo) {
-		fmt.Println("El dispositivo existe, verificando si está en uso")
+		//fmt.Println("El dispositivo existe, verificando si está en uso")
 		//& SI EL DISPOSITIVO EXISTE, PERO ESTA EN USO, BLOQUEAR EL PROCESO EN LA COLA DEL DISPOSITIVO
 
 		LogMotivoDeBloqueo(pid, nombreDispositivo)
@@ -70,7 +70,8 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 
 			//Si hay instancias de IO disponibles, se bloquea el proceso por estar usando la IO
 			UsarDispositivoDeIO(nombreDispositivo, pid, milisegundosDeUso)
-			fmt.Println("IO: PID", pid, "enviado a IO por", milisegundosDeUso, "ms en", nombreDispositivo)
+			//fmt.Println("IO: PID", pid, "enviado a IO por", milisegundosDeUso, "ms en", nombreDispositivo)
+			Logger.Debug(fmt.Sprintf("IO: PID %d enviado a IO por %d ms en %s", pid, milisegundosDeUso, nombreDispositivo))
 
 		} else {
 
@@ -80,7 +81,7 @@ func SyscallEntradaSalida(pid int, nombreDispositivo string, milisegundosDeUso i
 	} else {
 		//& NO EXISTE EL DISPOSITIVO, ENTONCES SE MANDA EL PROCESO A EXIT
 		mensajeDispositivoNoExiste := fmt.Sprintf("IO: El dispositivo %s no existe, enviando a EXIT", nombreDispositivo)
-		fmt.Println(mensajeDispositivoNoExiste)
+		//fmt.Println(mensajeDispositivoNoExiste)
 		Logger.Debug(mensajeDispositivoNoExiste)
 
 		// Desalojo el proceso de la CPU
