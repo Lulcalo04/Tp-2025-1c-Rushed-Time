@@ -1,6 +1,14 @@
 # TP Sistemas Operativos 1C2025 – Rushed Time
+Trabajo práctico de la cátedra **Sistemas Operativos (UTN FRBA)** desarrollado en **GoLang**🦦. 
 
-Trabajo práctico de la cátedra **Sistemas Operativos (UTN FRBA)** desarrollado en **GoLang**🦦.  
+## ©️ Autores
+- [@TomasJulianoUTN](https://github.com/TomasJulianoUTN) *y creador del readme
+- [@LucaLorenzonUTN](https://github.com/LucaLorenzonUTN)
+- [@JuanchiNogueira](https://github.com/JuanchiNogueira)
+- [@Roccomcs](https://github.com/Roccomcs)
+- [@EliCVargasJ](https://github.com/EliCVargasJ)
+
+---
 
 ## 📄 Enunciados
 
@@ -15,7 +23,7 @@ Trabajo práctico de la cátedra **Sistemas Operativos (UTN FRBA)** desarrollado
 ### 1️⃣ Clonar el Repositorio
 
 ```bash
-git clone https://github.com/sisoputnfrba/tp-2025-1c-Rushed-Time.git
+git clone https://github.com/Lulcalo04/Tp-2025-1c-Rushed-Time
 User: <USUARIO>
 Token: <TOKEN>
 ```
